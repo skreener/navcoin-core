@@ -6,7 +6,6 @@
 #include "wallet/wallet.h"
 
 #include "base58.h"
-#include "bignum.h"
 #include "checkpoints.h"
 #include "chain.h"
 #include "coincontrol.h"
@@ -67,7 +66,7 @@ CFeeRate CWallet::fallbackFee = CFeeRate(DEFAULT_FALLBACK_FEE);
 
 
 int64_t nReserveBalance = 0;
-int64_t nMinimumInputValue = 0;
+int64_t nMinimumInputValue = GetArg("-mininputvalue", 1 * COIN);
 
 const uint256 CMerkleTx::ABANDON_HASH(uint256S("0000000000000000000000000000000000000000000000000000000000000001"));
 
@@ -317,8 +316,8 @@ bool CWallet::SelectCoinsForStaking(int64_t nTargetValue, unsigned int nSpendTim
 
 bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64_t nSearchInterval, int64_t nFees, CMutableTransaction& txNew, CKey& key)
 {
-    CBlockIndex* pindexPrev = chainActive.Tip();
-    CBigNum bnTargetPerCoinDay;
+    CBlockIndex* pindexPrev = pindexBestHeader;
+    arith_uint256 bnTargetPerCoinDay;
     bnTargetPerCoinDay.SetCompact(nBits);
 
     txNew.vin.clear();
