@@ -232,7 +232,7 @@ std::vector<std::string> DNSResolver::get_record(const std::string& url, int rec
         LogPrintf("%d %d %d %d\n",result->havedata,result->secure,result->bogus,dnssec_valid);
         if (result->havedata)
         {
-            if(result->secure && result->bogus)
+            if(!result->secure && result->bogus)
                 LogPrintf("DNSSec bogus entry for %s found: %s\n", url.c_str(), result->why_bogus);
                             
             for (size_t i=0; result->data[i] != NULL; i++)
