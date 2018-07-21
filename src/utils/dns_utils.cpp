@@ -231,6 +231,9 @@ std::vector<std::string> DNSResolver::get_record(const std::string& url, int rec
         dnssec_valid = result->secure && !result->bogus;
         if (result->havedata)
         {
+            if(result->secure && result->bogus)
+                LogPrintf("DNSSec bogus entry for %s found: %s\n", url.c_str(), result->why_bogus);
+                            
             for (size_t i=0; result->data[i] != NULL; i++)
             {
                 addresses.push_back((*reader)(result->data[i], result->len[i]));
