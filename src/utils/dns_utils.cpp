@@ -229,6 +229,7 @@ std::vector<std::string> DNSResolver::get_record(const std::string& url, int rec
     {
         dnssec_available = (result->secure || (!result->secure && result->bogus));
         dnssec_valid = result->secure && !result->bogus;
+        LogPrintf("%d %d %d %d\n",result->havedata,result->secure,result->bogus,dnssec_valid);
         if (result->havedata)
         {
             if(result->secure && result->bogus)
