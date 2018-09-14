@@ -264,8 +264,6 @@ libnavcoin_consensus_a_CPPFLAGS = $(AM_CPPFLAGS) $(NAVCOIN_INCLUDES)
 libnavcoin_consensus_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libnavcoin_consensus_a_SOURCES = \
   amount.h \
-  arith_uint256.cpp \
-  arith_uint256.h \
   consensus/merkle.cpp \
   consensus/merkle.h \
   consensus/params.h \
@@ -320,6 +318,7 @@ libnavcoin_consensus_a_SOURCES = \
   tinyformat.h \
   uint256.cpp \
   uint256.h \
+  uint512.h \
   utilstrencodings.cpp \
   utilstrencodings.h \
   version.h
