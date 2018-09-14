@@ -962,7 +962,7 @@ bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees)
 
 bool CheckStake(CBlock* pblock, CWallet& wallet, const CChainParams& chainparams)
 {
-    arith_uint256 proofHash = arith_uint256(0), hashTarget = arith_uint256(0);
+    uint256 proofHash = 0, hashTarget = 0;
     uint256 hashBlock = pblock->GetHash();
 
     if(!pblock->IsProofOfStake())
