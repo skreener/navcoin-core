@@ -88,7 +88,7 @@ public:
         consensus.nMajorityWindow = 1000;
         consensus.BIP34Height = 900000;
         consensus.BIP34Hash = uint256S("0xecb7444214d068028ec1fa4561662433452c1cbbd6b0f8eeb6452bcfa1d0a7d6");
-        consensus.powLimit = ArithToUint256(~arith_uint256(0) >> 16);
+        consensus.powLimit = ~uint256(0) >> 16;
         consensus.nPowTargetTimespan = 30;
         consensus.nPowTargetSpacing = 30;
         consensus.fPowAllowMinDifficultyBlocks = false;
@@ -176,7 +176,7 @@ public:
         pchMessageStart[3] = 0x20;
         nDefaultPort = 44440;
         nPruneAfterHeight = 100000;
-        bnProofOfWorkLimit = arith_uint256(~arith_uint256() >> 16);
+        bnProofOfWorkLimit = ~uint256() >> 16;
 
         genesis = CreateGenesisBlock(1460561040, 6945, 0x1f00ffff, 1, 0);
 
@@ -252,7 +252,7 @@ public:
         consensus.nMajorityWindow = 1000;
         consensus.BIP34Height = 900000;
         consensus.BIP34Hash = uint256S("0xecb7444214d068028ec1fa4561662433452c1cbbd6b0f8eeb6452bcfa1d0a7d6");
-        consensus.powLimit = ArithToUint256(~arith_uint256(0) >> 16);
+        consensus.powLimit = ~uint256(0) >> 16;
         consensus.nPowTargetTimespan = 30;
         consensus.nPowTargetSpacing = 30;
         consensus.fPowAllowMinDifficultyBlocks = false;
@@ -335,7 +335,7 @@ public:
         pchMessageStart[3] = 0x22;
         nDefaultPort = 15556;
         nPruneAfterHeight = 1000;
-        bnProofOfWorkLimit = arith_uint256(~arith_uint256() >> 16);
+        bnProofOfWorkLimit = ~uint256() >> 16;
     
         uint32_t nTimestamp = 1535727262;
         uint256 hashGenesisBlock = uint256S("0x00006f7464b3c2eb79b99878d6d92d815be7662d1eba485babb6328b3d3b327f");
@@ -403,8 +403,8 @@ public:
         consensus.nMajorityRejectBlockOutdated = 950;
         consensus.nMajorityWindow = 1000;
         consensus.BIP34Height = 900000;
-        consensus.BIP34Hash = uint256S("0x0");
-        consensus.powLimit = ArithToUint256(~arith_uint256(0) >> 16);
+        consensus.BIP34Hash = 0;
+        consensus.powLimit = ~uint256(0) >> 16;
         consensus.nPowTargetTimespan = 30;
         consensus.nPowTargetSpacing = 30;
         consensus.fPowAllowMinDifficultyBlocks = false;
@@ -487,7 +487,7 @@ public:
         pchMessageStart[3] = 0xfa;
         nDefaultPort = 18886;
         nPruneAfterHeight = 1000;
-        bnProofOfWorkLimit = arith_uint256(~arith_uint256() >> 16);
+        bnProofOfWorkLimit = ~uint256() >> 16;
 
         // To create a new devnet:
         //
@@ -566,7 +566,7 @@ public:
         consensus.nMajorityWindow = 1000;
         consensus.BIP34Height = 900000;
         consensus.BIP34Hash = uint256S("0xecb7444214d068028ec1fa4561662433452c1cbbd6b0f8eeb6452bcfa1d0a7d6");
-        consensus.powLimit = ArithToUint256(~arith_uint256(0) >> 1);
+        consensus.powLimit = ~uint256(0) >> 1;
         consensus.nPowTargetTimespan = 30;
         consensus.nPowTargetSpacing = 30;
         consensus.fPowAllowMinDifficultyBlocks = false;
@@ -644,7 +644,7 @@ public:
         pchMessageStart[3] = 0x89;
         nDefaultPort = 18886;
         nPruneAfterHeight = 1000;
-        bnProofOfWorkLimit = arith_uint256(~arith_uint256() >> 16);
+        bnProofOfWorkLimit = ~uint256() >> 16;
 
         uint32_t nTimestamp = GetTimeNow();
         uint256 hashGenesisBlock = uint256S("0x0000e01b12644af6917e5aada637a609dd9590ad6bdc4828cd8df95258d85c02");

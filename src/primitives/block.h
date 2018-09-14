@@ -9,7 +9,6 @@
 #include "primitives/transaction.h"
 #include "serialize.h"
 #include "uint256.h"
-#include "arith_uint256.h"
 #include "hash.h"
 
 /** Nodes collect new transactions into a block, hash them into a hash tree,
@@ -68,7 +67,7 @@ public:
     unsigned int GetStakeEntropyBit() const
     {
         // Take last bit of block hash as entropy bit
-        unsigned int nEntropyBit = ((UintToArith256(GetHash()).GetLow64()) & 1llu);
+        unsigned int nEntropyBit = GetHash().GetLow64() & 1llu;
         return nEntropyBit;
     }
 

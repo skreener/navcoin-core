@@ -43,8 +43,7 @@ public:
 
     friend bool operator<(const COutPoint& a, const COutPoint& b)
     {
-        int cmp = a.hash.Compare(b.hash);
-        return cmp < 0 || (cmp == 0 && a.n < b.n);
+        return a.hash < b.hash;
     }
 
     friend bool operator==(const COutPoint& a, const COutPoint& b)

@@ -10,7 +10,6 @@
 #include "consensus/params.h"
 #include "primitives/block.h"
 #include "protocol.h"
-#include "arith_uint256.h"
 
 #include <vector>
 
@@ -77,7 +76,7 @@ public:
     const std::vector<unsigned char>& Base58Prefix(Base58Type type) const { return base58Prefixes[type]; }
     const std::vector<SeedSpec6>& FixedSeeds() const { return vFixedSeeds; }
     const CCheckpointData& Checkpoints() const { return checkpointData; }
-    const arith_uint256& ProofOfWorkLimit() const { return bnProofOfWorkLimit; }
+    const uint256& ProofOfWorkLimit() const { return bnProofOfWorkLimit; }
 protected:
     CChainParams() {}
 
@@ -89,7 +88,7 @@ protected:
     std::vector<unsigned char> base58Prefixes[MAX_BASE58_TYPES];
     std::string strNetworkID;
     CBlock genesis;
-    arith_uint256 bnProofOfWorkLimit;
+    uint256 bnProofOfWorkLimit;
     std::vector<SeedSpec6> vFixedSeeds;
     bool fMiningRequiresPeers;
     bool fDefaultConsistencyChecks;

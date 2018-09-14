@@ -7,7 +7,6 @@
 #include "main.h"
 
 #include "addrman.h"
-#include "arith_uint256.h"
 #include "base58.h"
 #include "blockencodings.h"
 #include "chainparams.h"
@@ -130,8 +129,8 @@ static void CheckBlockIndex(const Consensus::Params& consensusParams);
 
 extern std::set<std::pair<COutPoint, unsigned int> > setStakeSeen;
 
-arith_uint256 bnProofOfStakeLimit(~arith_uint256() >> 20);
-arith_uint256 bnProofOfStakeLimitV2(~arith_uint256() >> 20);
+uint256 bnProofOfStakeLimit(~uint256() >> 20);
+uint256 bnProofOfStakeLimitV2(~uint256() >> 20);
 
 /** Constant stuff for coinbase transactions we create: */
 CScript COINBASE_FLAGS;
@@ -2626,12 +2625,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         return state.DoS(1,error("ContextualCheckBlock() : incorrect %s at height %d (%d)", !block.IsProofOfStake() ? "proof-of-work" : "proof-of-stake",pindex->pprev->nHeight, block.nBits), REJECT_INVALID, "bad-diffbits");
     }
 
-    arith_uint256 hashProof;
+    uint256 hashProof;
 
     // Verify hash target and signature of coinstake tx
     if (block.IsProofOfStake())
     {
-        arith_uint256 targetProofOfStake;
+        uint256 targetProofOfStake;
         // Signature will be checked in CheckInputs(), we can avoid it here (fCheckSignature = false)
         if (!CheckProofOfStake(pindex->pprev, block.vtx[1], block.nBits, hashProof, targetProofOfStake, NULL, false))
         {
@@ -2641,7 +2640,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     if (block.IsProofOfWork())
     {
-        hashProof = UintToArith256(block.GetPoWHash());
+        hashProof = block.GetPoWHash();
     }
 
 
@@ -8173,7 +8172,7 @@ unsigned int ComputedMinStake(unsigned int nBase, int64_t nTime, unsigned int nB
 unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
 {
 
-    arith_uint256 bnTargetLimit = fProofOfStake ? GetProofOfStakeLimit(pindexLast->nHeight) : Params().ProofOfWorkLimit();
+    uint256 bnTargetLimit = fProofOfStake ? GetProofOfStakeLimit(pindexLast->nHeight) : Params().ProofOfWorkLimit();
 
     if (pindexLast == NULL)
         return bnTargetLimit.GetCompact(); // genesis block
@@ -8194,10 +8193,10 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
 
     // ppcoin: target change every block
     // ppcoin: retarget with exponential moving toward target spacing
-    arith_uint256 bnNew;
+    uint256 bnNew;
     bnNew.SetCompact(pindexPrev->nBits);
 
-    arith_uint256 nInterval = (Params().GetConsensus().nTargetTimespan) / (Params().GetConsensus().nTargetSpacing);
+    uint256 nInterval = (Params().GetConsensus().nTargetTimespan) / (Params().GetConsensus().nTargetSpacing);
     bnNew *= (((nInterval - 1)) * (Params().GetConsensus().nTargetSpacing) + (nActualSpacing) + (nActualSpacing));
     bnNew /= (((nInterval + 1)) * (Params().GetConsensus().nTargetSpacing));
 
@@ -8207,14 +8206,14 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
     return bnNew.GetCompact();
 }
 
-arith_uint256 GetProofOfStakeLimit(int nHeight)
+uint256 GetProofOfStakeLimit(int nHeight)
 {
     return (bnProofOfStakeLimitV2);
 }
 
 bool TransactionGetCoinAge(CTransaction& transaction, uint64_t& nCoinAge)
 {
-    arith_uint256 bnCentSecond = 0;  // coin age in the unit of cent-seconds
+    uint256 bnCentSecond = 0;  // coin age in the unit of cent-seconds
     nCoinAge = 0;
 
     if (transaction.IsCoinBase())
@@ -8241,14 +8240,14 @@ bool TransactionGetCoinAge(CTransaction& transaction, uint64_t& nCoinAge)
             continue; // only count coins meeting min age requirement
 
         int64_t nValueIn = txPrev.vout[txin.prevout.n].nValue;
-        bnCentSecond += arith_uint256(nValueIn) * (transaction.nTime-txPrev.nTime) / CENT;
+        bnCentSecond += nValueIn * (transaction.nTime-txPrev.nTime) / CENT;
 
 
         LogPrint("coinage", "coin age nValueIn=%d nTimeDiff=%d bnCentSecond=%s\n", nValueIn, transaction.nTime - txPrev.nTime, bnCentSecond.ToString());
     }
 
 
-    arith_uint256 bnCoinDay = ((bnCentSecond * CENT) / COIN) / (24 * 60 * 60);
+    uint256 bnCoinDay = ((bnCentSecond * CENT) / COIN) / (24 * 60 * 60);
     LogPrint("coinage", "coin age bnCoinDay=%s\n", bnCoinDay.ToString());
     nCoinAge = bnCoinDay.GetLow64();
 
@@ -8325,7 +8324,7 @@ static bool SelectBlockFromCandidates(vector<pair<int64_t, uint256> >& vSortedBy
         // compute the selection hash by hashing its proof-hash and the
         // previous proof-of-stake modifier
         CDataStream ss(SER_GETHASH, 0);
-        ss << ArithToUint256(pindex->hashProof) << nStakeModifierPrev;
+        ss << pindex->hashProof << nStakeModifierPrev;
         uint256 hashSelection = Hash(ss.begin(), ss.end());
 
 
@@ -8333,7 +8332,7 @@ static bool SelectBlockFromCandidates(vector<pair<int64_t, uint256> >& vSortedBy
         // is always favored over proof-of-work block. this is to preserve
         // the energy efficiency property
         if (pindex->IsProofOfStake())
-            hashSelection = ArithToUint256(UintToArith256(hashSelection) >> 32);
+            hashSelection = hashSelection >> 32;
 
         if (fSelected && hashSelection < hashBest)
         {
@@ -8447,7 +8446,7 @@ bool ComputeNextStakeModifier(const CBlockIndex* pindexPrev, uint64_t& nStakeMod
 }
 
 
-static bool CheckStakeKernelHashV2(CBlockIndex* pindexPrev, unsigned int nBits, unsigned int nTimeBlockFrom, const CTransaction& txPrev, const COutPoint& prevout, unsigned int nTimeTx, arith_uint256& hashProofOfStake, arith_uint256& targetProofOfStake, bool fPrintProofOfStake)
+static bool CheckStakeKernelHashV2(CBlockIndex* pindexPrev, unsigned int nBits, unsigned int nTimeBlockFrom, const CTransaction& txPrev, const COutPoint& prevout, unsigned int nTimeTx, uint256& hashProofOfStake, uint256& targetProofOfStake, bool fPrintProofOfStake)
 {
 
     if (nTimeTx < txPrev.nTime)  // Transaction timestamp violation
@@ -8462,7 +8461,7 @@ static bool CheckStakeKernelHashV2(CBlockIndex* pindexPrev, unsigned int nBits, 
 
     // Weighted target
     int64_t nValueIn = txPrev.vout[prevout.n].nValue;
-    arith_uint512 bnWeight = arith_uint512(nValueIn);
+    uint512 bnWeight = uint512(nValueIn);
 
     // We need to convert to uint512 to prevent overflow when multiplying by 1st block coins
     base_uint<512> targetProofOfStake512(targetProofOfStake.GetHex());
@@ -8475,7 +8474,7 @@ static bool CheckStakeKernelHashV2(CBlockIndex* pindexPrev, unsigned int nBits, 
     // Calculate hash
     CDataStream ss(SER_GETHASH, 0);
     ss << nStakeModifier << nTimeBlockFrom << txPrev.nTime << prevout.hash << prevout.n << nTimeTx;
-    hashProofOfStake = UintToArith256(Hash(ss.begin(), ss.end()));
+    hashProofOfStake = Hash(ss.begin(), ss.end());
 
     if (fPrintProofOfStake)
     {
@@ -8511,7 +8510,7 @@ static bool CheckStakeKernelHashV2(CBlockIndex* pindexPrev, unsigned int nBits, 
     return true;
 }
 
-bool CheckStakeKernelHash(CBlockIndex* pindexPrev, unsigned int nBits, CBlockIndex& blockFrom, const CTransaction& txPrev, const COutPoint& prevout, unsigned int nTimeTx, arith_uint256& hashProofOfStake, arith_uint256& targetProofOfStake, bool fPrintProofOfStake)
+bool CheckStakeKernelHash(CBlockIndex* pindexPrev, unsigned int nBits, CBlockIndex& blockFrom, const CTransaction& txPrev, const COutPoint& prevout, unsigned int nTimeTx, uint256& hashProofOfStake, uint256& targetProofOfStake, bool fPrintProofOfStake)
 {
     // if (IsProtocolV2(pindexPrev->nHeight+1))
         return CheckStakeKernelHashV2(pindexPrev, nBits, blockFrom.GetBlockTime(), txPrev, prevout, nTimeTx, hashProofOfStake, targetProofOfStake, true);
@@ -8520,7 +8519,7 @@ bool CheckStakeKernelHash(CBlockIndex* pindexPrev, unsigned int nBits, CBlockInd
 }
 
 //Check kernel hash target and coinstake signature
-bool CheckProofOfStake(CBlockIndex* pindexPrev, const CTransaction& tx, unsigned int nBits, arith_uint256& hashProofOfStake, arith_uint256& targetProofOfStake, std::vector<CScriptCheck> *pvChecks, bool fCHeckSignature)
+bool CheckProofOfStake(CBlockIndex* pindexPrev, const CTransaction& tx, unsigned int nBits, uint256& hashProofOfStake, uint256& targetProofOfStake, std::vector<CScriptCheck> *pvChecks, bool fCHeckSignature)
 {
     if (!tx.IsCoinStake())
         return error("CheckProofOfStake() : called on non-coinstake %s", tx.GetHash().ToString());
@@ -8585,7 +8584,7 @@ bool CheckCoinStakeTimestamp(int nHeight, int64_t nTimeBlock, int64_t nTimeTx)
 
 bool CheckKernel(CBlockIndex* pindexPrev, unsigned int nBits, int64_t nTime, const COutPoint& prevout, int64_t* pBlockTime)
 {
-    arith_uint256 hashProofOfStake, targetProofOfStake;
+    uint256 hashProofOfStake, targetProofOfStake;
 
     CTransaction txPrev;
     uint256 hashBlock = uint256();
@@ -8636,9 +8635,9 @@ int64_t GetProofOfStakeReward(int nHeight, int64_t nCoinAge, int64_t nFees, CBlo
     return  nSubsidy + nFees;
 }
 
-unsigned int ComputeMaxBits(arith_uint256 bnTargetLimit, unsigned int nBase, int64_t nTime)
+unsigned int ComputeMaxBits(uint256 bnTargetLimit, unsigned int nBase, int64_t nTime)
 {
-    arith_uint256 bnResult;
+    uint256 bnResult;
     bnResult.SetCompact(nBase);
     bnResult *= 2;
     while (nTime > 0 && bnResult < bnTargetLimit)
