@@ -49,23 +49,16 @@ void Accumulator::increment(const CBigNum& bnValue) {
 void Accumulator::accumulate(const PublicCoin& coin) {
     // Make sure we're initialized
     if(!(this->value)) {
-        std::cout << "Accumulator is not initialized" << "\n";
         throw std::runtime_error("Accumulator is not initialized");
     }
 
     if(this->denomination != coin.getDenomination()) {
-        std::cout << "Wrong denomination for coin. Expected coins of denomination: ";
-        std::cout << this->denomination;
-        std::cout << ". Instead, got a coin of denomination: ";
-        std::cout << coin.getDenomination();
-        std::cout << "\n";
         throw std::runtime_error("Wrong denomination for coin");
     }
 
-    if(coin.validate()) {
+    if(coin.isValid()) {
         increment(coin.getValue());
     } else {
-        std::cout << "Coin not valid\n";
         throw std::runtime_error("Coin is not valid");
     }
 }
@@ -115,7 +108,7 @@ void AccumulatorWitness::AddElement(const PublicCoin& c) {
 
 //warning check pubcoin value & denom outside of this function!
 void AccumulatorWitness::addRawValue(const CBigNum& bnValue) {
-        witness.increment(bnValue);
+    witness.increment(bnValue);
 }
 
 const CBigNum& AccumulatorWitness::getValue() const {
@@ -137,7 +130,7 @@ bool AccumulatorWitness::VerifyWitness(const Accumulator& a, const PublicCoin &p
 }
 
 AccumulatorWitness& AccumulatorWitness::operator +=(
-    const PublicCoin& rhs) {
+        const PublicCoin& rhs) {
     this->AddElement(rhs);
     return *this;
 }

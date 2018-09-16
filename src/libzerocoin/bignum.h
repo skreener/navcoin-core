@@ -94,7 +94,7 @@ public:
     CBigNum(unsigned short n)   { bn = BN_new(); setulong(n); }
     CBigNum(unsigned int n)     { bn = BN_new(); setulong(n); }
     CBigNum(unsigned long n)    { bn = BN_new(); setulong(n); }
-  //  CBigNum(uint64_t n)           { bn = BN_new(); setuint64(n); }
+    //  CBigNum(uint64_t n)           { bn = BN_new(); setuint64(n); }
     explicit CBigNum(uint256 n) { bn = BN_new(); setuint256(n); }
 
     explicit CBigNum(const std::vector<unsigned char>& vch)
@@ -170,7 +170,7 @@ public:
 
         if (sn < (int64_t)0)
         {
-            // Since the minimum signed integer cannot be represented as positive so long as its type is signed, 
+            // Since the minimum signed integer cannot be represented as positive so long as its type is signed,
             // and it's not well-defined what happens if you make it unsigned before negating it,
             // we instead increment the negative integer by 1, convert it, then increment the (now positive) unsigned integer by 1 to compensate
             n = -(sn + 1);
@@ -432,7 +432,7 @@ public:
         CAutoBN_CTX pctx;
         CBigNum ret;
         if (!BN_mod_mul(ret.bn, bn, b.bn, m.bn, pctx))
-                throw bignum_error("CBigNum::mul_mod : BN_mod_mul failed");
+            throw bignum_error("CBigNum::mul_mod : BN_mod_mul failed");
 
         return ret;
     }
@@ -458,7 +458,7 @@ public:
         return ret;
     }
 
-   /**
+    /**
     * Calculates the inverse of this element mod m.
     * i.e. i such this*i = 1 mod m
     * @param m the modu
@@ -498,7 +498,7 @@ public:
         return ret;
     }
 
-   /**
+    /**
     * Miller-Rabin primality test on this element
     * @param checks: optional, the number of Miller-Rabin tests to run
     * 			 	default causes error rate of 2^-80.
@@ -534,7 +534,7 @@ public:
     CBigNum& operator-=(const CBigNum& b)
     {
         if (!BN_sub(bn, bn, b.bn))
-	    throw bignum_error("CBigNum::operator-= : BN_sub failed");
+            throw bignum_error("CBigNum::operator-= : BN_sub failed");
         return *this;
     }
 

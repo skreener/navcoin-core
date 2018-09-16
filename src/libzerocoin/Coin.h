@@ -10,22 +10,21 @@
  * @license    This project is released under the MIT license.
  **/
 // Copyright (c) 2017-2018 The PIVX developers
+// Copyright (c) 2018 The NavCoin Core developers
 
 #ifndef COIN_H_
 #define COIN_H_
-#include "Denominations.h"
-#include "Params.h"
+
 #include "amount.h"
 #include "bignum.h"
-#include "util.h"
+#include "Denominations.h"
+#include "Params.h"
 #include "key.h"
+#include "util.h"
 
 namespace libzerocoin
 {
-    int ExtractVersionFromSerial(const CBigNum& bnSerial);
-    bool IsValidSerial(const ZerocoinParams* params, const CBigNum& bnSerial);
-    CBigNum GetAdjustedSerial(const CBigNum& bnSerial);
-    bool GenerateKeyPair(const CBigNum& bnGroupOrder, const uint256& nPrivkey, CKey& key, CBigNum& bnSerial);
+bool IsValidSerial(const ZerocoinParams* params, const CBigNum& bnSerial);
 
 /** A Public coin is the part of a coin that
  * is published to the network and what is handled
@@ -36,6 +35,8 @@ namespace libzerocoin
 class PublicCoin
 {
 public:
+    static int const CURRENT_VERSION = 1;
+
     template <typename Stream>
     PublicCoin(const ZerocoinParams* p, Stream& strm) : params(p)
     {
@@ -44,38 +45,54 @@ public:
 
     PublicCoin(const ZerocoinParams* p);
 
-    /**Generates a public coin
-	 *
-	 * @param p cryptographic paramters
-	 * @param coin the value of the commitment.
-	 * @param denomination The denomination of the coin. 
-	 */
-    PublicCoin(const ZerocoinParams* p, const CBigNum& coin, const CoinDenomination d);
-    const CBigNum& getValue() const { return this->value; }
+    /**Generates a new Zerocoin by (a) selecting a random key pair,
+   * (b) deriving a secret using DH with the destination pub key,
+   * (c) using the secret as a seed for a PNRG from where obtain
+   * s and r, (d) committing to the values and succeeding if
+   * the resulting commitment is prime and in range. Repeats the
+   * process for a limited number of rounds if necessary. Stores the
+   * resulting commitment (coin) and the mint pub key.
+   *
+   * @brief Mint a new coin.
+   * @param p cryptographic parameters
+   * @param d the denomination of the coin to mint
+   * @param destPubKey the public key of the destination
+   * @param blindingCommitment the bliding commitment from the destination
+   * @throws ZerocoinException if the process takes too long
+   **/
 
+    PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CPubKey destPubKey, const CBigNum blindingCommitment);
+    PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CBigNum value, const CPubKey pubKey);
+
+    const CBigNum& getValue() const { return this->value; }
+    const CPubKey& getPubKey() const { return this->pubKey; }
+    const uint8_t& getVersion() const { return this->version; }
     CoinDenomination getDenomination() const { return this->denomination; }
+
     bool operator==(const PublicCoin& rhs) const
     {
-        return ((this->value == rhs.value) && (this->params == rhs.params) && (this->denomination == rhs.denomination));
+        return ((this->value == rhs.value) && (this->params == rhs.params) && (this->denomination == rhs.denomination) && (this->pubKey == rhs.pubKey));
     }
     bool operator!=(const PublicCoin& rhs) const { return !(*this == rhs); }
-    /** Checks that coin is prime and in the appropriate range given the parameters
-     * @return true if valid
-     */
-    bool validate() const;
+
+    bool isValid() const;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
     {
-        READWRITE(value);
+        READWRITE(version);
         READWRITE(denomination);
+        READWRITE(value);
+        READWRITE(pubKey);
     }
 
 private:
     const ZerocoinParams* params;
+    uint8_t version;
     CBigNum value;
     CoinDenomination denomination;
+    CPubKey pubKey;
 };
 
 /**
@@ -92,44 +109,47 @@ private:
 class PrivateCoin
 {
 public:
-    static int const PUBKEY_VERSION = 2;
-    static int const CURRENT_VERSION = 2;
-    static int const V2_BITSHIFT = 4;
+    static int const CURRENT_VERSION = 1;
     template <typename Stream>
-    PrivateCoin(const ZerocoinParams* p, Stream& strm) : params(p), publicCoin(p)
+    PrivateCoin(const ZerocoinParams* p, Stream& strm) : params(p), publicCoin(p), fValid(true)
     {
         strm >> *this;
     }
-    PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomination, bool fMintNew = true);
-    PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomination, const CBigNum& bnSerial, const CBigNum& bnRandomness);
+
+    /**Tries to obtain the private parameters of a Zerocoin by
+   * (a) deriving a secret using DH with the mint pub key,
+   * (b) using the secret as a seed for a PNRG from where obtain
+   * s and r, (c) obfuscating s and r with j and k (d) commiting
+   * to the values and succeeding if the resulting commitment is
+   * equal to the provided commitment. Stores the
+   * resulting serial number and randomness.
+   *
+   * @brief Calculate private parameters of a zerocoin.
+   * @param p cryptographic parameters
+   * @param privKey the private key part of a private address
+   * @param mintPubKey the public key of the mint
+   * @param obfuscationK the K obfuscation parameter
+   * @param obfuscationJ the J obfuscation parameter
+   * @param commitment_value the commitment value specified on the mint
+   **/
+
+    PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomination, const CKey privKey, const CPubKey mintPubKey, const CBigNum obfuscation_j, const CBigNum obfuscation_k, const CBigNum commitment_value);
+
     const PublicCoin& getPublicCoin() const { return this->publicCoin; }
-    // @return the coins serial number
     const CBigNum& getSerialNumber() const { return this->serialNumber; }
     const CBigNum& getRandomness() const { return this->randomness; }
-    const CPrivKey& getPrivKey() const { return this->privkey; }
-    const CPubKey getPubKey() const;
     const uint8_t& getVersion() const { return this->version; }
 
-    void setPublicCoin(PublicCoin p) { publicCoin = p; }
-    void setRandomness(CBigNum n) { randomness = n; }
-    void setSerialNumber(CBigNum n) { serialNumber = n; }
-    void setVersion(uint8_t nVersion) { this->version = nVersion; }
-    void setPrivKey(const CPrivKey& privkey) { this->privkey = privkey; }
-    bool sign(const uint256& hash, std::vector<unsigned char>& vchSig) const;
-    bool IsValid();
+    bool isValid();
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
     {
+        READWRITE(version);
         READWRITE(publicCoin);
         READWRITE(randomness);
         READWRITE(serialNumber);
-        version = (uint8_t )ExtractVersionFromSerial(serialNumber);
-        if (version == 2) {
-            READWRITE(version);
-            READWRITE(privkey);
-        }
     }
 
 private:
@@ -138,35 +158,8 @@ private:
     CBigNum randomness;
     CBigNum serialNumber;
     uint8_t version = 1;
-    CPrivKey privkey;
+    bool fValid = false;
 
-    /**
-	 * @brief Mint a new coin.
-	 * @param denomination the denomination of the coin to mint
-	 * @throws ZerocoinException if the process takes too long
-	 *
-	 * Generates a new Zerocoin by (a) selecting a random serial
-	 * number, (b) committing to this serial number and repeating until
-	 * the resulting commitment is prime. Stores the
-	 * resulting commitment (coin) and randomness (trapdoor).
-	 **/
-    void mintCoin(const CoinDenomination denomination);
-
-    /**
-	 * @brief Mint a new coin using a faster process.
-	 * @param denomination the denomination of the coin to mint
-	 * @throws ZerocoinException if the process takes too long
-	 *
-	 * Generates a new Zerocoin by (a) selecting a random serial
-	 * number, (b) committing to this serial number and repeating until
-	 * the resulting commitment is prime. Stores the
-	 * resulting commitment (coin) and randomness (trapdoor).
-	 * This routine is substantially faster than the
-	 * mintCoin() routine, but could be more vulnerable
-	 * to timing attacks. Don't use it if you think someone
-	 * could be timing your coin minting.
-	 **/
-    void mintCoinFast(const CoinDenomination denomination);
 };
 
 } /* namespace libzerocoin */
