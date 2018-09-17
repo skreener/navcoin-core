@@ -66,7 +66,7 @@ CoinSpend::CoinSpend(const ZerocoinParams* paramsCoin, const ZerocoinParams* par
     this->serialNumberSoK = SerialNumberSignatureOfKnowledge(paramsCoin, coin, fullCommitmentToCoinUnderSerialParams, hashSig);
 
     //5. Zero knowledge proof of the serial number
-    this->serialNumberPoK = SerialNumberProofOfKnowledge(paramsCoin, coin.getSerialNumber());
+    this->serialNumberPoK = SerialNumberProofOfKnowledge(paramsCoin, coin.getSerialNumber(), hashSig);
 }
 
 bool CoinSpend::Verify(const Accumulator& a) const
@@ -93,7 +93,7 @@ bool CoinSpend::Verify(const Accumulator& a) const
         return false;
     }
 
-    if (!serialNumberPoK.Verify(coinSerialNumber)) {
+    if (!serialNumberPoK.Verify(coinSerialNumber, signatureHash())) {
         throw std::runtime_error("CoinsSpend::Verify: serialNumberPoK failed.");
         return false;
     }
