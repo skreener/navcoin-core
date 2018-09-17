@@ -21,14 +21,15 @@ namespace libzerocoin
 CoinSpend::CoinSpend(const ZerocoinParams* paramsCoin, const ZerocoinParams* paramsAcc, const PrivateCoin& coin, Accumulator& a, const uint32_t& checksum,
                      const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType) : accChecksum(checksum),
     ptxHash(ptxHash),
-    coinSerialNumber((coin.getSerialNumber())),
     accumulatorPoK(&paramsAcc->accumulatorParams),
     serialNumberSoK(paramsCoin),
+    serialNumberPoK(paramsCoin),
     commitmentPoK(&paramsCoin->serialNumberSoKCommitmentGroup,
                   &paramsAcc->accumulatorParams.accumulatorPoKCommitmentGroup),
     spendType(spendType)
 {
     denomination = coin.getPublicCoin().getDenomination();
+    coinSerialNumber = paramsCoin->coinCommitmentGroup.g.pow_mod(coin.getSerialNumber(), paramsCoin->serialNumberSoKCommitmentGroup.groupOrder);
     version = coin.getVersion();
     if (!static_cast<int>(version)) //todo: figure out why version does not make it here
         version = 1;
@@ -63,6 +64,9 @@ CoinSpend::CoinSpend(const ZerocoinParams* paramsCoin, const ZerocoinParams* par
     // (This proof is bound to the coin 'metadata', i.e., transaction hash)
     uint256 hashSig = signatureHash();
     this->serialNumberSoK = SerialNumberSignatureOfKnowledge(paramsCoin, coin, fullCommitmentToCoinUnderSerialParams, hashSig);
+
+    //5. Zero knowledge proof of the serial number
+    this->serialNumberPoK = SerialNumberProofOfKnowledge(paramsCoin, coin.getSerialNumber());
 }
 
 bool CoinSpend::Verify(const Accumulator& a) const
@@ -86,6 +90,11 @@ bool CoinSpend::Verify(const Accumulator& a) const
 
     if (!serialNumberSoK.Verify(coinSerialNumber, serialCommitmentToCoinValue, signatureHash())) {
         throw std::runtime_error("CoinsSpend::Verify: serialNumberSoK failed.");
+        return false;
+    }
+
+    if (!serialNumberPoK.Verify(coinSerialNumber)) {
+        throw std::runtime_error("CoinsSpend::Verify: serialNumberPoK failed.");
         return false;
     }
 

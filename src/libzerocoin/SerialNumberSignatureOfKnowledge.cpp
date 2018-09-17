@@ -10,6 +10,7 @@
 * @license    This project is released under the MIT license.
 **/
 // Copyright (c) 2017 The PIVX developers
+// Copyright (c) 2018 The NavCoin Core developers
 
 #include <streams.h>
 #include "SerialNumberSignatureOfKnowledge.h"
@@ -53,8 +54,10 @@ SerialNumberSignatureOfKnowledge::SerialNumberSignatureOfKnowledge(const
     CBigNum g = params->serialNumberSoKCommitmentGroup.g;
     CBigNum h = params->serialNumberSoKCommitmentGroup.h;
 
+    CBigNum serialPubKey = a.pow_mod(coin.getSerialNumber(), params->serialNumberSoKCommitmentGroup.groupOrder);
+
     CHashWriter hasher(0,0);
-    hasher << *params << commitmentToCoin.getCommitmentValue() << coin.getSerialNumber() << msghash;
+    hasher << *params << commitmentToCoin.getCommitmentValue() << serialPubKey << msghash;
 
     vector<CBigNum> r(params->zkp_iterations);
     vector<CBigNum> v_seed(params->zkp_iterations);
@@ -80,7 +83,7 @@ SerialNumberSignatureOfKnowledge::SerialNumberSignatureOfKnowledge(const
 
     for(uint32_t i=0; i < params->zkp_iterations; i++) {
         // compute g^{ {a^x b^r} h^v} mod p2
-        c[i] = challengeCalculation(coin.getSerialNumber(), r[i], v_expanded[i]);
+        c[i] = challengeCalculation(serialPubKey, r[i], v_expanded[i]);
     }
 
     // We can't hash data in parallel either
@@ -108,7 +111,7 @@ SerialNumberSignatureOfKnowledge::SerialNumberSignatureOfKnowledge(const
     }
 }
 
-inline CBigNum SerialNumberSignatureOfKnowledge::challengeCalculation(const CBigNum& a_exp,const CBigNum& b_exp,
+inline CBigNum SerialNumberSignatureOfKnowledge::challengeCalculation(const CBigNum& a_,const CBigNum& b_exp,
                                                                       const CBigNum& h_exp) const {
 
     CBigNum a = params->coinCommitmentGroup.g;
@@ -116,20 +119,19 @@ inline CBigNum SerialNumberSignatureOfKnowledge::challengeCalculation(const CBig
     CBigNum g = params->serialNumberSoKCommitmentGroup.g;
     CBigNum h = params->serialNumberSoKCommitmentGroup.h;
 
-    CBigNum exponent = (a.pow_mod(a_exp, params->serialNumberSoKCommitmentGroup.groupOrder)
-                        * b.pow_mod(b_exp, params->serialNumberSoKCommitmentGroup.groupOrder)) % params->serialNumberSoKCommitmentGroup.groupOrder;
+    CBigNum exponent = (a_ * b.pow_mod(b_exp, params->serialNumberSoKCommitmentGroup.groupOrder)) % params->serialNumberSoKCommitmentGroup.groupOrder;
 
     return (g.pow_mod(exponent, params->serialNumberSoKCommitmentGroup.modulus) * h.pow_mod(h_exp, params->serialNumberSoKCommitmentGroup.modulus)) % params->serialNumberSoKCommitmentGroup.modulus;
 }
 
-bool SerialNumberSignatureOfKnowledge::Verify(const CBigNum& coinSerialNumber, const CBigNum& valueOfCommitmentToCoin,
+bool SerialNumberSignatureOfKnowledge::Verify(const CBigNum& coinSerialNumberPubKey, const CBigNum& valueOfCommitmentToCoin,
                                               const uint256 msghash) const {
     CBigNum a = params->coinCommitmentGroup.g;
     CBigNum b = params->coinCommitmentGroup.h;
     CBigNum g = params->serialNumberSoKCommitmentGroup.g;
     CBigNum h = params->serialNumberSoKCommitmentGroup.h;
     CHashWriter hasher(0,0);
-    hasher << *params << valueOfCommitmentToCoin << coinSerialNumber << msghash;
+    hasher << *params << valueOfCommitmentToCoin << coinSerialNumberPubKey << msghash;
 
     vector<CBigNum> tprime(params->zkp_iterations);
     unsigned char *hashbytes = (unsigned char*) &this->hash;
@@ -139,7 +141,7 @@ bool SerialNumberSignatureOfKnowledge::Verify(const CBigNum& coinSerialNumber, c
         int byte = i / 8;
         bool challenge_bit = ((hashbytes[byte] >> bit) & 0x01);
         if(challenge_bit) {
-            tprime[i] = challengeCalculation(coinSerialNumber, s_notprime[i], SeedTo1024(sprime[i].getuint256()));
+            tprime[i] = challengeCalculation(coinSerialNumberPubKey, s_notprime[i], SeedTo1024(sprime[i].getuint256()));
         } else {
             CBigNum exp = b.pow_mod(s_notprime[i], params->serialNumberSoKCommitmentGroup.groupOrder);
             tprime[i] = ((valueOfCommitmentToCoin.pow_mod(exp, params->serialNumberSoKCommitmentGroup.modulus) % params->serialNumberSoKCommitmentGroup.modulus) *
