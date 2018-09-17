@@ -379,6 +379,7 @@ libzerocoin_libnavcoin_zerocoin_a_SOURCES = \
   libzerocoin/ParamGeneration.h \
   libzerocoin/Params.h \
   libzerocoin/SerialNumberSignatureOfKnowledge.h \
+  libzerocoin/SerialNumberProofOfKnowledge.h \
   libzerocoin/ZerocoinDefines.h \
   libzerocoin/Accumulator.cpp \
   libzerocoin/AccumulatorProofOfKnowledge.cpp \
@@ -388,7 +389,8 @@ libzerocoin_libnavcoin_zerocoin_a_SOURCES = \
   libzerocoin/Commitment.cpp \
   libzerocoin/ParamGeneration.cpp \
   libzerocoin/Params.cpp \
-  libzerocoin/SerialNumberSignatureOfKnowledge.cpp
+  libzerocoin/SerialNumberSignatureOfKnowledge.cpp \
+  libzerocoin/SerialNumberProofOfKnowledge.cpp
 
 libzerocoin_libnavcoin_zerocoin_a_LIBADD = $(LIBSECP256K1)
 libzerocoin_libnavcoin_zerocoin_a_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/secp256k1/include

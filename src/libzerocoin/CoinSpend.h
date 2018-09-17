@@ -21,6 +21,7 @@
 #include "Commitment.h"
 #include "Params.h"
 #include "SerialNumberSignatureOfKnowledge.h"
+#include "SerialNumberProofOfKnowledge.h"
 #include "SpendType.h"
 
 #include "bignum.h"
@@ -44,6 +45,7 @@ public:
     CoinSpend(const ZerocoinParams* paramsV1, const ZerocoinParams* paramsV2, Stream& strm) :
         accumulatorPoK(&paramsV2->accumulatorParams),
         serialNumberSoK(paramsV2),
+        serialNumberPoK(paramsV2),
         commitmentPoK(&paramsV2->serialNumberSoKCommitmentGroup, &paramsV2->accumulatorParams.accumulatorPoKCommitmentGroup)
 
     {
@@ -124,6 +126,7 @@ public:
         READWRITE(accumulatorPoK);
         READWRITE(serialNumberSoK);
         READWRITE(commitmentPoK);
+        READWRITE(serialNumberPoK);
         READWRITE(version);
         READWRITE(spendType);
     }
@@ -138,6 +141,7 @@ private:
     CBigNum coinSerialNumber;
     AccumulatorProofOfKnowledge accumulatorPoK;
     SerialNumberSignatureOfKnowledge serialNumberSoK;
+    SerialNumberProofOfKnowledge serialNumberPoK;
     CommitmentProofOfKnowledge commitmentPoK;
     uint8_t version;
     SpendType spendType;
