@@ -38,7 +38,7 @@ CBigNum SeedTo1024(uint256 hashSeed) {
 
 SerialNumberSignatureOfKnowledge::SerialNumberSignatureOfKnowledge(const
                                                                    ZerocoinParams* p, const PrivateCoin& coin, const Commitment& commitmentToCoin,
-                                                                   uint256 msghash):params(p),
+                                                                   uint256 msghash, CBigNum obfuscationJ, CBigNum obfuscationK):params(p),
     s_notprime(p->zkp_iterations),
     sprime(p->zkp_iterations) {
 
@@ -54,7 +54,7 @@ SerialNumberSignatureOfKnowledge::SerialNumberSignatureOfKnowledge(const
     CBigNum g = params->serialNumberSoKCommitmentGroup.g;
     CBigNum h = params->serialNumberSoKCommitmentGroup.h;
 
-    CBigNum serialPubKey = a.pow_mod(coin.getSerialNumber(), params->serialNumberSoKCommitmentGroup.groupOrder);
+    CBigNum serialPubKey = a.pow_mod((coin.getSerialNumber()+obfuscationJ) % this->params->coinCommitmentGroup.groupOrder, params->serialNumberSoKCommitmentGroup.groupOrder);
 
     CHashWriter hasher(0,0);
     hasher << *params << commitmentToCoin.getCommitmentValue() << serialPubKey << msghash;
@@ -104,9 +104,9 @@ SerialNumberSignatureOfKnowledge::SerialNumberSignatureOfKnowledge(const
             s_notprime[i]       = r[i];
             sprime[i]           = v_seed[i];
         } else {
-            s_notprime[i]       = r[i] - coin.getRandomness();
+            s_notprime[i]       = r[i] - ((coin.getRandomness() + obfuscationK) % this->params->coinCommitmentGroup.groupOrder);
             sprime[i]           = v_expanded[i] - (commitmentToCoin.getRandomness() *
-                                                   b.pow_mod(r[i] - coin.getRandomness(), params->serialNumberSoKCommitmentGroup.groupOrder));
+                                  b.pow_mod(r[i] - ((coin.getRandomness() + obfuscationK) % this->params->coinCommitmentGroup.groupOrder), params->serialNumberSoKCommitmentGroup.groupOrder));
         }
     }
 }

@@ -72,8 +72,8 @@ PublicCoin::PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const 
         uint256 pre_s(Hash(shared_secret.begin(), shared_secret.end()));
         uint256 pre_r(Hash(pre_s.begin(), pre_s.end()));
 
-        CBigNum s = CBigNum(pre_s) % (this->params->coinCommitmentGroup.groupOrder/2);
-        CBigNum r = CBigNum(pre_r) % (this->params->coinCommitmentGroup.groupOrder/2);
+        CBigNum s = CBigNum(pre_s) % (this->params->coinCommitmentGroup.groupOrder);
+        CBigNum r = CBigNum(pre_r) % (this->params->coinCommitmentGroup.groupOrder);
 
         // Manually compute a Pedersen commitment to the serial number "s" under randomness "r" and obfuscate it with blinding commitment "b"
         // C = g^s * h^r * b mod p
@@ -121,7 +121,7 @@ bool PublicCoin::isValid() const
 }
 
 PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomination, const CKey privKey, const CPubKey mintPubKey,
-                         const CBigNum obfuscation_j, const CBigNum obfuscation_k, const CBigNum commitment_value) : params(p), publicCoin(p), randomness(0), serialNumber(0), fValid(false)
+                         const CBigNum blindingCommitment, const CBigNum commitment_value) : params(p), publicCoin(p), randomness(0), serialNumber(0), fValid(false)
 {
     // Verify that the parameters are valid
     if(!this->params->initialized)
@@ -134,20 +134,19 @@ PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomin
     uint256 pre_s(Hash(shared_secret.begin(), shared_secret.end()));
     uint256 pre_r(Hash(pre_s.begin(), pre_s.end()));
 
-    CBigNum s = CBigNum(pre_s) % (this->params->coinCommitmentGroup.groupOrder/2);
-    CBigNum r = CBigNum(pre_r) % (this->params->coinCommitmentGroup.groupOrder/2);
+    CBigNum s = CBigNum(pre_s) % (this->params->coinCommitmentGroup.groupOrder);
+    CBigNum r = CBigNum(pre_r) % (this->params->coinCommitmentGroup.groupOrder);
 
-    // Manually compute a Pedersen commitment to the serial number "s" under randomness "r" after obfuscating them with "j" and "k"
+    // Manually compute a Pedersen commitment to the serial number "s" under randomness "r" after obfuscating them with the blinding commitment "blindingCommitment"
     // C = g^(s+j) * h^(r+k) mod p
-    CBigNum commitmentValue = this->params->coinCommitmentGroup.g.pow_mod(s + obfuscation_j, this->params->coinCommitmentGroup.modulus).mul_mod(this->params->coinCommitmentGroup.h.pow_mod(r + obfuscation_k, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus);
+    CBigNum commitmentValue = (this->params->coinCommitmentGroup.g.pow_mod(s, this->params->coinCommitmentGroup.modulus) * blindingCommitment).mul_mod(this->params->coinCommitmentGroup.h.pow_mod(r, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus);
 
     if (commitmentValue.isPrime(ZEROCOIN_MINT_PRIME_PARAM) &&
             commitmentValue >= params->accumulatorParams.minCoinValue &&
             commitmentValue <= params->accumulatorParams.maxCoinValue) {
-        this->serialNumber = s + obfuscation_j;
-        this->randomness = r + obfuscation_k;
+        this->serialNumber = s;
+        this->randomness = r;
         if(commitmentValue == commitment_value) {
-            CBigNum blindingCommitment = this->params->coinCommitmentGroup.g.pow_mod(obfuscation_j, this->params->coinCommitmentGroup.modulus).mul_mod(this->params->coinCommitmentGroup.h.pow_mod(obfuscation_k, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus);
             this->publicCoin = PublicCoin(p, denomination, commitmentValue, mintPubKey);
             fValid = true;
         }
@@ -162,7 +161,7 @@ bool PrivateCoin::isValid()
     if (!fValid)
         return false;
 
-    if (!IsValidSerial(params, serialNumber)) {
+    if (!IsValidPrivateSerial(params, serialNumber)) {
         throw std::runtime_error("PrivateCoin::isValid(): Serial not valid");
         return false;
     }
@@ -170,7 +169,12 @@ bool PrivateCoin::isValid()
     return getPublicCoin().isValid();
 }
 
-bool IsValidSerial(const ZerocoinParams* params, const CBigNum& bnSerial)
+bool IsValidPublicSerial(const ZerocoinParams* params, const CBigNum& bnSerial)
+{
+    return bnSerial > 0 && bnSerial < params->serialNumberSoKCommitmentGroup.groupOrder;
+}
+
+bool IsValidPrivateSerial(const ZerocoinParams* params, const CBigNum& bnSerial)
 {
     return bnSerial > 0 && bnSerial < params->coinCommitmentGroup.groupOrder;
 }

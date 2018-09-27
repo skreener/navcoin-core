@@ -77,7 +77,7 @@ public:
    * @throw ZerocoinException if the process fails
    */
     CoinSpend(const ZerocoinParams* paramsCoin, const ZerocoinParams* paramsAcc, const PrivateCoin& coin, Accumulator& a, const uint32_t& checksum,
-              const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType);
+              const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType, const CBigNum obfuscationJ, const CBigNum obfuscationK);
 
     /** Returns the serial number of the coin spend by this proof.
    *
@@ -108,9 +108,9 @@ public:
     SpendType getSpendType() const { return spendType; }
 
     bool Verify(const Accumulator& a) const;
-    bool HasValidSerial(ZerocoinParams* params) const;
+    bool HasValidPublicSerial(ZerocoinParams* params) const;
     bool HasValidSignature() const;
-    CBigNum CalculateValidSerial(ZerocoinParams* params);
+    CBigNum CalculateValidPublicSerial(ZerocoinParams* params);
     std::string ToString() const;
 
     ADD_SERIALIZE_METHODS;

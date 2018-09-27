@@ -295,7 +295,7 @@ Testb_MintCoin()
         timer.start();
         for (uint32_t i = 0; i < TESTS_COINS_TO_ACCUMULATE; i++) {
             PublicCoin pubCoin(gg_Params,libzerocoin::CoinDenomination::ZQ_ONE,pubKey_,blindingCommitment_);
-            ggCoins[i] = new PrivateCoin(gg_Params,pubCoin.getDenomination(),privKey_,pubCoin.getPubKey(),obfuscation_jj,obfuscation_kk,pubCoin.getValue());
+            ggCoins[i] = new PrivateCoin(gg_Params,pubCoin.getDenomination(),privKey_,pubCoin.getPubKey(),blindingCommitment_,pubCoin.getValue());
         }
         timer.stop();
     } catch (exception &e) {
@@ -345,7 +345,7 @@ Testb_MintAndSpend()
 
         // Now spend the coin
         timer.start();
-        CoinSpend spend(gg_Params, gg_Params, *(ggCoins[0]), acc, 0, wAcc, 0, SpendType::SPEND); //(0) presstab
+        CoinSpend spend(gg_Params, gg_Params, *(ggCoins[0]), acc, 0, wAcc, 0, SpendType::SPEND, obfuscation_jj, obfuscation_kk);
         timer.stop();
 
         cout << "\tSPEND ELAPSED TIME: " << timer.duration() << " ms\t" << timer.duration()*0.001 << " s" << endl;
@@ -388,8 +388,8 @@ Testb_RunAllTests()
     pubKey_ = privKey_.GetPubKey();
 
     // Calculate obfuscation values
-    obfuscation_jj = CBigNum::randBignum(gg_Params->coinCommitmentGroup.groupOrder/2);
-    obfuscation_kk = CBigNum::randBignum(gg_Params->coinCommitmentGroup.groupOrder/2);
+    obfuscation_jj = CBigNum::randBignum(gg_Params->coinCommitmentGroup.groupOrder);
+    obfuscation_kk = CBigNum::randBignum(gg_Params->coinCommitmentGroup.groupOrder);
     blindingCommitment_ = gg_Params->coinCommitmentGroup.g.pow_mod(obfuscation_jj, gg_Params->coinCommitmentGroup.modulus).mul_mod(gg_Params->coinCommitmentGroup.h.pow_mod(obfuscation_kk, gg_Params->coinCommitmentGroup.modulus), gg_Params->coinCommitmentGroup.modulus);
 
     ggNumTests = ggSuccessfulTests = 0;

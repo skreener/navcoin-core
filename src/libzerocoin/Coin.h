@@ -24,7 +24,8 @@
 
 namespace libzerocoin
 {
-bool IsValidSerial(const ZerocoinParams* params, const CBigNum& bnSerial);
+bool IsValidPrivateSerial(const ZerocoinParams* params, const CBigNum& bnSerial);
+bool IsValidPublicSerial(const ZerocoinParams* params, const CBigNum& bnSerial);
 
 /** A Public coin is the part of a coin that
  * is published to the network and what is handled
@@ -133,7 +134,7 @@ public:
    * @param commitment_value the commitment value specified on the mint
    **/
 
-    PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomination, const CKey privKey, const CPubKey mintPubKey, const CBigNum obfuscation_j, const CBigNum obfuscation_k, const CBigNum commitment_value);
+    PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomination, const CKey privKey, const CPubKey mintPubKey, const CBigNum blindingCommitment, const CBigNum commitment_value);
 
     const PublicCoin& getPublicCoin() const { return this->publicCoin; }
     const CBigNum& getSerialNumber() const { return this->serialNumber; }
