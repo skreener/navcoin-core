@@ -19,7 +19,7 @@
 namespace libzerocoin
 {
 CoinSpend::CoinSpend(const ZerocoinParams* paramsCoin, const ZerocoinParams* paramsAcc, const PrivateCoin& coin, Accumulator& a, const uint32_t& checksum,
-                     const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType) : accChecksum(checksum),
+                     const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType, const CBigNum obfuscationJ, const CBigNum obfuscationK) : accChecksum(checksum),
     ptxHash(ptxHash),
     accumulatorPoK(&paramsAcc->accumulatorParams),
     serialNumberSoK(paramsCoin),
@@ -29,8 +29,11 @@ CoinSpend::CoinSpend(const ZerocoinParams* paramsCoin, const ZerocoinParams* par
     spendType(spendType)
 {
     denomination = coin.getPublicCoin().getDenomination();
-    coinSerialNumber = paramsCoin->coinCommitmentGroup.g.pow_mod(coin.getSerialNumber(), paramsCoin->serialNumberSoKCommitmentGroup.groupOrder);
+    coinSerialNumber = paramsCoin->coinCommitmentGroup.g.pow_mod(
+                        (coin.getSerialNumber()+obfuscationJ) % paramsCoin->coinCommitmentGroup.groupOrder,
+                        paramsCoin->serialNumberSoKCommitmentGroup.groupOrder);
     version = coin.getVersion();
+
     if (!static_cast<int>(version)) //todo: figure out why version does not make it here
         version = 1;
 
@@ -63,10 +66,10 @@ CoinSpend::CoinSpend(const ZerocoinParams* paramsCoin, const ZerocoinParams* par
     // 4. Proves that the coin is correct w.r.t. serial number and hidden coin secret
     // (This proof is bound to the coin 'metadata', i.e., transaction hash)
     uint256 hashSig = signatureHash();
-    this->serialNumberSoK = SerialNumberSignatureOfKnowledge(paramsCoin, coin, fullCommitmentToCoinUnderSerialParams, hashSig);
+    this->serialNumberSoK = SerialNumberSignatureOfKnowledge(paramsCoin, coin, fullCommitmentToCoinUnderSerialParams, hashSig, obfuscationJ, obfuscationK);
 
     //5. Zero knowledge proof of the serial number
-    this->serialNumberPoK = SerialNumberProofOfKnowledge(paramsCoin, coin.getSerialNumber(), hashSig);
+    this->serialNumberPoK = SerialNumberProofOfKnowledge(paramsCoin, (coin.getSerialNumber()+obfuscationJ) % paramsCoin->coinCommitmentGroup.groupOrder, hashSig);
 }
 
 bool CoinSpend::Verify(const Accumulator& a) const
@@ -117,15 +120,15 @@ std::string CoinSpend::ToString() const
     return ss.str();
 }
 
-bool CoinSpend::HasValidSerial(ZerocoinParams* params) const
+bool CoinSpend::HasValidPublicSerial(ZerocoinParams* params) const
 {
-    return IsValidSerial(params, coinSerialNumber);
+    return IsValidPublicSerial(params, coinSerialNumber);
 }
 
-CBigNum CoinSpend::CalculateValidSerial(ZerocoinParams* params)
+CBigNum CoinSpend::CalculateValidPublicSerial(ZerocoinParams* params)
 {
     CBigNum bnSerial = coinSerialNumber;
-    bnSerial = bnSerial.mul_mod(CBigNum(1),params->coinCommitmentGroup.groupOrder);
+    bnSerial = bnSerial.mul_mod(CBigNum(1),params->serialNumberSoKCommitmentGroup.groupOrder);
     return bnSerial;
 }
 

@@ -86,8 +86,8 @@ ZerocoinTutorial()
 
         // Generate obfuscation parameters and a blinding commitment
 
-        CBigNum obfuscation_j = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder/2);
-        CBigNum obfuscation_k = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder/2);
+        CBigNum obfuscation_j = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
+        CBigNum obfuscation_k = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
         CBigNum blindingCommitment = params->coinCommitmentGroup.g.pow_mod(obfuscation_j, params->coinCommitmentGroup.modulus).mul_mod(params->coinCommitmentGroup.h.pow_mod(obfuscation_k, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
 
 //        std::cout << "Generated Identity:" << endl
@@ -121,7 +121,7 @@ ZerocoinTutorial()
         // Use the public coin to construct the Private Coin as we own the private part of the key
         // the coin was created with. This object will include all the secret values to
         // later be able to generate the proof and spend the coin.
-        libzerocoin::PrivateCoin newCoin(params,libzerocoin::CoinDenomination::ZQ_ONE, privKey, pubCoin.getPubKey(), obfuscation_j, obfuscation_k, pubCoin.getValue());
+        libzerocoin::PrivateCoin newCoin(params,libzerocoin::CoinDenomination::ZQ_ONE, privKey, pubCoin.getPubKey(), blindingCommitment, pubCoin.getValue());
 
 //        cout << "Successfully minted a zerocoin (Private Part):"
 //             << "\n   Serial Number: " << newCoin.getSerialNumber()
@@ -251,7 +251,7 @@ ZerocoinTutorial()
 
         // Construct the CoinSpend object. This acts like a signature on the
         // transaction.
-        libzerocoin::CoinSpend spend(params, params, newCoin, accumulator, 0, witness, 0, libzerocoin::SpendType::SPEND);//(0) - Presstab
+        libzerocoin::CoinSpend spend(params, params, newCoin, accumulator, 0, witness, 0, libzerocoin::SpendType::SPEND, obfuscation_j, obfuscation_k);//(0) - Presstab
 
         // This is a sanity check. The CoinSpend object should always verify,
         // but why not check before we put it onto the wire?

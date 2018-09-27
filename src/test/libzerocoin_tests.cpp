@@ -333,7 +333,7 @@ Test_MintCoin()
         // Generate a list of coins
         for (uint32_t i = 0; i < TESTS_COINS_TO_ACCUMULATE; i++) {
             PublicCoin pubCoin(g_Params,libzerocoin::CoinDenomination::ZQ_ONE,pubKey,blindingCommitment);
-            gCoins[i] = new PrivateCoin(g_Params,pubCoin.getDenomination(),privKey,pubCoin.getPubKey(),obfuscation_j,obfuscation_k,pubCoin.getValue());
+            gCoins[i] = new PrivateCoin(g_Params,pubCoin.getDenomination(),privKey,pubCoin.getPubKey(),blindingCommitment,pubCoin.getValue());
             PublicCoin pc = gCoins[i]->getPublicCoin();
             CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
             ss << pc;
@@ -428,7 +428,7 @@ Test_MintAndSpend()
         cc << *gCoins[0];
         PrivateCoin myCoin(g_Params,cc);
 
-        CoinSpend spend(g_Params, g_Params, myCoin, acc, 0, wAcc, 0, SpendType::SPEND);
+        CoinSpend spend(g_Params, g_Params, myCoin, acc, 0, wAcc, 0, SpendType::SPEND, obfuscation_j, obfuscation_k);
         spend.Verify(acc);
 
         // Serialize the proof and deserialize into newSpend
@@ -464,8 +464,8 @@ Test_RunAllTests()
     pubKey = privKey.GetPubKey();
 
     // Calculate obfuscation values
-    obfuscation_j = CBigNum::randBignum(g_Params->coinCommitmentGroup.groupOrder/2);
-    obfuscation_k = CBigNum::randBignum(g_Params->coinCommitmentGroup.groupOrder/2);
+    obfuscation_j = CBigNum::randBignum(g_Params->coinCommitmentGroup.groupOrder);
+    obfuscation_k = CBigNum::randBignum(g_Params->coinCommitmentGroup.groupOrder);
     blindingCommitment = g_Params->coinCommitmentGroup.g.pow_mod(obfuscation_j, g_Params->coinCommitmentGroup.modulus).mul_mod(g_Params->coinCommitmentGroup.h.pow_mod(obfuscation_k, g_Params->coinCommitmentGroup.modulus), g_Params->coinCommitmentGroup.modulus);
 
     gNumTests = gSuccessfulTests = gProofSize = 0;
