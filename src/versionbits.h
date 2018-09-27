@@ -13,6 +13,8 @@ static const int32_t VERSIONBITS_LAST_OLD_BLOCK_VERSION = 7;
 /** What bits to set in version for versionbits blocks */
 static const int32_t VERSIONBITS_TOP_BITS = 0x70000000UL;
 static const int32_t VERSIONBITS_TOP_BITS_SIG = 0x71000000UL;
+/** Zerocoin blocks version bits need to signal this */
+static const int32_t VERSIONBITS_TOP_BITS_ZEROCOIN = 0x80000000UL;
 /** What bitmask determines whether versionbits is in use */
 static const int32_t VERSIONBITS_TOP_MASK = 0xF0000000UL;
 /** Total bits available for versionbits */
@@ -33,6 +35,7 @@ static const int32_t VERSIONBITS_NUM_BITS = 29;
 * Bit 7 -> C FUND ACCUMULATION
 * Bit 8 -> NTP SYNC
 * Bit 14 -> C FUND ACCUMULATION SPREAD
+* Bit 17 -> Zerocoin
 *
 * ACTIVATION
 *

@@ -2497,7 +2497,14 @@ VersionBitsCache versionbitscache;
 int32_t ComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Params& params)
 {
     LOCK(cs_main);
-    int32_t nVersion = IsSigHFEnabled(Params().GetConsensus(), pindexPrev) ? VERSIONBITS_TOP_BITS_SIG : VERSIONBITS_TOP_BITS;
+    int32_t nVersion = 0;
+
+    if(IsZerocoinEnabled(pindexPrev, Params().GetConsensus()))
+        nVersion = VERSIONBITS_TOP_BITS_ZEROCOIN;
+    else if(IsSigHFEnabled(Params().GetConsensus(), pindexPrev))
+        nVersion = VERSIONBITS_TOP_BITS_SIG;
+    else
+        nVersion = VERSIONBITS_TOP_BITS;
 
     for (int i = 0; i < (int)Consensus::MAX_VERSION_BITS_DEPLOYMENTS; i++) {
         ThresholdState state = VersionBitsState(pindexPrev, params, (Consensus::DeploymentPos)i, versionbitscache);
@@ -2558,7 +2565,16 @@ public:
 
     bool Condition(const CBlockIndex* pindex, const Consensus::Params& params) const
     {
-        return  (pindex->nVersion & VERSIONBITS_TOP_MASK) == (IsSigHFEnabled(Params().GetConsensus(), pindex) ? VERSIONBITS_TOP_BITS_SIG : VERSIONBITS_TOP_BITS) &&
+        int32_t nRequiredTopBits = 0;
+
+        if(IsZerocoinEnabled(pindex, Params().GetConsensus()))
+            nRequiredTopBits = VERSIONBITS_TOP_BITS_ZEROCOIN;
+        else if(IsSigHFEnabled(Params().GetConsensus(), pindex))
+            nRequiredTopBits = VERSIONBITS_TOP_BITS_SIG;
+        else
+            nRequiredTopBits = VERSIONBITS_TOP_BITS;
+
+        return  (pindex->nVersion & VERSIONBITS_TOP_MASK) == nRequiredTopBits &&
                ((pindex->nVersion >> bit) & 1) != 0 &&
                ((ComputeBlockVersion(pindex->pprev, params) >> bit) & 1) == 0;
     }
@@ -4603,6 +4619,12 @@ bool IsCommunityFundAccumulationSpreadEnabled(const CBlockIndex* pindexPrev, con
     return (VersionBitsState(pindexPrev, params, Consensus::DEPLOYMENT_COMMUNITYFUND_ACCUMULATION_SPREAD, versionbitscache) == THRESHOLD_ACTIVE);
 }
 
+bool IsZerocoinEnabled(const CBlockIndex* pindexPrev, const Consensus::Params& params)
+{
+    LOCK(cs_main);
+    return (VersionBitsState(pindexPrev, params, Consensus::DEPLOYMENT_ZEROCOIN, versionbitscache) == THRESHOLD_ACTIVE);
+}
+
 bool IsNtpSyncEnabled(const CBlockIndex* pindexPrev, const Consensus::Params& params)
 {
     LOCK(cs_main);
@@ -4693,7 +4715,16 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
             return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", version - 1),
                                  strprintf("rejected nVersion=0x%08x block", version - 1));
 
-    if((block.nVersion & VERSIONBITS_TOP_BITS_SIG) != VERSIONBITS_TOP_BITS_SIG && IsSigHFEnabled(Params().GetConsensus(), pindexPrev))
+    int32_t nRequiredTopBits = 0;
+
+    if(IsZerocoinEnabled(pindexPrev, Params().GetConsensus()))
+        nRequiredTopBits = VERSIONBITS_TOP_BITS_ZEROCOIN;
+    else if(IsSigHFEnabled(Params().GetConsensus(), pindexPrev))
+        nRequiredTopBits = VERSIONBITS_TOP_BITS_SIG;
+    else
+        nRequiredTopBits = VERSIONBITS_TOP_BITS;
+
+    if((block.nVersion & nRequiredTopBits) != nRequiredTopBits)
         return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
                            "rejected no sig block");
 
