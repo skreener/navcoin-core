@@ -1,5 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2018 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -1522,6 +1523,8 @@ public:
     CScriptID result;
 
     bool operator()(const CNoDestination &dest) const { return false; }
+
+    bool operator()(const std::pair<libzerocoin::CoinDenomination, libzerocoin::CPrivateAddress> &dest) const { return false; }
 
     bool operator()(const pair<CKeyID, CKeyID> &dest) const { return false; }
 

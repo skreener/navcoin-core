@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2018 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -7,6 +8,7 @@
 #define NAVCOIN_WALLET_WALLET_H
 
 #include "amount.h"
+#include "libzerocoin/bignum.h"
 #include "streams.h"
 #include "tinyformat.h"
 #include "ui_interface.h"
@@ -741,6 +743,11 @@ public:
 
     CPubKey vchDefaultKey;
 
+    CBigNum obfuscationJ;
+    CBigNum obfuscationK;
+    CBigNum blindingCommitment;
+    CPubKey zerokey;
+
     std::set<COutPoint> setLockedCoins;
 
     int64_t nTimeFirstKey;
@@ -901,7 +908,7 @@ public:
     CAmount GetChange(const CTransaction& tx) const;
     void SetBestChain(const CBlockLocator& loc);
 
-    DBErrors LoadWallet(bool& fFirstRunRet);
+    DBErrors LoadWallet(bool& fFirstRunRet, bool &fFirstZeroRunRet);
     DBErrors ZapWalletTx(std::vector<CWalletTx>& vWtx);
     DBErrors ZapSelectTx(std::vector<uint256>& vHashIn, std::vector<uint256>& vHashOut);
 
@@ -935,6 +942,7 @@ public:
     }
 
     bool SetDefaultKey(const CPubKey &vchPubKey);
+    bool SetZeroCoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CPubKey& zerokey);
 
     //! signify that a particular wallet feature is now used. this may change nWalletVersion and nWalletMaxVersion if those are lower
     bool SetMinVersion(enum WalletFeature, CWalletDB* pwalletdbIn = NULL, bool fExplicit = false);
@@ -1001,6 +1009,9 @@ public:
 
     /* Generates a new HD master key (will not be activated) */
     CPubKey GenerateNewHDMasterKey();
+
+    /* Generates a new key pair for Zerocoin */
+    CPubKey GenerateNewZeroKey();
 
     /* Set the current HD master key (will reset the chain child index counters) */
     bool SetHDMasterKey(const CPubKey& key);

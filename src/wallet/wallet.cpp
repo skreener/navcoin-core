@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2018 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -1704,6 +1705,36 @@ CPubKey CWallet::GenerateNewHDMasterKey()
     return pubkey;
 }
 
+CPubKey CWallet::GenerateNewZeroKey()
+{
+    CKey key;
+    key.MakeNewKey(true);
+
+    int64_t nCreationTime = GetTime();
+    CKeyMetadata metadata(nCreationTime);
+
+    // calculate the pubkey
+    CPubKey pubkey = key.GetPubKey();
+    assert(key.VerifyPubKey(pubkey));
+
+    // set the hd keypath to "z" to identify it as the zerocoin key
+    metadata.hdKeypath     = "z";
+    metadata.hdMasterKeyID = pubkey.GetID();
+
+    {
+        LOCK(cs_wallet);
+
+        // mem store the metadata
+        mapKeyMetadata[pubkey.GetID()] = metadata;
+
+        // write the key&metadata to the database
+        if (!AddKeyPubKey(key, pubkey))
+            throw std::runtime_error("CWallet::GenerateNewKey(): AddKey failed");
+    }
+
+    return pubkey;
+}
+
 bool CWallet::SetHDMasterKey(const CPubKey& pubkey)
 {
     LOCK(cs_wallet);
@@ -3129,11 +3160,12 @@ CAmount CWallet::GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTarge
 
 
 
-DBErrors CWallet::LoadWallet(bool& fFirstRunRet)
+DBErrors CWallet::LoadWallet(bool& fFirstRunRet, bool& fFirstZeroRunRet)
 {
     if (!fFileBacked)
         return DB_LOAD_OK;
     fFirstRunRet = false;
+    fFirstZeroRunRet = false;
     DBErrors nLoadWalletRet = CWalletDB(strWalletFile,"cr+").LoadWallet(this);
     if (nLoadWalletRet == DB_NEED_REWRITE)
     {
@@ -3150,6 +3182,7 @@ DBErrors CWallet::LoadWallet(bool& fFirstRunRet)
     if (nLoadWalletRet != DB_LOAD_OK)
         return nLoadWalletRet;
     fFirstRunRet = !vchDefaultKey.IsValid();
+    fFirstZeroRunRet = obfuscationJ == CBigNum() || obfuscationK == CBigNum() || blindingCommitment == CBigNum() || !zerokey.IsValid();
 
     uiInterface.LoadWallet(this);
 
@@ -3249,6 +3282,20 @@ bool CWallet::DelAddressBook(const CTxDestination& address)
         return false;
     CWalletDB(strWalletFile).ErasePurpose(CNavCoinAddress(address).ToString());
     return CWalletDB(strWalletFile).EraseName(CNavCoinAddress(address).ToString());
+}
+
+bool CWallet::SetZeroCoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CPubKey& zerokey)
+{
+    if (fFileBacked)
+    {
+        if (!CWalletDB(strWalletFile).WriteZeroCoinValues(obfuscationJ, obfuscationK, blindingCommitment, zerokey))
+            return false;
+    }
+    this->obfuscationJ = obfuscationJ;
+    this->obfuscationK = obfuscationK;
+    this->blindingCommitment = blindingCommitment;
+    this->zerokey = zerokey;
+    return true;
 }
 
 bool CWallet::SetDefaultKey(const CPubKey &vchPubKey)
@@ -3720,6 +3767,8 @@ public:
             vKeys.push_back(keyId);
     }
 
+    void operator()(const std::pair<libzerocoin::CoinDenomination, libzerocoin::CPrivateAddress> &keyId) { }
+
     void operator()(const pair<CKeyID, CKeyID> &keyId) {
         if (keystore.HaveKey(keyId.first))
             vKeys.push_back(keyId.first);
@@ -3891,8 +3940,9 @@ bool CWallet::InitLoadWallet()
 
     int64_t nStart = GetTimeMillis();
     bool fFirstRun = true;
+    bool fFirstZeroRun = true;
     CWallet *walletInstance = new CWallet(walletFile);
-    DBErrors nLoadWalletRet = walletInstance->LoadWallet(fFirstRun);
+    DBErrors nLoadWalletRet = walletInstance->LoadWallet(fFirstRun, fFirstZeroRun);
     if (nLoadWalletRet != DB_LOAD_OK)
     {
         if (nLoadWalletRet == DB_CORRUPT)
@@ -3957,6 +4007,17 @@ bool CWallet::InitLoadWallet()
             return InitError(strprintf(_("Error loading %s: You can't disable HD on a already existing HD wallet"), walletFile));
         if (walletInstance->hdChain.masterKeyID.IsNull() && useHD)
             return InitError(strprintf(_("Error loading %s: You can't enable HD on a already existing non-HD wallet"), walletFile));
+    }
+
+    if(fFirstZeroRun)
+    {
+        CBigNum obfuscationj; CBigNum obfuscationk; CBigNum blindingcommitment;
+        libzerocoin::GenerateParameters(Params().GetConsensus().Zerocoin_Params(), obfuscationj, obfuscationk, blindingcommitment);
+        CPubKey zeroPubKey = walletInstance->GenerateNewZeroKey();
+        walletInstance->SetZeroCoinValues(obfuscationj, obfuscationk, blindingcommitment, zeroPubKey);
+        obfuscationj.Nullify();
+        obfuscationk.Nullify();
+        LogPrintf("Generated zerocoin parameters.\n");
     }
 
     LogPrintf(" wallet      %15dms\n", GetTimeMillis() - nStart);

@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2018 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -50,6 +51,9 @@ public:
         EXT_PUBLIC_KEY,
         EXT_SECRET_KEY,
         COLDSTAKING_ADDRESS,
+        PRIVATE_ADDRESS,
+        PRIVATE_VIEW_KEY,
+        PRIVATE_SPEND_KEY,
 
         MAX_BASE58_TYPES
     };

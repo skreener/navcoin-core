@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2018 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -146,6 +147,15 @@ bool CWalletDB::WriteOrderPosNext(int64_t nOrderPosNext)
 {
     nWalletDBUpdated++;
     return Write(std::string("orderposnext"), nOrderPosNext);
+}
+
+bool CWalletDB::WriteZeroCoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CPubKey& zerokey)
+{
+    nWalletDBUpdated++;
+    return Write(std::string("obfuscationj"), obfuscationJ) &&
+           Write(std::string("obfuscationk"), obfuscationK) &&
+           Write(std::string("blindingcommitment"), blindingCommitment) &&
+           Write(std::string("zerokey"), zerokey);
 }
 
 bool CWalletDB::WriteDefaultKey(const CPubKey& vchPubKey)
@@ -550,6 +560,22 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
         {
             ssValue >> pwallet->vchDefaultKey;
         }
+        else if (strType == "obfuscationj")
+        {
+            ssValue >> pwallet->obfuscationJ;
+        }
+        else if (strType == "obfuscationk")
+        {
+            ssValue >> pwallet->obfuscationK;
+        }
+        else if (strType == "blindingcommitment")
+        {
+            ssValue >> pwallet->blindingCommitment;
+        }
+        else if (strType == "zerokey")
+        {
+            ssValue >> pwallet->zerokey;
+        }
         else if (strType == "pool")
         {
             int64_t nIndex;
@@ -625,6 +651,10 @@ static bool IsKeyType(string strType)
 DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
 {
     pwallet->vchDefaultKey = CPubKey();
+    pwallet->obfuscationJ = CBigNum();
+    pwallet->obfuscationK = CBigNum();
+    pwallet->blindingCommitment = CBigNum();
+    pwallet->zerokey = CPubKey();
     CWalletScanState wss;
     bool fNoncriticalErrors = false;
     DBErrors result = DB_LOAD_OK;
@@ -732,6 +762,10 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
 DBErrors CWalletDB::FindWalletTx(CWallet* pwallet, vector<uint256>& vTxHash, vector<CWalletTx>& vWtx)
 {
     pwallet->vchDefaultKey = CPubKey();
+    pwallet->obfuscationJ = CBigNum();
+    pwallet->obfuscationK = CBigNum();
+    pwallet->blindingCommitment = CBigNum();
+    pwallet->zerokey = CPubKey();
     bool fNoncriticalErrors = false;
     DBErrors result = DB_LOAD_OK;
 
