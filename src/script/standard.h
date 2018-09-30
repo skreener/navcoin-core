@@ -1,11 +1,13 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2018 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #ifndef NAVCOIN_SCRIPT_STANDARD_H
 #define NAVCOIN_SCRIPT_STANDARD_H
 
+#include "libzerocoin/Keys.h"
 #include "script/interpreter.h"
 #include "uint256.h"
 
@@ -75,7 +77,7 @@ public:
  *  * Pair of two CKeyID: TX_COLDSTAKING destination
  *  A CTxDestination is the internal data type encoded in a CNavCoinAddress
  */
-typedef boost::variant<CNoDestination, CKeyID, CScriptID, pair<CKeyID, CKeyID>> CTxDestination;
+typedef boost::variant<CNoDestination, CKeyID, CScriptID, pair<CKeyID, CKeyID>, pair<libzerocoin::CoinDenomination, libzerocoin::CPrivateAddress>> CTxDestination;
 
 const char* GetTxnOutputType(txnouttype t);
 

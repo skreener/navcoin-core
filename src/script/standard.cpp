@@ -1,10 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2018 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "script/standard.h"
-
+#include "libzerocoin/Keys.h"
 #include "pubkey.h"
 #include "script/script.h"
 #include "script/sign.h"
@@ -359,6 +360,10 @@ public:
     bool operator()(const CScriptID &scriptID) const {
         script->clear();
         *script << OP_HASH160 << ToByteVector(scriptID) << OP_EQUAL;
+        return true;
+    }
+
+    bool operator()(const std::pair<libzerocoin::CoinDenomination, libzerocoin::CPrivateAddress> &pubcoin) const {
         return true;
     }
 };

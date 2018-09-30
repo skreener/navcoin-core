@@ -376,6 +376,7 @@ libzerocoin_libnavcoin_zerocoin_a_SOURCES = \
   libzerocoin/CoinSpend.h \
   libzerocoin/Commitment.h \
   libzerocoin/Denominations.h \
+  libzerocoin/Keys.h \
   libzerocoin/ParamGeneration.h \
   libzerocoin/Params.h \
   libzerocoin/SerialNumberSignatureOfKnowledge.h \
@@ -384,16 +385,17 @@ libzerocoin_libnavcoin_zerocoin_a_SOURCES = \
   libzerocoin/Accumulator.cpp \
   libzerocoin/AccumulatorProofOfKnowledge.cpp \
   libzerocoin/Coin.cpp \
-  libzerocoin/Denominations.cpp \
   libzerocoin/CoinSpend.cpp \
   libzerocoin/Commitment.cpp \
+  libzerocoin/Denominations.cpp \
+  libzerocoin/Keys.cpp \
   libzerocoin/ParamGeneration.cpp \
   libzerocoin/Params.cpp \
   libzerocoin/SerialNumberSignatureOfKnowledge.cpp \
   libzerocoin/SerialNumberProofOfKnowledge.cpp
 
 libzerocoin_libnavcoin_zerocoin_a_LIBADD = $(LIBSECP256K1)
-libzerocoin_libnavcoin_zerocoin_a_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/secp256k1/include
+libzerocoin_libnavcoin_zerocoin_a_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/secp256k1/include $(SSL_CFLAGS)
 
 if GLIBC_BACK_COMPAT
 libnavcoin_util_a_SOURCES += compat/glibc_compat.cpp

@@ -1,6 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2012 The Bitcoin developers
 // Copyright (c) 2017-2018 The PIVX developers
+// Copyright (c) 2018 The NavCoin Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -301,6 +302,13 @@ public:
         vch.erase(vch.begin(), vch.begin() + 4);
         reverse(vch.begin(), vch.end());
         return vch;
+    }
+
+    void Nullify()
+    {
+        unsigned int nSize = BN_bn2mpi(bn, NULL);
+        const std::vector<unsigned char> vNull(nSize, 0);
+        setvch(vNull);
     }
 
     void SetDec(const std::string& str)

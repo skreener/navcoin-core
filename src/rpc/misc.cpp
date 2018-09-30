@@ -1,11 +1,14 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2018 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "base58.h"
 #include "clientversion.h"
 #include "init.h"
+#include "libzerocoin/Coin.h"
+#include "libzerocoin/Denominations.h"
 #include "main.h"
 #include "net.h"
 #include "netbase.h"
@@ -125,11 +128,21 @@ class DescribeAddressVisitor : public boost::static_visitor<UniValue>
 public:
     UniValue operator()(const CNoDestination &dest) const { return UniValue(UniValue::VOBJ); }
 
+    UniValue operator()(const std::pair<libzerocoin::CoinDenomination, libzerocoin::CPrivateAddress> &dest) const {
+        UniValue obj(UniValue::VOBJ);
+        obj.push_back(Pair("isscript", false));
+        obj.push_back(Pair("iscoldstaking", false));
+        obj.push_back(Pair("isprivatedestination", true));
+        obj.push_back(Pair("denomination", ZerocoinDenominationToInt(dest.first)));
+        return obj;
+    }
+
     UniValue operator()(const CKeyID &keyID) const {
         UniValue obj(UniValue::VOBJ);
         CPubKey vchPubKey;
         obj.push_back(Pair("isscript", false));
         obj.push_back(Pair("iscoldstaking", false));
+        obj.push_back(Pair("isprivatedestination", false));
         if (pwalletMain && pwalletMain->GetPubKey(keyID, vchPubKey)) {
             obj.push_back(Pair("pubkey", HexStr(vchPubKey)));
             obj.push_back(Pair("iscompressed", vchPubKey.IsCompressed()));
@@ -142,6 +155,7 @@ public:
         CPubKey vchPubKey;
         obj.push_back(Pair("isscript", false));
         obj.push_back(Pair("iscoldstaking", true));
+        obj.push_back(Pair("isprivatedestination", false));
         if (pwalletMain && pwalletMain->GetPubKey(keyID.first, vchPubKey)) {
             obj.push_back(Pair("stakingpubkey", HexStr(vchPubKey)));
             if(pwalletMain->GetPubKey(keyID.second, vchPubKey)) {
@@ -156,6 +170,7 @@ public:
         CScript subscript;
         obj.push_back(Pair("isscript", true));
         obj.push_back(Pair("iscoldstaking", false));
+        obj.push_back(Pair("isprivatedestination", false));
         if (pwalletMain && pwalletMain->GetCScript(scriptID, subscript)) {
             std::vector<CTxDestination> addresses;
             txnouttype whichType;
