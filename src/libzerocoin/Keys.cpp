@@ -14,11 +14,12 @@
 #include "Keys.h"
 
 namespace libzerocoin {
-void GenerateParameters(const ZerocoinParams* params, CBigNum& oj, CBigNum& ok, CBigNum& bc) {
+void GenerateParameters(const ZerocoinParams* params, CBigNum& oj, CBigNum& ok, CBigNum& bc, CKey& zk) {
     oj = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
     ok = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
     bc = params->coinCommitmentGroup.g.pow_mod(oj, params->coinCommitmentGroup.modulus).mul_mod(
          params->coinCommitmentGroup.h.pow_mod(ok, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
+    zk.MakeNewKey(true);
 }
 
 bool CPrivateSpendKey::GetObfuscationJ(CBigNum& obfuscationJ) const {

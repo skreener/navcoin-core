@@ -227,7 +227,7 @@ public:
 
     bool operator()(const CKeyID& id) const { return addr->Set(id); }
     bool operator()(const pair<CKeyID, CKeyID>& id) const { return addr->Set(id.first, id.second); }
-    bool operator()(const std::pair<libzerocoin::CoinDenomination, libzerocoin::CPrivateAddress> &id) const { return addr->Set(id.second); }
+    bool operator()(const libzerocoin::CPrivateAddress &id) const { return addr->Set(id); }
     bool operator()(const CScriptID& id) const { return addr->Set(id); }
     bool operator()(const CNoDestination& no) const { return false; }
 };
@@ -350,6 +350,13 @@ CTxDestination CNavCoinAddress::Get() const
         uint160 id2;
         memcpy(&id2, &vchData[20], 20);
         return make_pair(CKeyID(id), CKeyID(id2));
+    } else if (vchVersion == Params().Base58Prefix(CChainParams::PRIVATE_ADDRESS)) {
+        if(!IsPrivateAddress(Params()))
+            return CNoDestination();
+        libzerocoin::CPrivateAddress id(Params().GetConsensus().Zerocoin_Params());
+        CDataStream ss(std::vector<unsigned char>(vchData.begin(), vchData.end()), SER_NETWORK, 0);
+        ss >> id;
+        return id;
     } else if (vchVersion == Params().Base58Prefix(CChainParams::PUBKEY_ADDRESS))
         return CKeyID(id);
     else if (vchVersion == Params().Base58Prefix(CChainParams::SCRIPT_ADDRESS))

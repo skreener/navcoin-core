@@ -155,6 +155,18 @@ UniValue getnewaddress(const UniValue& params, bool fHelp)
     return CNavCoinAddress(keyID).ToString();
 }
 
+UniValue getprivateaddress(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    libzerocoin::CPrivateAddress pa(Params().GetConsensus().Zerocoin_Params(),pwalletMain->blindingCommitment,pwalletMain->zerokey);
+
+    return CNavCoinAddress(pa).ToString();
+}
+
 UniValue getcoldstakingaddress(const UniValue& params, bool fHelp)
 {
 
@@ -1524,7 +1536,7 @@ public:
 
     bool operator()(const CNoDestination &dest) const { return false; }
 
-    bool operator()(const std::pair<libzerocoin::CoinDenomination, libzerocoin::CPrivateAddress> &dest) const { return false; }
+    bool operator()(const libzerocoin::CPrivateAddress &dest) const { return false; }
 
     bool operator()(const pair<CKeyID, CKeyID> &dest) const { return false; }
 
@@ -3505,6 +3517,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "getaddressesbyaccount",    &getaddressesbyaccount,    true  },
     { "wallet",             "getbalance",               &getbalance,               false },
     { "wallet",             "getnewaddress",            &getnewaddress,            true  },
+    { "wallet",             "getprivateaddress",        &getprivateaddress,        true  },
     { "wallet",             "getcoldstakingaddress",    &getcoldstakingaddress,    true  },
     { "wallet",             "getrawchangeaddress",      &getrawchangeaddress,      true  },
     { "wallet",             "getreceivedbyaccount",     &getreceivedbyaccount,     false },

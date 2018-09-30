@@ -8,7 +8,6 @@
 #include "clientversion.h"
 #include "init.h"
 #include "libzerocoin/Coin.h"
-#include "libzerocoin/Denominations.h"
 #include "main.h"
 #include "net.h"
 #include "netbase.h"
@@ -128,12 +127,11 @@ class DescribeAddressVisitor : public boost::static_visitor<UniValue>
 public:
     UniValue operator()(const CNoDestination &dest) const { return UniValue(UniValue::VOBJ); }
 
-    UniValue operator()(const std::pair<libzerocoin::CoinDenomination, libzerocoin::CPrivateAddress> &dest) const {
+    UniValue operator()(const libzerocoin::CPrivateAddress &dest) const {
         UniValue obj(UniValue::VOBJ);
         obj.push_back(Pair("isscript", false));
         obj.push_back(Pair("iscoldstaking", false));
         obj.push_back(Pair("isprivatedestination", true));
-        obj.push_back(Pair("denomination", ZerocoinDenominationToInt(dest.first)));
         return obj;
     }
 

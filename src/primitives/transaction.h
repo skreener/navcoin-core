@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2018 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -187,6 +188,11 @@ public:
     bool IsPaymentRequestVote() const
     {
         return scriptPubKey.IsPaymentRequestVote();
+    }
+
+    bool IsZerocoinMint() const
+    {
+        return scriptPubKey.IsZerocoinMint();
     }
 
     uint256 GetHash() const;
@@ -464,6 +470,25 @@ public:
     {
         // ppcoin: the coin stake transaction is marked with the first output empty
         return (vin.size() > 0 && (!vin[0].prevout.IsNull()) && vout.size() >= 2 && vout[0].IsEmpty());
+    }
+
+    bool IsZerocoinSpend() const
+    {
+        return (vin.size() > 0 && vin[0].prevout.hash == 0 && vin[0].scriptSig[0] == OP_ZEROCOINSPEND);
+    }
+
+    bool HasZerocoinMint() const
+    {
+        for(const CTxOut& txout : vout) {
+            if (txout.scriptPubKey.IsZerocoinMint())
+                return true;
+        }
+        return false;
+    }
+
+    bool ContainsZerocoins() const
+    {
+        return IsZerocoinSpend() || HasZerocoinMint();
     }
 
     friend bool operator==(const CTransaction& a, const CTransaction& b)

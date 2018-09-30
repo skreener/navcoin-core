@@ -25,7 +25,11 @@ class CPrivateAddress
 {
 public:
     CPrivateAddress(const ZerocoinParams* p) : params(p) { }
-    CPrivateAddress(const ZerocoinParams* p, CBigNum blindingCommitment, CPubKey zeroPubKey) : params(p), bc(blindingCommitment.getvch()), zpk(zeroPubKey) {
+    CPrivateAddress(const ZerocoinParams* p, CBigNum blindingCommitment, CPubKey zeroKey) : params(p), bc(blindingCommitment.getvch()), zpk(zeroKey) {
+        unsigned int vectorSize = (params->coinCommitmentGroup.modulus.bitSize()/8)+1;
+        bc.resize(vectorSize);
+    }
+    CPrivateAddress(const ZerocoinParams* p, CBigNum blindingCommitment, CKey zeroKey) : params(p), bc(blindingCommitment.getvch()), zpk(zeroKey.GetPubKey()) {
         unsigned int vectorSize = (params->coinCommitmentGroup.modulus.bitSize()/8)+1;
         bc.resize(vectorSize);
     }
@@ -33,6 +37,8 @@ public:
     bool GetBlindingCommitment(CBigNum& blindingCommitment) const;
     bool GetPubKey(CPubKey& zerokey) const;
     bool MintPublicCoin(CoinDenomination d, PublicCoin& pubcoin) const;
+
+    const ZerocoinParams* GetParams() const { return params; }
 
     bool operator<(const CPrivateAddress& rhs) const {
         CBigNum lhsBN; CBigNum rhsBN;
@@ -99,7 +105,7 @@ private:
     std::vector<unsigned char> ok;
     CPrivKey zpk;
 };
-void GenerateParameters(const ZerocoinParams* params, CBigNum& oj, CBigNum& ok, CBigNum& bc);
+void GenerateParameters(const ZerocoinParams* params, CBigNum& oj, CBigNum& ok, CBigNum& bc, CKey& zk);
 }
 
 #endif // KEYS_H
