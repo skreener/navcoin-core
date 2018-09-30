@@ -14,6 +14,7 @@
 #include "amount.h"
 #include "chain.h"
 #include "coins.h"
+#include "libzerocoin/Coin.h"
 #include "net.h"
 #include "script/interpreter.h"
 #include "script/script_error.h"

@@ -363,7 +363,15 @@ public:
         return true;
     }
 
-    bool operator()(const std::pair<libzerocoin::CoinDenomination, libzerocoin::CPrivateAddress> &pubcoin) const {
+    bool operator()(const libzerocoin::CPrivateAddress &dest) const {
+        CPubKey zpk; CBigNum bc;
+        if(!dest.GetPubKey(zpk))
+            return false;
+        if(!dest.GetBlindingCommitment(bc))
+            return false;
+        libzerocoin::PublicCoin pc(dest.GetParams(), libzerocoin::IntToZerocoinDenomination(1), zpk, bc);
+        script->clear();
+        *script << OP_ZEROCOINMINT << pc.getPubKey() << pc.getValue().getvch();
         return true;
     }
 };

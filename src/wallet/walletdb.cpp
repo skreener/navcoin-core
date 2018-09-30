@@ -149,13 +149,13 @@ bool CWalletDB::WriteOrderPosNext(int64_t nOrderPosNext)
     return Write(std::string("orderposnext"), nOrderPosNext);
 }
 
-bool CWalletDB::WriteZeroCoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CPubKey& zerokey)
+bool CWalletDB::WriteZeroCoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey)
 {
     nWalletDBUpdated++;
     return Write(std::string("obfuscationj"), obfuscationJ) &&
            Write(std::string("obfuscationk"), obfuscationK) &&
            Write(std::string("blindingcommitment"), blindingCommitment) &&
-           Write(std::string("zerokey"), zerokey);
+           Write(std::string("zerokey"), std::vector<unsigned char>(zerokey.begin(), zerokey.end()));
 }
 
 bool CWalletDB::WriteDefaultKey(const CPubKey& vchPubKey)
@@ -574,7 +574,9 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
         }
         else if (strType == "zerokey")
         {
-            ssValue >> pwallet->zerokey;
+            std::vector<unsigned char> vch(ssValue.size());
+            ssValue >> vch;
+            pwallet->zerokey.Set(vch.begin(),vch.end(), true);
         }
         else if (strType == "pool")
         {
@@ -654,7 +656,7 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
     pwallet->obfuscationJ = CBigNum();
     pwallet->obfuscationK = CBigNum();
     pwallet->blindingCommitment = CBigNum();
-    pwallet->zerokey = CPubKey();
+    pwallet->zerokey = CKey();
     CWalletScanState wss;
     bool fNoncriticalErrors = false;
     DBErrors result = DB_LOAD_OK;
@@ -765,7 +767,7 @@ DBErrors CWalletDB::FindWalletTx(CWallet* pwallet, vector<uint256>& vTxHash, vec
     pwallet->obfuscationJ = CBigNum();
     pwallet->obfuscationK = CBigNum();
     pwallet->blindingCommitment = CBigNum();
-    pwallet->zerokey = CPubKey();
+    pwallet->zerokey = CKey();
     bool fNoncriticalErrors = false;
     DBErrors result = DB_LOAD_OK;
 

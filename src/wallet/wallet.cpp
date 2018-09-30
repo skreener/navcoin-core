@@ -1717,10 +1717,6 @@ CPubKey CWallet::GenerateNewZeroKey()
     CPubKey pubkey = key.GetPubKey();
     assert(key.VerifyPubKey(pubkey));
 
-    // set the hd keypath to "z" to identify it as the zerocoin key
-    metadata.hdKeypath     = "z";
-    metadata.hdMasterKeyID = pubkey.GetID();
-
     {
         LOCK(cs_wallet);
 
@@ -3284,7 +3280,7 @@ bool CWallet::DelAddressBook(const CTxDestination& address)
     return CWalletDB(strWalletFile).EraseName(CNavCoinAddress(address).ToString());
 }
 
-bool CWallet::SetZeroCoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CPubKey& zerokey)
+bool CWallet::SetZeroCoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey)
 {
     if (fFileBacked)
     {
@@ -3767,7 +3763,7 @@ public:
             vKeys.push_back(keyId);
     }
 
-    void operator()(const std::pair<libzerocoin::CoinDenomination, libzerocoin::CPrivateAddress> &keyId) { }
+    void operator()(const libzerocoin::CPrivateAddress &keyId) { }
 
     void operator()(const pair<CKeyID, CKeyID> &keyId) {
         if (keystore.HaveKey(keyId.first))
@@ -4011,10 +4007,9 @@ bool CWallet::InitLoadWallet()
 
     if(fFirstZeroRun)
     {
-        CBigNum obfuscationj; CBigNum obfuscationk; CBigNum blindingcommitment;
-        libzerocoin::GenerateParameters(Params().GetConsensus().Zerocoin_Params(), obfuscationj, obfuscationk, blindingcommitment);
-        CPubKey zeroPubKey = walletInstance->GenerateNewZeroKey();
-        walletInstance->SetZeroCoinValues(obfuscationj, obfuscationk, blindingcommitment, zeroPubKey);
+        CBigNum obfuscationj; CBigNum obfuscationk; CBigNum blindingcommitment; CKey zeroKey;
+        libzerocoin::GenerateParameters(Params().GetConsensus().Zerocoin_Params(), obfuscationj, obfuscationk, blindingcommitment, zeroKey);
+        walletInstance->SetZeroCoinValues(obfuscationj, obfuscationk, blindingcommitment, zeroKey);
         obfuscationj.Nullify();
         obfuscationk.Nullify();
         LogPrintf("Generated zerocoin parameters.\n");
