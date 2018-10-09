@@ -265,6 +265,7 @@ template base_uint<512>& base_uint<512>::operator<<=(unsigned int);
 template base_uint<512>& base_uint<512>::operator>>=(unsigned int);
 template base_uint<512>& base_uint<512>::operator*=(uint32_t b32);
 template base_uint<512>& base_uint<512>::operator*=(const base_uint<512>& b);
+template base_uint<512>& base_uint<512>::operator/=(const base_uint<512>& b);
 template std::string base_uint<512>::GetHex() const;
 template std::string base_uint<512>::ToString() const;
 template std::string base_uint<512>::ToStringReverseEndian() const;

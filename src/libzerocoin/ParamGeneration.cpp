@@ -47,7 +47,7 @@ CalculateParams(ZerocoinParams &params, CBigNum N, string aux, uint32_t security
 	// Verify that |N| is > 1023 bits.
 	uint32_t NLen = N.bitSize();
 	if (NLen < 1023) {
-		throw std::runtime_error("Modulus must be at least 1023 bits");
+    throw std::runtime_error("Modulus must be at least 1023bits");
 	}
 
 	// Verify that "securityLevel" is  at least 80 bits (minimum).

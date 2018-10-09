@@ -463,6 +463,15 @@ bool CBlockTreeDB::LoadBlockIndexGuts(boost::function<CBlockIndex*(const uint256
                 pindexNew->prevoutStake   = diskindex.prevoutStake;
                 pindexNew->nStakeTime     = diskindex.nStakeTime;
                 pindexNew->hashProof      = diskindex.hashProof;
+                pindexNew->nMoneySupply   = diskindex.nMoneySupply;
+
+                //zerocoin
+                pindexNew->nAccumulatorCheckpoint
+                                          = diskindex.nAccumulatorCheckpoint;
+                pindexNew->mapZerocoinSupply
+                                          = diskindex.mapZerocoinSupply;
+                pindexNew->vMintDenominationsInBlock
+                                          = diskindex.vMintDenominationsInBlock;
 
                 pcursor->Next();
             } else {

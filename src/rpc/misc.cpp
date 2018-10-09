@@ -100,8 +100,8 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     UniValue cf(UniValue::VOBJ);
     cf.push_back(Pair("available",      ValueFromAmount(chainActive.Tip()->nCFSupply)));
     cf.push_back(Pair("locked",         ValueFromAmount(chainActive.Tip()->nCFLocked)));
-
     obj.push_back(Pair("communityfund", cf));
+    obj.push_back(Pair("moneysupply",   ValueFromAmount(chainActive.Tip()->nMoneySupply)));
     obj.push_back(Pair("timeoffset",    GetTimeOffset()));
     obj.push_back(Pair("ntptimeoffset", GetNtpTimeOffset()));
     obj.push_back(Pair("connections",   (int)vNodes.size()));

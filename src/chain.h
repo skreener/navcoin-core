@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2018 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -232,6 +233,12 @@ public:
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
     uint32_t nSequenceId;
 
+    uint256 nAccumulatorCheckpoint;
+    CAmount nMoneySupply;
+
+    std::map<libzerocoin::CoinDenomination, int64_t> mapZerocoinSupply;
+    std::vector<libzerocoin::CoinDenomination> vMintDenominationsInBlock;
+
     void SetNull()
     {
         phashBlock = NULL;
@@ -261,6 +268,13 @@ public:
         nNonce         = 0;
         vProposalVotes.clear();
         vPaymentRequestVotes.clear();
+        nMoneySupply = 0;
+        nAccumulatorCheckpoint = 0;
+        // Start supply of each denomination with 0s
+        for (auto& denom : libzerocoin::zerocoinDenomList) {
+            mapZerocoinSupply.insert(make_pair(denom, 0));
+        }
+        vMintDenominationsInBlock.clear();
     }
 
     CBlockIndex()
@@ -277,6 +291,8 @@ public:
         nTime          = block.nTime;
         nBits          = block.nBits;
         nNonce         = block.nNonce;
+        if((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
+            nAccumulatorCheckpoint = block.nAccumulatorCheckpoint;
     }
 
     CBlockIndex(const CBlock& block)
@@ -300,6 +316,8 @@ public:
         nTime          = block.nTime;
         nBits          = block.nBits;
         nNonce         = block.nNonce;
+        if((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
+            nAccumulatorCheckpoint = block.nAccumulatorCheckpoint;
     }
 
     uint256 GetBlockTrust() const
@@ -341,7 +359,18 @@ public:
         block.nTime          = nTime;
         block.nBits          = nBits;
         block.nNonce         = nNonce;
+        if((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
+            block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
         return block;
+    }
+
+    int64_t GetZerocoinSupply() const
+    {
+        int64_t nTotal = 0;
+        for (auto& denom : libzerocoin::zerocoinDenomList) {
+            nTotal += libzerocoin::ZerocoinDenominationToAmount(denom) * mapZerocoinSupply.at(denom);
+        }
+        return nTotal;
     }
 
     uint256 GetBlockHash() const
@@ -524,6 +553,12 @@ public:
         READWRITE(nCFLocked);
         READWRITE(vPaymentRequestVotes);
         READWRITE(vProposalVotes);
+        if((this->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN) {
+            READWRITE(nAccumulatorCheckpoint);
+            READWRITE(nMoneySupply);
+            READWRITE(mapZerocoinSupply);
+            READWRITE(vMintDenominationsInBlock);
+        }
     }
 
     uint256 GetBlockHash() const
@@ -535,6 +570,8 @@ public:
         block.nTime           = nTime;
         block.nBits           = nBits;
         block.nNonce          = nNonce;
+        if((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
+            block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
 
         const_cast<CDiskBlockIndex*>(this)->blockHash = block.GetHash();
 
