@@ -158,6 +158,7 @@ NAVCOIN_CORE_H = \
   wallet/rpcwallet.h \
   wallet/wallet.h \
   wallet/walletdb.h \
+  zerochain.h \
   zmq/zmqabstractnotifier.h \
   zmq/zmqconfig.h\
   zmq/zmqnotificationinterface.h \
@@ -213,6 +214,7 @@ libnavcoin_server_a_SOURCES = \
   utils/dns_utils.cpp \
   validationinterface.cpp \
   versionbits.cpp \
+  zerochain.cpp \
   $(NAVCOIN_CORE_H)
 
 if ENABLE_ZMQ
