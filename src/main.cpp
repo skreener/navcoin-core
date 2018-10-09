@@ -1127,6 +1127,22 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state)
                 return state.DoS(10, false, REJECT_INVALID, "bad-txns-prevout-null");
     }
 
+    // Check that zPIV mints are not already known
+    if (tx.HasZerocoinMint()) {
+        int nZeroCoinHeight = 0;
+        pblocktree->ReadFirstZeroCoinBlock(nZeroCoinHeight);
+        if(chainActive.Tip()->nHeight < nZeroCoinHeight || nZeroCoinHeight == 0)
+            return state.Invalid(error("%s: too early zerocoin mint", __func__));
+
+        for (auto& out : tx.vout) {
+            if (!out.IsZerocoinMint())
+                continue;
+
+            if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, out, state))
+                return state.Invalid(error("%s: zerocoin mint failed contextual check", __func__));
+        }
+    }
+
     return true;
 }
 
@@ -2270,11 +2286,26 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
     std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
     std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > addressUnspentIndex;
     std::vector<std::pair<CSpentIndexKey, CSpentIndexValue> > spentIndex;
+    std::vector<std::pair<CBigNum, uint256> > vZeroMints;
 
     // undo transactions in reverse order
     for (int i = block.vtx.size() - 1; i >= 0; i--) {
         const CTransaction &tx = block.vtx[i];
         uint256 hash = tx.GetHash();
+
+        if (IsZerocoinEnabled(pindex->pprev, Params().GetConsensus()) && tx.HasZerocoinMint()) {
+            for (auto& out : tx.vout) {
+                if (!out.IsZerocoinMint())
+                    continue;
+
+                libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
+
+                if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, out, pubCoin, state))
+                    return error("%s: error disconnecting zerocoin mint from %s", __func__, hash.ToString());
+
+                vZeroMints.push_back(make_pair(pubCoin.getValue(), uint256()));
+            }
+        }
 
         if(IsCommunityFundEnabled(pindex->pprev, Params().GetConsensus())) {
             if(tx.nVersion == CTransaction::PROPOSAL_VERSION && CFund::IsValidProposal(tx)) {
@@ -2456,6 +2487,10 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
         if (!pblocktree->UpdateAddressUnspentIndex(addressUnspentIndex)) {
             return AbortNode(state, "Failed to write address unspent index");
         }
+    }
+
+    if (!pblocktree->UpdateCoinMintIndex(vZeroMints)){
+        return AbortNode(state, "Failed to write zerocoin mint index");
     }
 
     return fClean;
@@ -2653,8 +2688,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         hashProof = block.GetPoWHash();
     }
 
-
-
     if (!pindex->SetStakeEntropyBit(block.GetStakeEntropyBit()))
         return state.DoS(1,error("ContextualCheckBlock() : SetStakeEntropyBit() failed"), REJECT_INVALID, "bad-entropy-bit");
 
@@ -2770,6 +2803,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
     std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > addressUnspentIndex;
     std::vector<std::pair<CSpentIndexKey, CSpentIndexValue> > spentIndex;
+    std::vector<std::pair<CBigNum, uint256> > vZeroMints;
 
     CCheckQueueControl<CScriptCheck> control(fScriptChecks && nScriptCheckThreads ? &scriptcheckqueue : NULL);
     std::vector<PrecomputedTransactionData> txdata;
@@ -2816,6 +2850,23 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                         }
                     }
                 }
+            }
+        }
+
+        if (tx.HasZerocoinMint()) {
+            if(!IsZerocoinEnabled(pindex->pprev, chainparams.GetConsensus()))
+                return state.Invalid(error("%s: too early zerocoin mint", __func__));
+
+            for (auto& out : tx.vout) {
+                if (!out.IsZerocoinMint())
+                    continue;
+
+                libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
+
+                if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, out, state, &pubCoin))
+                    return state.Invalid(error("%s: zerocoin mint failed contextual check", __func__));
+
+                vZeroMints.push_back(make_pair(pubCoin.getValue(), tx.GetHash()));
             }
         }
 
@@ -3262,6 +3313,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         if (!pblocktree->WriteTimestampBlockIndex(CTimestampBlockIndexKey(pindex->GetBlockHash()), CTimestampBlockIndexValue(logicalTS)))
             return AbortNode(state, "Failed to write blockhash index");
     }
+
+    if (!pblocktree->UpdateCoinMintIndex(vZeroMints))
+        return AbortNode("Failed to write new zerocoin mints to index");
 
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
