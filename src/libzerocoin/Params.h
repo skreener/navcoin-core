@@ -174,6 +174,8 @@ public:
 	ZerocoinParams(CBigNum accumulatorModulus,
 	       uint32_t securityLevel = ZEROCOIN_DEFAULT_SECURITYLEVEL);
 
+  ZerocoinParams() { this->initialized = true; };
+
 	bool initialized;
 
 	AccumulatorAndProofParams accumulatorParams;

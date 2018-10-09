@@ -1622,8 +1622,16 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                     }
                 }
 
-                if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, GetArg("-checklevel", DEFAULT_CHECKLEVEL),
-                                          GetArg("-checkblocks", DEFAULT_CHECKBLOCKS))) {
+                bool fReindexSupply = false;
+
+                if(chainActive.Tip()->GetBlockHash() != chainparams.GetConsensus().hashGenesisBlock && chainActive[1]->nMoneySupply == 0)
+                {
+                    LogPrintf("Reindexing money supply...\n");
+                    fReindexSupply = true;
+                }
+
+                if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, fReindexSupply ? 4 : GetArg("-checklevel", DEFAULT_CHECKLEVEL),
+                                          fReindexSupply ? 0 : GetArg("-checkblocks", DEFAULT_CHECKBLOCKS))) {
                     strLoadError = _("Corrupted block database detected");
                     break;
                 }

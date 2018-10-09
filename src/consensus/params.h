@@ -107,7 +107,7 @@ struct Params {
 
     /** Zerocoin parameters **/
     std::string zerocoinModulus;
-    libzerocoin::ZerocoinParams* Zerocoin_Params() const;
+    libzerocoin::ZerocoinParams Zerocoin_Params;
 };
 } // namespace Consensus
 

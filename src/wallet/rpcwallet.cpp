@@ -162,7 +162,7 @@ UniValue getprivateaddress(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    libzerocoin::CPrivateAddress pa(Params().GetConsensus().Zerocoin_Params(),pwalletMain->blindingCommitment,pwalletMain->zerokey);
+    libzerocoin::CPrivateAddress pa(&Params().GetConsensus().Zerocoin_Params,pwalletMain->blindingCommitment,pwalletMain->zerokey);
 
     return CNavCoinAddress(pa).ToString();
 }

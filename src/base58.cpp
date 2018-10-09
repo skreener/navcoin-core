@@ -294,7 +294,7 @@ bool CNavCoinAddress::GetStakingAddress(CNavCoinAddress &address) const
 bool CNavCoinAddress::GetBlindingCommitment(CBigNum &bc) const {
     if(!IsPrivateAddress(Params()))
         return false;
-    libzerocoin::CPrivateAddress id(Params().GetConsensus().Zerocoin_Params());
+    libzerocoin::CPrivateAddress id(&Params().GetConsensus().Zerocoin_Params);
     CDataStream ss(std::vector<unsigned char>(vchData.begin(), vchData.end()), SER_NETWORK, 0);
     ss >> id;
     if(!id.GetBlindingCommitment(bc)) return false;
@@ -304,7 +304,7 @@ bool CNavCoinAddress::GetBlindingCommitment(CBigNum &bc) const {
 bool CNavCoinAddress::GetZeroPubKey(CPubKey &zerokey) const{
     if(!IsPrivateAddress(Params()))
         return false;
-    libzerocoin::CPrivateAddress id(Params().GetConsensus().Zerocoin_Params());
+    libzerocoin::CPrivateAddress id(&Params().GetConsensus().Zerocoin_Params);
     CDataStream ss(std::vector<unsigned char>(vchData.begin(), vchData.end()), SER_NETWORK, 0);
     ss >> id;
     if(!id.GetPubKey(zerokey)) return false;
@@ -314,7 +314,7 @@ bool CNavCoinAddress::GetZeroPubKey(CPubKey &zerokey) const{
 bool CNavCoinAddress::IsValid(const CChainParams& params) const
 {
     if (vchVersion == params.Base58Prefix(CChainParams::PRIVATE_ADDRESS)) {
-        libzerocoin::CPrivateAddress id(Params().GetConsensus().Zerocoin_Params());
+        libzerocoin::CPrivateAddress id(&Params().GetConsensus().Zerocoin_Params);
         CDataStream ss(std::vector<unsigned char>(vchData.begin(), vchData.end()), SER_NETWORK, 0);
         ss >> id;
         CPubKey zpk; CBigNum bc;
@@ -353,7 +353,7 @@ CTxDestination CNavCoinAddress::Get() const
     } else if (vchVersion == Params().Base58Prefix(CChainParams::PRIVATE_ADDRESS)) {
         if(!IsPrivateAddress(Params()))
             return CNoDestination();
-        libzerocoin::CPrivateAddress id(Params().GetConsensus().Zerocoin_Params());
+        libzerocoin::CPrivateAddress id(&Params().GetConsensus().Zerocoin_Params);
         CDataStream ss(std::vector<unsigned char>(vchData.begin(), vchData.end()), SER_NETWORK, 0);
         ss >> id;
         return id;

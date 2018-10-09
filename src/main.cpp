@@ -1110,6 +1110,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state)
     {
         if (vInOutPoints.count(txin.prevout))
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputs-duplicate");
+
         vInOutPoints.insert(txin.prevout);
     }
 
@@ -2597,8 +2598,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     AssertLockHeld(cs_main);
 
-    pindex->nCFSupply = pindex->pprev != NULL ? pindex->pprev->nCFSupply : 0;
-    pindex->nCFLocked = pindex->pprev != NULL ? pindex->pprev->nCFLocked : 0;
+    pindex->nCFSupply    = pindex->pprev != NULL ? pindex->pprev->nCFSupply : 0;
+    pindex->nCFLocked    = pindex->pprev != NULL ? pindex->pprev->nCFLocked : 0;
+    pindex->nMoneySupply = pindex->pprev != NULL ? pindex->pprev->nMoneySupply : 0;
 
     if (block.IsProofOfStake())
     {
@@ -2781,12 +2783,15 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     std::vector<PrecomputedTransactionData> txdata;
     txdata.reserve(block.vtx.size()); // Required so that pointers to individual PrecomputedTransactionData don't get invalidated
 
+    CAmount nCreated = 0;
+
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction &tx = block.vtx[i];
         const uint256 txhash = tx.GetHash();
 
         nInputs += tx.vin.size();
+        nCreated += tx.GetValueOut() - view.GetValueIn(tx);;
 
         if((tx.IsCoinBase() && IsCommunityFundEnabled(pindex->pprev, chainparams.GetConsensus()))) {
             for (size_t j = 0; j < tx.vout.size(); j++) {
@@ -3171,7 +3176,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 else {
                     std::vector<std::pair<uint256, CFund::CPaymentRequest> > paymentRequestIndex;
                     prequest.paymenthash = block.GetHash();
-                    paymentRequestIndex.push_back(make_pair(prequest.hash, prequest));                
+                    paymentRequestIndex.push_back(make_pair(prequest.hash, prequest));
+                    nCreated -= block.vtx[0].vout[i].nValue;
                     if (!pblocktree->UpdatePaymentRequestIndex(paymentRequestIndex))
                         return AbortNode(state, "Failed to write payment request index");
                 }
@@ -3182,6 +3188,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             nPaymentRequestsCount++;
         }
     }
+
+    pindex->nMoneySupply += nCreated;
 
     if (block.IsProofOfStake())
     {
@@ -4709,14 +4717,7 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
     if (block.GetBlockTime() > nAdjustedTime + (IsNtpSyncEnabled(pindexPrev,Params().GetConsensus()) ? Params().GetConsensus().nMaxFutureDrift : 2 * 60 * 60))
         return state.Invalid(false, REJECT_INVALID, "time-too-new", "block timestamp too far in the future");
 
-    // Reject outdated version blocks when 95% (75% on testnet) of the network has upgraded:
-    for (int32_t version = 2; version < 5; ++version) // check for version 2, 3 and 4 upgrades
-        if (block.nVersion < version && IsSuperMajority(version, pindexPrev, consensusParams.nMajorityRejectBlockOutdated, consensusParams))
-            return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", version - 1),
-                                 strprintf("rejected nVersion=0x%08x block", version - 1));
-
     int32_t nRequiredTopBits = 0;
-
     if(IsZerocoinEnabled(pindexPrev, Params().GetConsensus()))
         nRequiredTopBits = VERSIONBITS_TOP_BITS_ZEROCOIN;
     else if(IsSigHFEnabled(Params().GetConsensus(), pindexPrev))
@@ -4724,9 +4725,13 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
     else
         nRequiredTopBits = VERSIONBITS_TOP_BITS;
 
+    if(!IsZerocoinEnabled(pindexPrev, Params().GetConsensus()) && (block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
+        return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
+                           "too early zerocoin block");
+
     if((block.nVersion & nRequiredTopBits) != nRequiredTopBits)
         return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
-                           "rejected no sig block");
+                           "rejected wrong version bit top mask");
 
     if((block.nVersion & nSegWitVersionMask) != nSegWitVersionMask && IsWitnessEnabled(pindexPrev,Params().GetConsensus()))
         return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
@@ -8244,7 +8249,7 @@ uint256 GetProofOfStakeLimit(int nHeight)
 
 bool TransactionGetCoinAge(CTransaction& transaction, uint64_t& nCoinAge)
 {
-    uint256 bnCentSecond = 0;  // coin age in the unit of cent-seconds
+    CBigNum bnCentSecond = 0;  // coin age in the unit of cent-seconds
     nCoinAge = 0;
 
     if (transaction.IsCoinBase())
@@ -8271,16 +8276,16 @@ bool TransactionGetCoinAge(CTransaction& transaction, uint64_t& nCoinAge)
             continue; // only count coins meeting min age requirement
 
         int64_t nValueIn = txPrev.vout[txin.prevout.n].nValue;
-        bnCentSecond += nValueIn * (transaction.nTime-txPrev.nTime) / CENT;
+        bnCentSecond += CBigNum(nValueIn) * (transaction.nTime-txPrev.nTime) / CENT;
 
 
         LogPrint("coinage", "coin age nValueIn=%d nTimeDiff=%d bnCentSecond=%s\n", nValueIn, transaction.nTime - txPrev.nTime, bnCentSecond.ToString());
     }
 
 
-    uint256 bnCoinDay = ((bnCentSecond * CENT) / COIN) / (24 * 60 * 60);
+    CBigNum bnCoinDay = ((bnCentSecond * CENT) / COIN) / (24 * 60 * 60);
     LogPrint("coinage", "coin age bnCoinDay=%s\n", bnCoinDay.ToString());
-    nCoinAge = bnCoinDay.GetLow64();
+    nCoinAge = bnCoinDay.getulong();
 
     return true;
 }

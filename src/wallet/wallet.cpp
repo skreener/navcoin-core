@@ -4008,7 +4008,7 @@ bool CWallet::InitLoadWallet()
     if(fFirstZeroRun)
     {
         CBigNum obfuscationj; CBigNum obfuscationk; CBigNum blindingcommitment; CKey zeroKey;
-        libzerocoin::GenerateParameters(Params().GetConsensus().Zerocoin_Params(), obfuscationj, obfuscationk, blindingcommitment, zeroKey);
+        libzerocoin::GenerateParameters(&Params().GetConsensus().Zerocoin_Params, obfuscationj, obfuscationk, blindingcommitment, zeroKey);
         walletInstance->SetZeroCoinValues(obfuscationj, obfuscationk, blindingcommitment, zeroKey);
         obfuscationj.Nullify();
         obfuscationk.Nullify();

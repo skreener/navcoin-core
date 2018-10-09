@@ -11,6 +11,9 @@
 #include "uint256.h"
 #include "hash.h"
 
+/** Zerocoin blocks version bits need to signal this */
+static const int32_t VERSIONBITS_TOP_BITS_ZEROCOIN = 0x80000000UL;
+
 /** Nodes collect new transactions into a block, hash them into a hash tree,
  * and scan through nonce values to make the block's hash satisfy proof-of-work
  * requirements.  When they solve the proof-of-work, they broadcast the block
@@ -28,6 +31,7 @@ public:
     uint32_t nTime;
     uint32_t nBits;
     uint32_t nNonce;
+    uint256 nAccumulatorCheckpoint;
 
     CBlockHeader()
     {
@@ -44,6 +48,8 @@ public:
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
+        if((this->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
+            READWRITE(nAccumulatorCheckpoint);
     }
 
     void SetNull()
@@ -54,6 +60,7 @@ public:
         nTime = 0;
         nBits = 0;
         nNonce = 0;
+        nAccumulatorCheckpoint = 0;
     }
 
     bool IsNull() const
