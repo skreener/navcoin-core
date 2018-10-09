@@ -1103,14 +1103,23 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state)
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-txouttotal-toolarge");
         if(txout.scriptPubKey.IsColdStaking() && !IsColdStakingEnabled(pindexBestHeader, Params().GetConsensus()))
             return state.DoS(100, false, REJECT_INVALID, "cold-staking-not-enabled");
+        if (!txout.IsZerocoinMint())
+            continue;
+        if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, txout, state))
+            return state.DoS(100, false, REJECT_INVALID, "bad-zerocoin-mint");
     }
 
-    // Check for duplicate inputs
+    // Check for duplicate/invalid inputs
     set<COutPoint> vInOutPoints;
     BOOST_FOREACH(const CTxIn& txin, tx.vin)
     {
         if (vInOutPoints.count(txin.prevout))
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputs-duplicate");
+
+        if ((tx.IsZerocoinSpend() && !txin.scriptSig.IsZerocoinSpend())
+                || (!tx.IsZerocoinSpend() && txin.scriptSig.IsZerocoinSpend())) {
+            return state.DoS(100, false, REJECT_INVALID, "bad-mix-zerocoin-and-transparent-inputs");
+        }
 
         vInOutPoints.insert(txin.prevout);
     }
@@ -1120,7 +1129,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state)
         if (tx.vin[0].scriptSig.size() < 2 || tx.vin[0].scriptSig.size() > 100)
             return state.DoS(100, false, REJECT_INVALID, "bad-cb-length");
     }
-    else
+    else if(!tx.IsZerocoinSpend())
     {
         BOOST_FOREACH(const CTxIn& txin, tx.vin)
             if (txin.prevout.IsNull())
@@ -1133,14 +1142,6 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state)
         pblocktree->ReadFirstZeroCoinBlock(nZeroCoinHeight);
         if(chainActive.Tip()->nHeight < nZeroCoinHeight || nZeroCoinHeight == 0)
             return state.Invalid(error("%s: too early zerocoin mint", __func__));
-
-        for (auto& out : tx.vout) {
-            if (!out.IsZerocoinMint())
-                continue;
-
-            if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, out, state))
-                return state.Invalid(error("%s: zerocoin mint failed contextual check", __func__));
-        }
     }
 
     return true;
@@ -2867,6 +2868,14 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     return state.Invalid(error("%s: zerocoin mint failed contextual check", __func__));
 
                 vZeroMints.push_back(make_pair(pubCoin.getValue(), tx.GetHash()));
+            }
+        }
+
+        if (tx.IsZerocoinSpend()) {
+            for (auto& in : tx.vin) {
+                if (!in.scriptSig.IsZerocoinSpend()) {
+                    return state.Invalid(error("%s: zerocoin spend can't be combined with transparent inputs", __func__));
+                }
             }
         }
 
