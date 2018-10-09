@@ -172,6 +172,20 @@ public:
     bool UpdatePaymentRequestIndex(const std::vector<std::pair<uint256, CFund::CPaymentRequest> >&vect);
     bool ReadFirstZeroCoinBlock(int &nHeight);
     bool WriteFirstZeroCoinBlock(int nHeight);
+    bool ReadCoinMint(CBigNum coinValue, uint256 &txHash);
+    bool ReadCoinMint(uint256 coinValueHash, uint256 &txHash);
+    bool WriteCoinMint(CBigNum coinValue, uint256 txHash);
+    bool WriteCoinMint(uint256 coinValueHash, uint256 txHash);
+    bool EraseCoinMint(CBigNum coinValue);
+    bool EraseCoinMint(uint256 coinValueHash);
+    bool UpdateCoinMintIndex(const std::vector<std::pair<CBigNum, uint256> >&vect);
+    bool ReadCoinSpend(CBigNum coinSerial, uint256 &txHash);
+    bool ReadCoinSpend(uint256 coinSerialHash, uint256 &txHash);
+    bool WriteCoinSpend(CBigNum coinSerial, uint256 txHash);
+    bool WriteCoinSpend(uint256 coinSerialHash, uint256 txHash);
+    bool EraseCoinSpend(CBigNum coinSerial);
+    bool EraseCoinSpend(uint256 coinSerialHash);
+    bool UpdateCoinSpendIndex(const std::vector<std::pair<CBigNum, uint256> >&vect);
 };
 
 #endif // NAVCOIN_TXDB_H
