@@ -7,8 +7,10 @@
 
 #include "consensus/validation.h"
 #include "libzerocoin/Coin.h"
+#include "main.h"
 #include "primitives/transaction.h"
 
 bool TxOutToPublicCoin(const libzerocoin::ZerocoinParams *params, const CTxOut& txout, libzerocoin::PublicCoin& pubCoin, CValidationState& state);
+bool CheckZerocoinMint(const libzerocoin::ZerocoinParams *params, const CTxOut& txout, CValidationState& state);
 
 #endif // ZEROCHAIN_H
