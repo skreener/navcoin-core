@@ -32,6 +32,7 @@ static const char DB_BEST_BLOCK = 'B';
 static const char DB_FLAG = 'F';
 static const char DB_REINDEX_FLAG = 'R';
 static const char DB_LAST_BLOCK = 'l';
+static const char DB_ZEROCOIN_BLOCK = 'y';
 
 CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true, false, 64)
 {
@@ -96,6 +97,14 @@ bool CBlockTreeDB::ReadReindexing(bool &fReindexing) {
 
 bool CBlockTreeDB::ReadLastBlockFile(int &nFile) {
     return Read(DB_LAST_BLOCK, nFile);
+}
+
+bool CBlockTreeDB::ReadFirstZeroCoinBlock(int &nHeight) {
+    return Read(DB_ZEROCOIN_BLOCK, nHeight);
+}
+
+bool CBlockTreeDB::WriteFirstZeroCoinBlock(int nHeight) {
+    return Write(DB_ZEROCOIN_BLOCK, nHeight);
 }
 
 CCoinsViewCursor *CCoinsViewDB::Cursor() const
