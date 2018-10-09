@@ -1630,6 +1630,21 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                     fReindexSupply = true;
                 }
 
+                int nFirstZeroHeight = 0;
+                pblocktree->ReadFirstZeroCoinBlock(nFirstZeroHeight);
+
+                if(nFirstZeroHeight != 0 && ((chainActive[nFirstZeroHeight]->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) != VERSIONBITS_TOP_BITS_ZEROCOIN
+                                             || (chainActive[nFirstZeroHeight-1]->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)) {
+                    CBlockIndex* pindex = chainActive[0];
+                    while (pindex) {
+                        if ((pindex->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
+                            break;
+                        pindex = chainActive.Next(pindex);
+                    }
+                    pblocktree->WriteFirstZeroCoinBlock(pindex ? pindex->nHeight : 0);
+                    LogPrintf("First zerocoin block ammended to %d\n", pindex ? pindex->nHeight : 0);
+                }
+
                 if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, fReindexSupply ? 4 : GetArg("-checklevel", DEFAULT_CHECKLEVEL),
                                           fReindexSupply ? 0 : GetArg("-checkblocks", DEFAULT_CHECKBLOCKS))) {
                     strLoadError = _("Corrupted block database detected");

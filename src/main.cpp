@@ -41,6 +41,7 @@
 #include "validationinterface.h"
 #include "versionbits.h"
 #include "wallet/wallet.h"
+#include "zerochain.h"
 
 #include <atomic>
 #include <sstream>
@@ -2566,16 +2567,7 @@ public:
 
     bool Condition(const CBlockIndex* pindex, const Consensus::Params& params) const
     {
-        int32_t nRequiredTopBits = 0;
-
-        if(IsZerocoinEnabled(pindex, Params().GetConsensus()))
-            nRequiredTopBits = VERSIONBITS_TOP_BITS_ZEROCOIN;
-        else if(IsSigHFEnabled(Params().GetConsensus(), pindex))
-            nRequiredTopBits = VERSIONBITS_TOP_BITS_SIG;
-        else
-            nRequiredTopBits = VERSIONBITS_TOP_BITS;
-
-        return  (pindex->nVersion & VERSIONBITS_TOP_MASK) == nRequiredTopBits &&
+        return  (pindex->nVersion & VERSIONBITS_TOP_MASK) != 0 &&
                ((pindex->nVersion >> bit) & 1) != 0 &&
                ((ComputeBlockVersion(pindex->pprev, params) >> bit) & 1) == 0;
     }
@@ -3540,6 +3532,13 @@ bool static DisconnectTip(CValidationState& state, const CChainParams& chainpara
     // Update chainActive and related variables.
     UpdateTip(pindexDelete->pprev, chainparams);
 
+    int nFirstZeroHeight = 0;
+    pblocktree->ReadFirstZeroCoinBlock(nFirstZeroHeight);
+
+    if(nFirstZeroHeight == pindexDelete->nHeight)
+        if(!pblocktree->WriteFirstZeroCoinBlock(0))
+            return AbortNode(state, "Failed to write height of first Zerocoin block");
+
     std::vector<CFund::CPaymentRequest> vecPaymentRequest;
     std::vector<std::pair<uint256, CFund::CProposal>> vecProposalsToUpdate;
     std::vector<std::pair<uint256, CFund::CPaymentRequest>> vecPaymentRequestsToUpdate;
@@ -3686,6 +3685,14 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
     list<CTransaction> txConflicted;
     mempool.removeForBlock(pblock->vtx, pindexNew->nHeight, txConflicted, !IsInitialBlockDownload());
     // Update chainActive & related variables.
+
+    int nFirstZeroHeight = 0;
+    pblocktree->ReadFirstZeroCoinBlock(nFirstZeroHeight);
+
+    if(nFirstZeroHeight == 0 && IsZerocoinEnabled(pindexNew->pprev, Params().GetConsensus()))
+        if(!pblocktree->WriteFirstZeroCoinBlock(pindexNew->nHeight))
+            return AbortNode(state, "Failed to write height of first Zerocoin block");
+
     UpdateTip(pindexNew, chainparams);
     CountVotes(state, pindexNew, false);
     // Tell wallet about transactions that went from mempool
