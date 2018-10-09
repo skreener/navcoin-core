@@ -22,3 +22,21 @@ bool TxOutToPublicCoin(const libzerocoin::ZerocoinParams *params, const CTxOut& 
 
     return true;
 }
+
+bool CheckZerocoinMint(const libzerocoin::ZerocoinParams *params, const CTxOut& txout, CValidationState& state)
+{
+    libzerocoin::PublicCoin pubCoin(params);
+    if(!TxOutToPublicCoin(params, txout, pubCoin, state))
+        return state.DoS(100, error("CheckZerocoinMint(): TxOutToPublicCoin() failed"));
+
+    if (!pubCoin.isValid())
+        return state.DoS(100, error("CheckZerocoinMint() : PubCoin does not validate"));
+
+    uint256 txid;
+    if (pblocktree->ReadCoinMint(coin.getValue(), txid))
+        return error("%s: pubcoin %s was already accumulated in tx %s", __func__,
+                     coin.getValue().GetHex().substr(0, 10),
+                     txid.GetHex());
+
+    return true;
+}
