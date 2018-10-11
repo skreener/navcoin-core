@@ -499,7 +499,7 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp)
             "      \"data\": x.xxx,     (string, required) The key is hex encoded data, the numeric value (can be string) is the " + CURRENCY_UNIT + " amount\n"
             "      ...\n"
             "    }\n"
-            "3. \"anon-destination\"    (string, optional) Encrypted destination address if you're sending a NAVtech transaction \n"
+            "3. \"strdzeel\"            (string, optional) Attached string metadata \n"
             "4. \"index\"               (numeric, optional, default=-1) If greater than -1, it will only print the raw data of the output or input on the index \"index\"\n"
             "4. \"toggle-input-dump\"   (bool, optional, default=false) Sets whether the input (true) or the output (false) at the index \"index\" is dumped \n"
             "\nResult:\n"
