@@ -117,6 +117,13 @@ bool PublicCoin::isValid() const
         throw std::runtime_error("PublicCoin::isValid(): value is not prime");
     }
 
+    std::vector<CoinDenomination>::const_iterator it;
+
+    it = find (zerocoinDenomList.begin(), zerocoinDenomList.end(), denomination);
+    if(it == zerocoinDenomList.end()){
+        throw std::runtime_error("Denomination does not exist");
+    }
+
     return true;
 }
 
@@ -126,6 +133,13 @@ PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomin
     // Verify that the parameters are valid
     if(!this->params->initialized)
         throw std::runtime_error("PrivateCoin::PrivateCoin(): Params are not initialized");
+
+    std::vector<CoinDenomination>::const_iterator it;
+
+    it = find (zerocoinDenomList.begin(), zerocoinDenomList.end(), denomination);
+    if(it == zerocoinDenomList.end()){
+        throw std::runtime_error("Denomination does not exist");
+    }
 
     CPrivKey shared_secret;
     if(!privKey.ECDHSecret(mintPubKey, shared_secret))
