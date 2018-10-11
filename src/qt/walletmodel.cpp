@@ -19,6 +19,7 @@
 #include "utils/dns_utils.h"
 #include "wallet/wallet.h"
 #include "wallet/walletdb.h" // for BackupWallet
+#include "zerowallet.h"
 
 #include <stdint.h>
 
@@ -237,8 +238,6 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
     QSet<QString> setAddress; // Used to detect duplicates
     int nAddresses = 0;
 
-    QString anondestination;
-
     // Pre-check input data for validity
     Q_FOREACH(const SendCoinsRecipient &rcp, recipients)
     {
@@ -257,7 +256,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
                 const unsigned char* scriptStr = (const unsigned char*)out.script().data();
                 CScript scriptPubKey(scriptStr, scriptStr+out.script().size());
                 CAmount nAmount = out.amount();
-                CRecipient recipient = {scriptPubKey, nAmount, rcp.fSubtractFeeFromAmount};
+                CRecipient recipient = {scriptPubKey, nAmount, rcp.fSubtractFeeFromAmount, ""};
                 vecSend.push_back(recipient);
             }
             if (subtotal <= 0)
@@ -268,7 +267,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
         }
         else
         {   // User-entered navcoin address / amount:
-            if(!validateAddress(rcp.isanon?rcp.destaddress:rcp.address))
+            if(!validateAddress(rcp.address))
             {
                 return InvalidAddress;
             }
@@ -276,17 +275,19 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
             {
                 return InvalidAmount;
             }
-            setAddress.insert(rcp.isanon?rcp.destaddress:rcp.address);
+            setAddress.insert(rcp.address);
             ++nAddresses;
 
-            CScript scriptPubKey = GetScriptForDestination(CNavCoinAddress(rcp.isanon ? rcp.destaddress.toStdString() : rcp.address.toStdString()).Get());
-            CRecipient recipient = {scriptPubKey, !rcp.fSubtractFeeFromAmount && rcp.isanon ? rcp.amount + rcp.anonfee: rcp.amount, rcp.fSubtractFeeFromAmount, rcp.anondestination.toStdString()};
-            vecSend.push_back(recipient);
+            vector<CRecipient> vecSendTemp;
 
-            if(rcp.isanon)
-                anondestination = rcp.anondestination;
+            // Parse NavCoin address
+            if (!DestinationToVecRecipients(rcp.amount, rcp.address.toStdString(), vecSendTemp, rcp.fSubtractFeeFromAmount, false)) {
+                return InvalidAddress;
+            }
 
-            total += !rcp.fSubtractFeeFromAmount && rcp.isanon ? rcp.amount + rcp.anonfee: rcp.amount;
+            vecSend.insert(vecSend.end(), vecSendTemp.begin(), vecSendTemp.end());
+
+            total += rcp.amount;
         }
     }
     if(setAddress.size() != nAddresses)
@@ -305,11 +306,8 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
 
     int i = 0;
 
-    Q_FOREACH(const CRecipient &rcp, vecSend)
     {
         LOCK2(cs_main, wallet->cs_wallet);
-        std::vector<CRecipient> vec;
-        vec.push_back(rcp);
         transaction.newPossibleKeyChange(wallet);
 
         CAmount nFeeRequired = 0;
@@ -318,13 +316,11 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
         bool fCreated;
         CReserveKey *keyChange = transaction.getPossibleKeyChange();
 
-        CWalletTx *newTx;
-        newTx = new CWalletTx();
+        CWalletTx* newTx = transaction.getTransaction();
 
-        fCreated = wallet->CreateTransaction(vec, *newTx, *keyChange, nFeeRequired, nChangePosRet, strFailReason, coinControl, true, rcp.strDZeel);
+        fCreated = wallet->CreateTransaction(vecSend, *newTx, *keyChange, nFeeRequired, nChangePosRet, strFailReason, coinControl, true, "");
         if (newTx->fSpendsColdStaking)
             transaction.fSpendsColdStaking = true;
-        transaction.vTransactions.push_back(*newTx);
 
         transaction.setTransactionFee(nFeeRequired);
         if (fSubtractFeeFromAmount && fCreated)
@@ -357,56 +353,37 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
 {
     QByteArray transaction_array; /* store serialized transaction */
 
+
     {
         LOCK2(cs_main, wallet->cs_wallet);
+        CWalletTx* newTx = transaction.getTransaction();
+        QList<SendCoinsRecipient> recipients = transaction.getRecipients();
 
-        Q_FOREACH(const CRecipient &rcp, transaction.vecSend)
-        {
-
-          Q_FOREACH(const CWalletTx newTx, transaction.vTransactions)
-          {
-
-            Q_FOREACH(const SendCoinsRecipient &rcp, transaction.getRecipients())
-            {
-              if (rcp.paymentRequest.IsInitialized())
-              {
-                // Make sure any payment requests involved are still valid.
-                if (PaymentServer::verifyExpired(rcp.paymentRequest.getDetails())) {
-                  return PaymentRequestExpired;
-                }
-
-                // Store PaymentRequests in wtx.vOrderForm in wallet.
+        // Store PaymentRequests in wtx.vOrderForm in wallet.
+        Q_FOREACH(const SendCoinsRecipient& rcp, recipients) {
+            if (rcp.paymentRequest.IsInitialized()) {
                 std::string key("PaymentRequest");
                 std::string value;
                 rcp.paymentRequest.SerializeToString(&value);
-                const_cast<CWalletTx&>(newTx).vOrderForm.push_back(make_pair(key, value));
-              }
-              else if (!rcp.message.isEmpty()) // Message from normal navcoin:URI (navcoin:123...?message=example)
-                const_cast<CWalletTx&>(newTx).vOrderForm.push_back(make_pair("Message", rcp.message.toStdString()));
+                newTx->vOrderForm.push_back(make_pair(key, value));
+            } else if (!rcp.message.isEmpty())  // Message from normal navcoin:URI (navcoin:123...?message=example)
+            {
+                newTx->vOrderForm.push_back(make_pair("Message", rcp.message.toStdString()));
             }
-          }
-
-          CAmount nFeeRequired = 0;
-          int nChangePosRet = -1;
-          std::string strFailReason;
-          CReserveKey *keyChange = transaction.getPossibleKeyChange();
-
-          CWalletTx *wTx;
-          wTx = new CWalletTx();
-
-          std::vector<CRecipient> vec;
-          vec.push_back(rcp);
-
-          wallet->CreateTransaction(vec, *wTx, *keyChange, nFeeRequired, nChangePosRet, strFailReason, coinControl, true, rcp.strDZeel);
-
-          if(!wallet->CommitTransaction(*wTx, *keyChange))
-            return TransactionCommitFailed;
-
-          CTransaction* t = (CTransaction*)wTx;
-          CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
-          ssTx << *t;
-          transaction_array.append(&(ssTx[0]), ssTx.size());
         }
+
+        CAmount nFeeRequired = 0;
+        int nChangePosRet = -1;
+        std::string strFailReason;
+        CReserveKey *keyChange = transaction.getPossibleKeyChange();
+
+        if(!wallet->CommitTransaction(*newTx, *keyChange))
+          return TransactionCommitFailed;
+
+        CTransaction* t = (CTransaction*)newTx;
+        CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
+        ssTx << *t;
+        transaction_array.append(&(ssTx[0]), ssTx.size());
     }
 
     // Add addresses / update labels that we've sent to to the address book,
