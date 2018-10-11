@@ -47,6 +47,10 @@ public:
         return lhsBN < rhsBN;
     }
 
+    bool operator==(const CPrivateAddress& rhs) const {
+        return this->bc == rhs.bc && this->zpk == rhs.zpk;
+    }
+
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
         READWRITE(bc);
