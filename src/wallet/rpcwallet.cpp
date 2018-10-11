@@ -23,6 +23,7 @@
 #include "utilmoneystr.h"
 #include "wallet.h"
 #include "walletdb.h"
+#include "zerowallet.h"
 
 #include <stdint.h>
 
@@ -400,21 +401,19 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
 
     CScript CFContributionScript;
+    vector<CRecipient> vecSend;
 
     // Parse NavCoin address
-    CScript scriptPubKey = GetScriptForDestination(address);
-
-    if(donate)
-      CFund::SetScriptForCommunityFundContribution(scriptPubKey);
+    if (!DestinationToVecRecipients(nValue, address, vecSend, fSubtractFeeFromAmount, donate)) {
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error: Could not construct the vector of recipients!");
+    }
 
     // Create and send the transaction
     CReserveKey reservekey(pwalletMain);
     CAmount nFeeRequired;
     std::string strError;
-    vector<CRecipient> vecSend;
     int nChangePosRet = -1;
-    CRecipient recipient = {scriptPubKey, nValue, fSubtractFeeFromAmount, ""};
-    vecSend.push_back(recipient);
+
     if (!pwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, NULL, true, strDZeel)) {
         if (!fSubtractFeeFromAmount && nValue + nFeeRequired > pwalletMain->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));

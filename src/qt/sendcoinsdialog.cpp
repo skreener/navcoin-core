@@ -263,7 +263,6 @@ void SendCoinsDialog::on_sendButton_clicked()
 
 
     CAmount txFee = currentTransaction.getTransactionFee();
-    CAmount anonfee;
     CAmount nTotalAmount = 0;
 
     QString questionString = tr("Are you sure you want to send?");
@@ -271,8 +270,6 @@ void SendCoinsDialog::on_sendButton_clicked()
     Q_FOREACH(const SendCoinsRecipient &rcp, currentTransaction.getRecipients())
     {
       nTotalAmount += rcp.amount;
-      if(rcp.fSubtractFeeFromAmount && rcp.isanon)
-        nTotalAmount -= rcp.anonfee;
     }
 
     // Format confirmation message
@@ -313,25 +310,16 @@ void SendCoinsDialog::on_sendButton_clicked()
 
         questionString.append("<br /><br />%1");
 
-        anonfee = rcp.isanon && !rcp.fSubtractFeeFromAmount ? rcp.anonfee : 0;
-
-        if(txFee + anonfee > 0)
+        if(txFee > 0)
         {
             // append fee string if a fee is required
             questionString.append("<hr /><span style='color:#aa0000;'>");
-            questionString.append(NavCoinUnits::formatHtmlWithUnit(model->getOptionsModel()->getDisplayUnit(), txFee + anonfee));
+            questionString.append(NavCoinUnits::formatHtmlWithUnit(model->getOptionsModel()->getDisplayUnit(), txFee));
             questionString.append("</span> ");
             questionString.append(tr("added as transaction fee"));
 
-
             // append transaction size
             questionString.append(" (" + QString::number((double)currentTransaction.getTransactionSize() / 1000) + " kB)");
-
-            if(rcp.fSubtractFeeFromAmount && anonfee > 0)
-            {
-                questionString.append("<br>" + tr("The following fee will be deducted") + ":");
-                questionString.append(NavCoinUnits::formatHtmlWithUnit(model->getOptionsModel()->getDisplayUnit(), anonfee));
-            }
 
         }
 
@@ -341,7 +329,7 @@ void SendCoinsDialog::on_sendButton_clicked()
 
     // add total amount in all subdivision units
     questionString.append("<hr />");
-    CAmount totalAmount = currentTransaction.getTotalTransactionAmount() + txFee + anonfee;
+    CAmount totalAmount = currentTransaction.getTotalTransactionAmount() + txFee;
     QStringList alternativeUnits;
     Q_FOREACH(NavCoinUnits::Unit u, NavCoinUnits::availableUnits())
     {

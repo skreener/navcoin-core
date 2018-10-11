@@ -15,7 +15,7 @@ WalletModelTransaction::WalletModelTransaction(const QList<SendCoinsRecipient> &
     fee(0),
     fSpendsColdStaking(false)
 {
-
+    walletTransaction = new CWalletTx();
 }
 
 WalletModelTransaction::~WalletModelTransaction()
