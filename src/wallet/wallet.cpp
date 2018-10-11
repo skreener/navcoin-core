@@ -18,7 +18,6 @@
 #include "keystore.h"
 #include "main.h"
 #include "net.h"
-#include "navtech.h"
 #include "policy/policy.h"
 #include "primitives/block.h"
 #include "primitives/transaction.h"
@@ -1513,12 +1512,14 @@ void CWallet::SyncTransaction(const CTransaction& tx, const CBlockIndex *pindex,
                     LogPrintf("SyncTransaction : Warning: Could not find %s in wallet. Trying to refund someone else's tx?", tx.hash.ToString());
                 }
 
-                LogPrintf("SyncTransaction : Refunding inputs of orphan tx %s\n",tx.hash.ToString());
+                if(!tx.IsZerocoinSpend()) {
+                    LogPrintf("SyncTransaction : Refunding inputs of orphan tx %s\n",tx.hash.ToString());
 
-                BOOST_FOREACH(const CTxIn& txin, tx.vin)
-                {
-                    if (mapWallet.count(txin.prevout.hash))
-                        mapWallet[txin.prevout.hash].MarkDirty();
+                    BOOST_FOREACH(const CTxIn& txin, tx.vin)
+                    {
+                        if (mapWallet.count(txin.prevout.hash))
+                            mapWallet[txin.prevout.hash].MarkDirty();
+                    }
                 }
             }
         }
@@ -1533,7 +1534,7 @@ void CWallet::SyncTransaction(const CTransaction& tx, const CBlockIndex *pindex,
     // available of the outputs it spends. So force those to be
     // recomputed, also:
 
-    if(isMine == true)
+    if(isMine == true && !tx.IsZerocoinSpend())
     {
         BOOST_FOREACH(const CTxIn& txin, tx.vin)
         {
@@ -1542,7 +1543,7 @@ void CWallet::SyncTransaction(const CTransaction& tx, const CBlockIndex *pindex,
         }
     }
 
-    if (!fConnect && tx.IsCoinStake() && IsFromMe(tx))
+    if (!fConnect && tx.IsCoinStake() && IsFromMe(tx) && !tx.IsZerocoinSpend())
     {
         AbandonTransaction(tx.hash);
         LogPrintf("SyncTransaction : Removing tx %s from mapTxSpends\n",tx.hash.ToString());
@@ -2729,7 +2730,6 @@ bool CWallet::FundTransaction(CMutableTransaction& tx, CAmount& nFeeRet, bool ov
 bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
                                 int& nChangePosInOut, std::string& strFailReason, const CCoinControl* coinControl, bool sign, std::string strDZeel)
 {
-    Navtech navtech;
     CAmount nValue = 0;
     int nChangePosRequest = nChangePosInOut;
     unsigned int nSubtractFeeFromAmount = 0;
@@ -2763,10 +2763,10 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
     txNew.strDZeel = (wtxNew.strDZeel != "" ? wtxNew.strDZeel : strDZeel).length() > 0 ?
                 (wtxNew.strDZeel != "" ? wtxNew.strDZeel : strDZeel) :
-                navtech.EncryptAddress(std::to_string(GetAdjustedTime() + (rand() % 1<<8)),sPubKey);
+                "";
 
-    if (strDZeel.length() > 0)
-      wtxNew.fAnon = true;
+//    if (strDZeel.length() > 0)
+//      wtxNew.fAnon = true;
 
     if (strDZeel.length() > 512)
       txNew.strDZeel.resize(512);
