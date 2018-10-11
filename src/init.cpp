@@ -1610,6 +1610,9 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                               MIN_BLOCKS_TO_KEEP);
                 }
 
+                bool fReindexSupply = false;
+
+
                 {
                     LOCK(cs_main);
                     CBlockIndex* tip = chainActive.Tip();
@@ -1619,29 +1622,34 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                                          "Only rebuild the block database if you are sure that your computer's date and time are correct");
                         break;
                     }
-                }
 
-                bool fReindexSupply = false;
+                    CBlockIndex* firstBlock = chainActive[1];
 
-                if(chainActive.Tip()->GetBlockHash() != chainparams.GetConsensus().hashGenesisBlock && chainActive[1]->nMoneySupply == 0)
-                {
-                    LogPrintf("Reindexing money supply...\n");
-                    fReindexSupply = true;
-                }
-
-                int nFirstZeroHeight = 0;
-                pblocktree->ReadFirstZeroCoinBlock(nFirstZeroHeight);
-
-                if(nFirstZeroHeight != 0 && ((chainActive[nFirstZeroHeight]->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) != VERSIONBITS_TOP_BITS_ZEROCOIN
-                                             || (chainActive[nFirstZeroHeight-1]->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)) {
-                    CBlockIndex* pindex = chainActive[0];
-                    while (pindex) {
-                        if ((pindex->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
-                            break;
-                        pindex = chainActive.Next(pindex);
+                    if(tip && tip->GetBlockHash() != chainparams.GetConsensus().hashGenesisBlock
+                            && firstBlock != NULL && firstBlock->nMoneySupply == 0)
+                    {
+                        LogPrintf("Reindexing money supply...\n");
+                        fReindexSupply = true;
                     }
-                    pblocktree->WriteFirstZeroCoinBlock(pindex ? pindex->nHeight : 0);
-                    LogPrintf("First zerocoin block ammended to %d\n", pindex ? pindex->nHeight : 0);
+
+                    int nFirstZeroHeight = 0;
+                    pblocktree->ReadFirstZeroCoinBlock(nFirstZeroHeight);
+
+                    CBlockIndex* firstZeroBlock = chainActive[nFirstZeroHeight];
+                    CBlockIndex* prevZeroBlock = chainActive[nFirstZeroHeight];
+
+                    if(nFirstZeroHeight != 0
+                            && ((firstZeroBlock && (firstZeroBlock->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) != VERSIONBITS_TOP_BITS_ZEROCOIN)
+                             || (prevZeroBlock && (prevZeroBlock->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN))) {
+                        CBlockIndex* pindex = chainActive.Genesis();
+                        while (pindex) {
+                            if ((pindex->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
+                                break;
+                            pindex = chainActive.Next(pindex);
+                        }
+                        pblocktree->WriteFirstZeroCoinBlock(pindex ? pindex->nHeight : 0);
+                        LogPrintf("First zerocoin block ammended to %d\n", pindex ? pindex->nHeight : 0);
+                    }
                 }
 
                 if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, fReindexSupply ? 4 : GetArg("-checklevel", DEFAULT_CHECKLEVEL),
