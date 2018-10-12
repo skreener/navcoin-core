@@ -628,7 +628,7 @@ UniValue getstakesubsidy(const UniValue& params, bool fHelp)
     }
 
     uint64_t nCoinAge;
-    if (!TransactionGetCoinAge(tx, nCoinAge))
+    if (!TransactionGetCoinAge(tx, nCoinAge, pcoinsTip))
         throw JSONRPCError(RPC_MISC_ERROR, "GetCoinAge failed");
 
     return (uint64_t)GetProofOfStakeReward(pindexBestHeader->nHeight, nCoinAge, 0, pindexBestHeader);
