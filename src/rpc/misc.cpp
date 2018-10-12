@@ -90,7 +90,10 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     if (pwalletMain) {
         obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
         obj.push_back(Pair("balance",       ValueFromAmount(pwalletMain->GetBalance())));
-        obj.push_back(Pair("coldstaking_balance",       ValueFromAmount(pwalletMain->GetColdStakingBalance())));
+        obj.push_back(Pair("private_balance",
+                                            ValueFromAmount(pwalletMain->GetPrivateBalance())));
+        obj.push_back(Pair("coldstaking_balance",
+                                            ValueFromAmount(pwalletMain->GetColdStakingBalance())));
         obj.push_back(Pair("newmint",       ValueFromAmount(pwalletMain->GetNewMint())));
         obj.push_back(Pair("stake",         ValueFromAmount(pwalletMain->GetStake())));
     }
@@ -271,19 +274,25 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
             ret.push_back(Pair("stakingaddress", stakingAddress.ToString()));
             ret.push_back(Pair("spendingaddress", spendingAddress.ToString()));
         }
-        ret.push_back(Pair("ismine", (mine & ISMINE_SPENDABLE) ? true : false));
-        ret.push_back(Pair("isstakable", (mine & ISMINE_STAKABLE || (mine & ISMINE_SPENDABLE &&
-                     !address.IsColdStakingAddress(Params()))) ? true : false));
-        ret.push_back(Pair("iswatchonly", (mine & ISMINE_WATCH_ONLY) ? true: false));
-        UniValue detail = boost::apply_visitor(DescribeAddressVisitor(), dest);
-        ret.pushKVs(detail);
-        if (pwalletMain && pwalletMain->mapAddressBook.count(dest))
-            ret.push_back(Pair("account", pwalletMain->mapAddressBook[dest].name));
-        CKeyID keyID;
-        if (pwalletMain && address.GetKeyID(keyID) && pwalletMain->mapKeyMetadata.count(keyID) && !pwalletMain->mapKeyMetadata[keyID].hdKeypath.empty())
-        {
-            ret.push_back(Pair("hdkeypath", pwalletMain->mapKeyMetadata[keyID].hdKeypath));
-            ret.push_back(Pair("hdmasterkeyid", pwalletMain->mapKeyMetadata[keyID].hdMasterKeyID.GetHex()));
+        if (address.IsPrivateAddress(Params())) {
+            ret.push_back(Pair("isprivateaddress", true));
+            libzerocoin::CPrivateAddress pa(&Params().GetConsensus().Zerocoin_Params,pwalletMain->blindingCommitment,pwalletMain->zerokey);
+            ret.push_back(Pair("ismine", CNavCoinAddress(pa) == address ? true :false));
+        } else {
+            ret.push_back(Pair("ismine", (mine & ISMINE_SPENDABLE) ? true : false));
+            ret.push_back(Pair("isstakable", (mine & ISMINE_STAKABLE || (mine & ISMINE_SPENDABLE &&
+                                                                         !address.IsColdStakingAddress(Params()))) ? true : false));
+            ret.push_back(Pair("iswatchonly", (mine & ISMINE_WATCH_ONLY) ? true: false));
+            UniValue detail = boost::apply_visitor(DescribeAddressVisitor(), dest);
+            ret.pushKVs(detail);
+            if (pwalletMain && pwalletMain->mapAddressBook.count(dest))
+                ret.push_back(Pair("account", pwalletMain->mapAddressBook[dest].name));
+            CKeyID keyID;
+            if (pwalletMain && address.GetKeyID(keyID) && pwalletMain->mapKeyMetadata.count(keyID) && !pwalletMain->mapKeyMetadata[keyID].hdKeypath.empty())
+            {
+                ret.push_back(Pair("hdkeypath", pwalletMain->mapKeyMetadata[keyID].hdKeypath));
+                ret.push_back(Pair("hdmasterkeyid", pwalletMain->mapKeyMetadata[keyID].hdMasterKeyID.GetHex()));
+            }
         }
 #endif
     }

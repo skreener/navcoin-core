@@ -250,6 +250,8 @@ public:
     mutable bool fWatchCreditCached;
     mutable bool fColdStakingCreditCached;
     mutable bool fColdStakingDebitCached;
+    mutable bool fPrivateCreditCached;
+    mutable bool fPrivateDebitCached;
     mutable bool fImmatureWatchCreditCached;
     mutable bool fAvailableWatchCreditCached;
     mutable bool fChangeCached;
@@ -262,6 +264,8 @@ public:
     mutable CAmount nWatchCreditCached;
     mutable CAmount nColdStakingCreditCached;
     mutable CAmount nColdStakingDebitCached;
+    mutable CAmount nPrivateCreditCached;
+    mutable CAmount nPrivateDebitCached;
     mutable CAmount nImmatureWatchCreditCached;
     mutable CAmount nAvailableWatchCreditCached;
     mutable CAmount nChangeCached;
@@ -308,6 +312,8 @@ public:
         fWatchCreditCached = false;
         fColdStakingCreditCached = false;
         fColdStakingDebitCached = false;
+        fPrivateCreditCached = false;
+        fPrivateDebitCached = false;
         fImmatureWatchCreditCached = false;
         fAvailableWatchCreditCached = false;
         fSpendsColdStaking = false;
@@ -320,6 +326,8 @@ public:
         nAvailableCreditCached = 0;
         nColdStakingCreditCached = 0;
         nColdStakingDebitCached = 0;
+        nPrivateCreditCached = 0;
+        nPrivateDebitCached = 0;
         nWatchDebitCached = 0;
         nWatchCreditCached = 0;
         nAvailableWatchCreditCached = 0;
@@ -453,6 +461,7 @@ public:
     CAmount GetImmatureCredit(bool fUseCache=true) const;
     CAmount GetAvailableCredit(bool fUseCache=true) const;
     CAmount GetAvailableStakableCredit() const;
+    CAmount GetAvailablePrivateCredit() const;
     CAmount GetImmatureWatchOnlyCredit(const bool& fUseCache=true) const;
     CAmount GetAvailableWatchOnlyCredit(const bool& fUseCache=true) const;
     CAmount GetChange() const;
@@ -843,6 +852,7 @@ public:
     std::vector<uint256> ResendWalletTransactionsBefore(int64_t nTime);
     CAmount GetBalance() const;
     CAmount GetColdStakingBalance() const;
+    CAmount GetPrivateBalance() const;
     CAmount GetUnconfirmedBalance() const;
     CAmount GetImmatureBalance() const;
     CAmount GetWatchOnlyBalance() const;

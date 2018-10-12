@@ -1574,13 +1574,17 @@ CAmount CWallet::GetDebit(const CTxIn &txin, const isminefilter& filter) const
 {
     {
         LOCK(cs_wallet);
-        map<uint256, CWalletTx>::const_iterator mi = mapWallet.find(txin.prevout.hash);
-        if (mi != mapWallet.end())
-        {
-            const CWalletTx& prev = (*mi).second;
-            if (txin.prevout.n < prev.vout.size())
-                if (IsMine(prev.vout[txin.prevout.n]) & filter)
-                    return prev.vout[txin.prevout.n].nValue;
+        if(txin.scriptSig.IsZerocoinSpend()) {
+            // If serial number public key is ours... return the value of the input
+        } else {
+            map<uint256, CWalletTx>::const_iterator mi = mapWallet.find(txin.prevout.hash);
+            if (mi != mapWallet.end())
+            {
+                const CWalletTx& prev = (*mi).second;
+                if (txin.prevout.n < prev.vout.size())
+                    if (IsMine(prev.vout[txin.prevout.n]) & filter)
+                        return prev.vout[txin.prevout.n].nValue;
+            }
         }
     }
     return 0;
@@ -2046,6 +2050,17 @@ CAmount CWalletTx::GetDebit(const isminefilter& filter) const
             debit += nColdStakingDebitCached;
         }
     }
+    if (filter & ISMINE_SPENDABLE_PRIVATE)
+    {
+        if (fPrivateDebitCached)
+            debit += nPrivateDebitCached;
+        else
+        {
+            nPrivateDebitCached = pwallet->GetDebit(*this, ISMINE_SPENDABLE_PRIVATE);
+            fPrivateDebitCached = true;
+            debit += nPrivateDebitCached;
+        }
+    }
     return debit;
 }
 
@@ -2088,6 +2103,17 @@ CAmount CWalletTx::GetCredit(const isminefilter& filter) const
             nColdStakingCreditCached = pwallet->GetCredit(*this, ISMINE_STAKABLE);
             fColdStakingCreditCached = true;
             credit += nColdStakingCreditCached;
+        }
+    }
+    if (filter & ISMINE_SPENDABLE_PRIVATE)
+    {
+        if (fPrivateCreditCached)
+            credit += nPrivateCreditCached;
+        else
+        {
+            nPrivateCreditCached = pwallet->GetCredit(*this, ISMINE_SPENDABLE_PRIVATE);
+            fPrivateCreditCached = true;
+            credit += nPrivateCreditCached;
         }
     }
     return credit;
@@ -2154,6 +2180,31 @@ CAmount CWalletTx::GetAvailableStakableCredit() const
         {
             const CTxOut &txout = vout[i];
             nCredit += pwallet->GetCredit(txout, ISMINE_STAKABLE);
+            if (!MoneyRange(nCredit))
+                throw std::runtime_error("CWalletTx::GetAvailableCredit() : value out of range");
+        }
+    }
+
+    return nCredit;
+}
+
+CAmount CWalletTx::GetAvailablePrivateCredit() const
+{
+    if (pwallet == 0)
+        return 0;
+
+    // Must wait until coinbase is safely deep enough in the chain before valuing it
+    if ((IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0)
+        return 0;
+
+    CAmount nCredit = 0;
+    uint256 hashTx = GetHash();
+    for (unsigned int i = 0; i < vout.size(); i++)
+    {
+        if (!pwallet->IsSpent(hashTx, i))
+        {
+            const CTxOut &txout = vout[i];
+            nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE_PRIVATE);
             if (!MoneyRange(nCredit))
                 throw std::runtime_error("CWalletTx::GetAvailableCredit() : value out of range");
         }
@@ -2347,6 +2398,23 @@ CAmount CWallet::GetColdStakingBalance() const
             const CWalletTx* pcoin = &(*it).second;
             if (pcoin->IsTrusted())
                 nTotal += pcoin->GetAvailableStakableCredit();
+        }
+    }
+
+    return nTotal;
+}
+
+
+CAmount CWallet::GetPrivateBalance() const
+{
+    CAmount nTotal = 0;
+    {
+        LOCK2(cs_main, cs_wallet);
+        for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+        {
+            const CWalletTx* pcoin = &(*it).second;
+            if (pcoin->IsTrusted())
+                nTotal += pcoin->GetAvailablePrivateCredit();
         }
     }
 
