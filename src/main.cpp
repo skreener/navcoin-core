@@ -2472,9 +2472,12 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
         }
     }
 
-
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
+
+    if (!pblocktree->UpdateCoinMintIndex(vZeroMints)){
+        return AbortNode(state, "Failed to write zerocoin mint index");
+    }
 
     if (pfClean) {
         *pfClean = fClean;
@@ -2488,10 +2491,6 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
         if (!pblocktree->UpdateAddressUnspentIndex(addressUnspentIndex)) {
             return AbortNode(state, "Failed to write address unspent index");
         }
-    }
-
-    if (!pblocktree->UpdateCoinMintIndex(vZeroMints)){
-        return AbortNode(state, "Failed to write zerocoin mint index");
     }
 
     return fClean;
@@ -3324,7 +3323,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     }
 
     if (!pblocktree->UpdateCoinMintIndex(vZeroMints))
-        return AbortNode("Failed to write new zerocoin mints to index");
+        return AbortNode(state, "Failed to write new zerocoin mints to index");
 
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
