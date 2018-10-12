@@ -4,6 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "chainparams.h"
 #include "script/standard.h"
 #include "libzerocoin/Keys.h"
 #include "pubkey.h"
@@ -41,6 +42,7 @@ const char* GetTxnOutputType(txnouttype t)
     case TX_WITNESS_V0_KEYHASH: return "witness_v0_keyhash";
     case TX_WITNESS_V0_SCRIPTHASH: return "witness_v0_scripthash";
     case TX_COLDSTAKING: return "cold_staking";
+    case TX_ZEROCOIN: return "private_transaction";
     }
     return NULL;
 }
@@ -65,6 +67,19 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
     }
 
     vSolutionsRet.clear();
+
+    if (scriptPubKey.IsZerocoinMint())
+    {
+        typeRet = TX_ZEROCOIN;
+        CPubKey p;
+        vector<unsigned char> c;
+        if(!scriptPubKey.ExtractZerocoinMintData(p, c))
+            return false;
+        vector<unsigned char> vp(p.begin(), p.end());
+        vSolutionsRet.push_back(vp);
+        vSolutionsRet.push_back(c);
+        return true;
+    }
 
     // Shortcut for pay-to-script-hash, which are more constrained than the other types:
     // it is always OP_HASH160 20 [20 byte hash] OP_EQUAL
@@ -267,6 +282,10 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
     {
         addressRet = make_pair(CKeyID(uint160(vSolutions[0])), CKeyID(uint160(vSolutions[1])));
         return true;
+    }
+    else if (whichType == TX_ZEROCOIN)
+    {
+        return false;
     }
     // Multisig txns have more than one address...
     return false;

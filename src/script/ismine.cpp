@@ -5,11 +5,13 @@
 
 #include "ismine.h"
 
+#include "chainparams.h"
 #include "key.h"
 #include "keystore.h"
 #include "script/script.h"
 #include "script/standard.h"
 #include "script/sign.h"
+#include "wallet/wallet.h"
 
 #include <boost/foreach.hpp>
 
@@ -75,6 +77,14 @@ isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
         if (keystore.HaveKey(keyID))
             return ISMINE_STAKABLE;
         break;
+    case TX_ZEROCOIN:
+    {
+        CPubKey p(vSolutions[0]); CBigNum c(vSolutions[1]);
+        libzerocoin::PrivateCoin pc(&Params().GetConsensus().Zerocoin_Params, libzerocoin::IntToZerocoinDenomination(1), pwalletMain->zerokey, p, pwalletMain->blindingCommitment, c);
+        if(pc.isValid())
+            return ISMINE_SPENDABLE_PRIVATE;
+        break;
+    }
     case TX_SCRIPTHASH:
     {
         CScriptID scriptID = CScriptID(uint160(vSolutions[0]));

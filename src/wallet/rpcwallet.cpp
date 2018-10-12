@@ -1728,7 +1728,8 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
                 entry.push_back(Pair("canStake", (::IsMine(*pwalletMain, r.destination) & ISMINE_STAKABLE ||
                                                   (::IsMine(*pwalletMain, r.destination) & ISMINE_SPENDABLE &&
                                                    !CNavCoinAddress(r.destination).IsColdStakingAddress(Params()))) ? true : false));
-                entry.push_back(Pair("canSpend", (::IsMine(*pwalletMain, r.destination) & ISMINE_SPENDABLE) ? true : false));
+                entry.push_back(Pair("canSpend", (::IsMine(*pwalletMain, r.destination) & ISMINE_SPENDABLE ||
+                                                  ::IsMine(*pwalletMain, r.destination) & ISMINE_SPENDABLE_PRIVATE) ? true : false));
                 if (pwalletMain->mapAddressBook.count(r.destination))
                     entry.push_back(Pair("label", account));
                 entry.push_back(Pair("vout", r.vout));
@@ -1835,7 +1836,7 @@ UniValue listtransactions(const UniValue& params, bool fHelp)
     int nFrom = 0;
     if (params.size() > 2)
         nFrom = params[2].get_int();
-    isminefilter filter = ISMINE_SPENDABLE | ISMINE_STAKABLE;
+    isminefilter filter = ISMINE_SPENDABLE | ISMINE_STAKABLE | ISMINE_SPENDABLE_PRIVATE;
     if(params.size() > 3)
         if(params[3].get_bool())
             filter = filter | ISMINE_WATCH_ONLY;
@@ -2652,6 +2653,8 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
     obj.push_back(Pair("balance",       ValueFromAmount(pwalletMain->GetBalance())));
+    obj.push_back(Pair("private_balance",
+                                        ValueFromAmount(pwalletMain->GetPrivateBalance())));
     obj.push_back(Pair("coldstaking_balance",       ValueFromAmount(pwalletMain->GetColdStakingBalance())));
     obj.push_back(Pair("unconfirmed_balance", ValueFromAmount(pwalletMain->GetUnconfirmedBalance())));
     obj.push_back(Pair("immature_balance",    ValueFromAmount(pwalletMain->GetImmatureBalance())));
