@@ -1652,7 +1652,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                     }
                 }
 
-                if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, fReindexSupply ? 4 : GetArg("-checklevel", DEFAULT_CHECKLEVEL),
+                if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, 4,
                                           fReindexSupply ? 0 : GetArg("-checkblocks", DEFAULT_CHECKBLOCKS))) {
                     strLoadError = _("Corrupted block database detected");
                     break;
