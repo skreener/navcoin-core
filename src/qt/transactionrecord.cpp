@@ -95,7 +95,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     sub.credit = nNet > 0 ? nNet : wtx.GetValueOut() - nDebit - wtx.GetValueOutCFund();
                     hashPrev = hash;
                 }
-                if(wtx.fAnon)
+                if(wtx.fAnon || txout.scriptPubKey.IsZerocoinMint())
                 {
                     sub.type = TransactionRecord::AnonTx;
                 }
@@ -172,7 +172,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     sub.address = mapValue["to"];
                 }
 
-                if(wtx.fAnon)
+                if(txout.scriptPubKey.IsZerocoinMint())
                 {
                     sub.type = TransactionRecord::AnonTx;
                 }
