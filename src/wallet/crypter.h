@@ -123,6 +123,7 @@ class CCryptoKeyStore : public CBasicKeyStore
 {
 private:
     CryptedKeyMap mapCryptedKeys;
+    CryptedZeroCoinAddressParameters zcCryptedParameters;
 
     CKeyingMaterial vMasterKey;
 
@@ -138,6 +139,9 @@ protected:
 
     //! will encrypt previously unencrypted keys
     bool EncryptKeys(CKeyingMaterial& vMasterKeyIn);
+
+    //! will encrypt previously unencrypted zerocoin parameters
+    bool EncryptZeroParameters(CKeyingMaterial& vMasterKeyIn);
 
     bool Unlock(const CKeyingMaterial& vMasterKeyIn);
 
@@ -193,6 +197,18 @@ public:
             setAddress.insert((*mi).first);
             mi++;
         }
+    }
+    bool GetObfuscationJ(CBigNum& oj) const;
+    bool GetObfuscationK(CBigNum& ok) const;
+    bool GetCryptedObfuscationJ(std::vector<unsigned char>& oj) const;
+    bool GetCryptedObfuscationK(std::vector<unsigned char>& ok) const;
+    bool SetObfuscationJ(const CBigNum& oj);
+    bool SetObfuscationK(const CBigNum& ok);
+    bool SetCryptedObfuscationJ(const std::vector<unsigned char>& oj);
+    bool SetCryptedObfuscationK(const std::vector<unsigned char>& ok);
+    bool IsObfuscationSet() const {
+        return (zcParameters.obfuscationJ != CBigNum() || !zcCryptedParameters.obfuscationJ.empty()) &&
+                (zcParameters.obfuscationK != CBigNum() || !zcCryptedParameters.obfuscationK.empty());
     }
 
     /**
