@@ -162,6 +162,7 @@ bool CCryptoKeyStore::Lock()
     {
         LOCK(cs_KeyStore);
         vMasterKey.clear();
+        zcParameters.SetToZero();
     }
 
     NotifyStatusChanged(this);
@@ -298,5 +299,165 @@ bool CCryptoKeyStore::EncryptKeys(CKeyingMaterial& vMasterKeyIn)
         }
         mapKeys.clear();
     }
+    return true;
+}
+
+bool CCryptoKeyStore::EncryptZeroParameters(CKeyingMaterial& vMasterKeyIn)
+{
+    {
+        LOCK(cs_KeyStore);
+        if (!zcCryptedParameters.obfuscationJ.empty() || !zcCryptedParameters.obfuscationK.empty())
+            return false;
+
+        fUseCrypto = true;
+        std::vector<unsigned char> vchJ = zcParameters.obfuscationJ.getvch();
+        CKeyingMaterial vchSecretJ(vchJ.begin(), vchJ.end());
+        std::vector<unsigned char> vchCryptedSecretJ;
+        if (!EncryptSecret(vMasterKeyIn, vchSecretJ, uint256(), vchCryptedSecretJ))
+            return false;
+        std::vector<unsigned char> vchK = zcParameters.obfuscationK.getvch();
+        CKeyingMaterial vchSecretK(vchK.begin(), vchK.end());
+        std::vector<unsigned char> vchCryptedSecretK;
+        if (!EncryptSecret(vMasterKeyIn, vchSecretK, uint256(), vchCryptedSecretK))
+            return false;
+
+        zcCryptedParameters.obfuscationJ = vchCryptedSecretJ;
+        zcCryptedParameters.obfuscationK = vchCryptedSecretK;
+        zcParameters.SetToZero();
+    }
+    return true;
+}
+
+bool CCryptoKeyStore::GetObfuscationJ(CBigNum& oj) const
+{
+    if(!IsCrypted() || zcCryptedParameters.obfuscationJ.empty())
+        return CBasicKeyStore::GetObfuscationJ(oj);
+
+    CKeyingMaterial vchSecret;
+    {
+        LOCK(cs_KeyStore);
+        if(!DecryptSecret(vMasterKey, zcCryptedParameters.obfuscationJ, uint256(), vchSecret))
+            return false;
+    }
+
+    oj.setvch(std::vector<unsigned char>(vchSecret.begin(), vchSecret.end()));
+    return true;
+}
+
+bool CCryptoKeyStore::GetCryptedObfuscationJ(std::vector<unsigned char>& oj) const
+{
+    if (zcCryptedParameters.obfuscationJ.empty())
+        return false;
+
+    oj = zcCryptedParameters.obfuscationJ;
+
+    return true;
+}
+
+
+bool CCryptoKeyStore::GetObfuscationK(CBigNum& ok) const
+{
+    if (!IsCrypted() || zcCryptedParameters.obfuscationK.empty())
+        return CBasicKeyStore::GetObfuscationK(ok);
+
+    CKeyingMaterial vchSecret;
+    {
+        LOCK(cs_KeyStore);
+        if(!DecryptSecret(vMasterKey, zcCryptedParameters.obfuscationK, uint256(), vchSecret))
+            return false;
+    }
+
+    ok.setvch(std::vector<unsigned char>(vchSecret.begin(), vchSecret.end()));
+    return true;
+}
+
+bool CCryptoKeyStore::GetCryptedObfuscationK(std::vector<unsigned char>& ok) const
+{
+    if (zcCryptedParameters.obfuscationK.empty())
+        return false;
+
+    ok = zcCryptedParameters.obfuscationK;
+
+    return true;
+}
+
+bool CCryptoKeyStore::SetObfuscationJ(const CBigNum& oj)
+{
+    if (!IsCrypted())
+        return CBasicKeyStore::SetObfuscationJ(oj);
+
+    if (!IsLocked())
+        return false;
+
+    if (oj == CBigNum())
+        return false;
+
+    CKeyingMaterial vchSecret(oj.getvch().begin(), oj.getvch().end());
+
+    {
+        LOCK(cs_KeyStore);
+        if (!SetCrypted())
+            return false;
+
+        if (!EncryptSecret(vMasterKey, vchSecret, uint256(), zcCryptedParameters.obfuscationJ))
+            return false;
+    }
+
+    zcParameters.obfuscationJ = CBigNum();
+
+    return true;
+}
+bool CCryptoKeyStore::SetObfuscationK(const CBigNum& ok)
+{
+    if (!IsCrypted())
+        return CBasicKeyStore::SetObfuscationK(ok);
+
+    if (!IsLocked())
+        return false;
+
+    if (ok == CBigNum())
+        return false;
+
+    CKeyingMaterial vchSecret(ok.getvch().begin(), ok.getvch().end());
+
+    {
+        LOCK(cs_KeyStore);
+        if (!SetCrypted())
+            return false;
+
+        if (!EncryptSecret(vMasterKey, vchSecret, uint256(), zcCryptedParameters.obfuscationK))
+            return false;
+    }
+
+    zcParameters.obfuscationK = CBigNum();
+
+    return true;
+}
+
+bool CCryptoKeyStore::SetCryptedObfuscationJ(const std::vector<unsigned char>& oj)
+{
+    if (oj.empty())
+        return false;
+
+    if (!SetCrypted())
+        return false;
+
+    zcCryptedParameters.obfuscationJ = oj;
+    zcParameters.obfuscationJ = CBigNum();
+
+    return true;
+}
+
+bool CCryptoKeyStore::SetCryptedObfuscationK(const std::vector<unsigned char>& ok)
+{
+    if (ok.empty())
+        return false;
+
+    if (!SetCrypted())
+        return false;
+
+    zcCryptedParameters.obfuscationK = ok;
+    zcParameters.obfuscationK = CBigNum();
+
     return true;
 }

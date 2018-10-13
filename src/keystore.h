@@ -66,6 +66,16 @@ struct ZeroCoinAddressParameters {
     CBigNum obfuscationK;
     CBigNum blindingCommitment;
     CKey zerokey;
+    void SetToZero() {
+        obfuscationJ = CBigNum();
+        obfuscationK = CBigNum();
+    }
+};
+struct CryptedZeroCoinAddressParameters {
+    std::vector<unsigned char> obfuscationJ;
+    std::vector<unsigned char> obfuscationK;
+    CBigNum blindingCommitment;
+    CKey zerokey;
 };
 
 /** Basic key store, that keeps keys in an address->secret map */
@@ -148,6 +158,7 @@ public:
     bool GetZeroKey(CKey& zk) const {
         if(!zcParameters.zerokey.IsValid())
             return false;
+
         zk = zcParameters.zerokey;
         return true;
 

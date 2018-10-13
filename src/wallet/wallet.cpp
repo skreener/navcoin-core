@@ -1057,7 +1057,7 @@ bool CWallet::EncryptWallet(const SecureString& strWalletPassphrase)
             pwalletdbEncryption->WriteMasterKey(nMasterKeyMaxID, kMasterKey);
         }
 
-        if (!EncryptKeys(vMasterKey))
+        if (!EncryptKeys(vMasterKey) || !EncryptZeroParameters(vMasterKey))
         {
             if (fFileBacked) {
                 pwalletdbEncryption->TxnAbort();
@@ -1067,6 +1067,11 @@ bool CWallet::EncryptWallet(const SecureString& strWalletPassphrase)
             // die and let the user reload the unencrypted wallet.
             assert(false);
         }
+
+        pwalletdbEncryption->WriteZeroCoinValues(this);
+
+        LogPrintf("Encrypted zerocoin parameters written\n");
+
 
         // Encryption was introduced in version 0.4.0
         SetMinVersion(FEATURE_WALLETCRYPT, pwalletdbEncryption, true);
@@ -3233,7 +3238,7 @@ DBErrors CWallet::LoadWallet(bool& fFirstRunRet, bool& fFirstZeroRunRet)
 
     CBigNum oj; CBigNum ok; CBigNum bc; CKey zk;
 
-    fFirstZeroRunRet = !(GetObfuscationJ(oj) && GetObfuscationK(ok) && GetBlindingCommitment(bc) && GetZeroKey(zk));
+    fFirstZeroRunRet = !(zcParameters.zerokey.IsValid() && zcParameters.blindingCommitment != CBigNum() && IsObfuscationSet());
 
     uiInterface.LoadWallet(this);
 
@@ -3337,15 +3342,18 @@ bool CWallet::DelAddressBook(const CTxDestination& address)
 
 bool CWallet::SetZeroCoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey)
 {
-    if (fFileBacked)
-    {
-        if (!CWalletDB(strWalletFile).WriteZeroCoinValues(obfuscationJ, obfuscationK, blindingCommitment, zerokey))
-            return false;
-    }
-    return this->SetObfuscationJ(obfuscationJ) &&
+    if(!(this->SetObfuscationJ(obfuscationJ) &&
             this->SetObfuscationK(obfuscationK) &&
             this->SetBlindingCommitment(blindingCommitment) &&
-            this->SetZeroKey(zerokey);
+            this->SetZeroKey(zerokey)))
+        return false;
+
+    if (fFileBacked)
+    {
+        if (!CWalletDB(strWalletFile).WriteZeroCoinValues(this))
+            return false;
+    }
+    return true;
 }
 
 bool CWallet::SetDefaultKey(const CPubKey &vchPubKey)

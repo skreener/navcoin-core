@@ -588,7 +588,7 @@ UniValue dumpprivateparameters(const UniValue& params, bool fHelp)
 
     ret.push_back(Pair("obfuscationJ", oj.GetHex()));
     ret.push_back(Pair("obfuscationK", ok.GetHex()));
-    ret.push_back(Pair("zeroPrivKey", HexStr(zk.begin(), zk.end())));
+    ret.push_back(Pair("zeroPrivKey", HexStr(std::vector<unsigned char>(zk.begin(), zk.end()))));
 
     return ret;
 }
