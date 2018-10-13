@@ -580,9 +580,9 @@ UniValue dumpprivateparameters(const UniValue& params, bool fHelp)
     if(!pwalletMain->GetObfuscationJ(oj))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error reading obfuscation j value");
     if(!pwalletMain->GetObfuscationK(ok))
-        throw JSONRPCError(RPC_WALLET_ERROR, "Error reading obfuscation j value");
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error reading obfuscation k value");
     if(!pwalletMain->GetZeroKey(zk))
-        throw JSONRPCError(RPC_WALLET_ERROR, "Error reading obfuscation j value");
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error reading private key value");
 
     UniValue ret(UniValue::VOBJ);
 
