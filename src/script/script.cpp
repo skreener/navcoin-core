@@ -4,7 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "script.h"
-
+#include "streams.h"
 #include "tinyformat.h"
 #include "utilstrencodings.h"
 
@@ -147,6 +147,12 @@ const char* GetOpName(opcodetype opcode)
     case OP_YES                    : return "OP_YES";
     case OP_NO                     : return "OP_NO";
 
+    case OP_COINSTAKE              : return "OP_COINSTAKE";
+
+    // zerocoin
+    case OP_ZEROCOINMINT           : return "OP_ZEROCOINMINT";
+    case OP_ZEROCOINSPEND          : return "OP_ZEROCOINSPEND";
+
     case OP_INVALIDOPCODE          : return "OP_INVALIDOPCODE";
 
     // Note:
@@ -207,15 +213,58 @@ unsigned int CScript::GetSigOpCount(const CScript& scriptSig) const
     return subscript.GetSigOpCount(true);
 }
 
+bool CScript::IsColdStaking() const
+{
+    return (this->size() == 1+1+25+1+25+1 &&
+            (*this)[0] == OP_COINSTAKE &&
+            (*this)[1] == OP_IF &&
+            (*this)[2] == OP_DUP &&
+            (*this)[3] == OP_HASH160 &&
+            (*this)[4] == 0x14 &&
+            (*this)[25] == OP_EQUALVERIFY &&
+            (*this)[26] == OP_CHECKSIG &&
+            (*this)[27] == OP_ELSE &&
+            (*this)[28] == OP_DUP &&
+            (*this)[29] == OP_HASH160 &&
+            (*this)[30] == 0x14 &&
+            (*this)[51] == OP_EQUALVERIFY &&
+            (*this)[52] == OP_CHECKSIG &&
+            (*this)[53] == OP_ENDIF);
+}
+
 bool CScript::IsPayToPublicKeyHash() const
 {
-    // Extra-fast test for pay-to-pubkey-hash CScripts:
+    // Extra-fast test for pay-to-pubkey CScripts:
     return (this->size() == 25 &&
 	    (*this)[0] == OP_DUP &&
 	    (*this)[1] == OP_HASH160 &&
 	    (*this)[2] == 0x14 &&
 	    (*this)[23] == OP_EQUALVERIFY &&
 	    (*this)[24] == OP_CHECKSIG);
+}
+
+
+bool CScript::IsPayToPublicKey() const
+{
+    // Extra-fast test for pay-to-pubkey-hash CScripts:
+    return (this->size() == 35 &&
+      (*this)[0] == 0x21 &&
+      (*this)[34] == OP_CHECKSIG);
+}
+
+bool CScript::IsZerocoinMint() const
+{
+    //fast test for Zerocoin Mint CScripts
+    return (this->size() > 0 &&
+        (*this)[0] == OP_ZEROCOINMINT);
+}
+
+bool CScript::IsZerocoinSpend() const
+{
+    if (this->empty())
+        return false;
+
+    return ((*this)[0] == OP_ZEROCOINSPEND);
 }
 
 bool CScript::IsCommunityFundContribution() const
@@ -287,6 +336,20 @@ bool CScript::ExtractVote(uint256 &hash, bool &vote) const
 
     return true;
 }
+
+bool CScript::ExtractZerocoinMintData(CPubKey &zkey, std::vector<unsigned char> &commitment) const
+{
+    if(!IsZerocoinMint())
+        return false;
+    CPubKey key;
+    key.Set(this->begin()+2, this->begin()+2+(*this)[1]);
+    if(!key.IsValid())
+        return false;
+    zkey = key;
+    commitment = std::vector<unsigned char>(this->begin()+4+(*this)[1],this->end());
+    return true;
+}
+
 
 bool CScript::IsPayToScriptHash() const
 {

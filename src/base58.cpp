@@ -1,12 +1,11 @@
 // Copyright (c) 2014-2015 The Bitcoin Core developers
+// Copyright (c) 2018 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "base58.h"
-
 #include "hash.h"
 #include "uint256.h"
-
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
@@ -159,6 +158,16 @@ void CBase58Data::SetData(const std::vector<unsigned char>& vchVersionIn, const 
         memcpy(&vchData[0], pdata, nSize);
 }
 
+void CBase58Data::SetData(const std::vector<unsigned char>& vchVersionIn, const void* pdata, size_t nSize, const void* pdata2, size_t nSize2)
+{
+    vchVersion = vchVersionIn;
+    vchData.resize(nSize+nSize2);
+    if (!vchData.empty()) {
+        memcpy(&vchData[0], pdata, nSize);
+        memcpy(&vchData[nSize], pdata2, nSize2);
+    }
+}
+
 void CBase58Data::SetData(const std::vector<unsigned char>& vchVersionIn, const unsigned char* pbegin, const unsigned char* pend)
 {
     SetData(vchVersionIn, (void*)pbegin, pend - pbegin);
@@ -183,7 +192,7 @@ bool CBase58Data::SetString(const char* psz, unsigned int nVersionBytes)
 
 bool CBase58Data::SetString(const std::string& str)
 {
-    return SetString(str.c_str());
+    return SetString(str.c_str(), str.length() == 232 ? 2 : 1);
 }
 
 std::string CBase58Data::ToString() const
@@ -217,6 +226,8 @@ public:
     CNavCoinAddressVisitor(CNavCoinAddress* addrIn) : addr(addrIn) {}
 
     bool operator()(const CKeyID& id) const { return addr->Set(id); }
+    bool operator()(const pair<CKeyID, CKeyID>& id) const { return addr->Set(id.first, id.second); }
+    bool operator()(const libzerocoin::CPrivateAddress &id) const { return addr->Set(id); }
     bool operator()(const CScriptID& id) const { return addr->Set(id); }
     bool operator()(const CNoDestination& no) const { return false; }
 };
@@ -226,6 +237,21 @@ public:
 bool CNavCoinAddress::Set(const CKeyID& id)
 {
     SetData(Params().Base58Prefix(CChainParams::PUBKEY_ADDRESS), &id, 20);
+    return true;
+}
+
+bool CNavCoinAddress::Set(const CKeyID& id, const CKeyID& id2)
+{
+    SetData(Params().Base58Prefix(CChainParams::COLDSTAKING_ADDRESS), &id, 20, &id2, 20);
+    return true;
+}
+
+bool CNavCoinAddress::Set(const libzerocoin::CPrivateAddress& id)
+{
+    CDataStream ss(SER_NETWORK, 0);
+    ss << id;
+    std::vector<unsigned char> vch(ss.begin(),ss.end());
+    SetData(Params().Base58Prefix(CChainParams::PRIVATE_ADDRESS), (void *)&vch[0], vch.size());
     return true;
 }
 
@@ -245,12 +271,73 @@ bool CNavCoinAddress::IsValid() const
     return IsValid(Params());
 }
 
+bool CNavCoinAddress::GetSpendingAddress(CNavCoinAddress &address) const
+{
+    if(!IsColdStakingAddress(Params()))
+        return false;
+    uint160 id;
+    memcpy(&id, &vchData[20], 20);
+    address.Set(CKeyID(id));
+    return true;
+}
+
+bool CNavCoinAddress::GetStakingAddress(CNavCoinAddress &address) const
+{
+    if(!IsColdStakingAddress(Params()))
+        return false;
+    uint160 id;
+    memcpy(&id, &vchData[0], 20);
+    address.Set(CKeyID(id));
+    return true;
+}
+
+bool CNavCoinAddress::GetBlindingCommitment(CBigNum &bc) const {
+    if(!IsPrivateAddress(Params()))
+        return false;
+    libzerocoin::CPrivateAddress id(&Params().GetConsensus().Zerocoin_Params);
+    CDataStream ss(std::vector<unsigned char>(vchData.begin(), vchData.end()), SER_NETWORK, 0);
+    ss >> id;
+    if(!id.GetBlindingCommitment(bc)) return false;
+    return true;
+}
+
+bool CNavCoinAddress::GetZeroPubKey(CPubKey &zerokey) const{
+    if(!IsPrivateAddress(Params()))
+        return false;
+    libzerocoin::CPrivateAddress id(&Params().GetConsensus().Zerocoin_Params);
+    CDataStream ss(std::vector<unsigned char>(vchData.begin(), vchData.end()), SER_NETWORK, 0);
+    ss >> id;
+    if(!id.GetPubKey(zerokey)) return false;
+    return true;
+}
+
 bool CNavCoinAddress::IsValid(const CChainParams& params) const
 {
+    if (vchVersion == params.Base58Prefix(CChainParams::PRIVATE_ADDRESS)) {
+        libzerocoin::CPrivateAddress id(&Params().GetConsensus().Zerocoin_Params);
+        CDataStream ss(std::vector<unsigned char>(vchData.begin(), vchData.end()), SER_NETWORK, 0);
+        ss >> id;
+        CPubKey zpk; CBigNum bc;
+        if(!id.GetPubKey(zpk)) return false;
+        if(!id.GetBlindingCommitment(bc)) return false;
+        return zpk.IsValid() && bc != CBigNum();
+    }
+    if (vchVersion == params.Base58Prefix(CChainParams::COLDSTAKING_ADDRESS))
+        return vchData.size() == 40;
     bool fCorrectSize = vchData.size() == 20;
     bool fKnownVersion = vchVersion == params.Base58Prefix(CChainParams::PUBKEY_ADDRESS) ||
                          vchVersion == params.Base58Prefix(CChainParams::SCRIPT_ADDRESS);
     return fCorrectSize && fKnownVersion;
+}
+
+bool CNavCoinAddress::IsColdStakingAddress(const CChainParams& params) const
+{
+    return vchVersion == params.Base58Prefix(CChainParams::COLDSTAKING_ADDRESS) && vchData.size() == 40;
+}
+
+bool CNavCoinAddress::IsPrivateAddress(const CChainParams& params) const
+{
+    return vchVersion == params.Base58Prefix(CChainParams::PRIVATE_ADDRESS);
 }
 
 CTxDestination CNavCoinAddress::Get() const
@@ -259,7 +346,18 @@ CTxDestination CNavCoinAddress::Get() const
         return CNoDestination();
     uint160 id;
     memcpy(&id, &vchData[0], 20);
-    if (vchVersion == Params().Base58Prefix(CChainParams::PUBKEY_ADDRESS))
+    if (vchVersion == Params().Base58Prefix(CChainParams::COLDSTAKING_ADDRESS)) {
+        uint160 id2;
+        memcpy(&id2, &vchData[20], 20);
+        return make_pair(CKeyID(id), CKeyID(id2));
+    } else if (vchVersion == Params().Base58Prefix(CChainParams::PRIVATE_ADDRESS)) {
+        if(!IsPrivateAddress(Params()))
+            return CNoDestination();
+        libzerocoin::CPrivateAddress id(&Params().GetConsensus().Zerocoin_Params);
+        CDataStream ss(std::vector<unsigned char>(vchData.begin(), vchData.end()), SER_NETWORK, 0);
+        ss >> id;
+        return id;
+    } else if (vchVersion == Params().Base58Prefix(CChainParams::PUBKEY_ADDRESS))
         return CKeyID(id);
     else if (vchVersion == Params().Base58Prefix(CChainParams::SCRIPT_ADDRESS))
         return CScriptID(id);
@@ -271,6 +369,10 @@ bool CNavCoinAddress::GetIndexKey(uint160& hashBytes, int& type) const
 {
     if (!IsValid()) {
         return false;
+    } else if (vchVersion == Params().Base58Prefix(CChainParams::COLDSTAKING_ADDRESS)) {
+        hashBytes = uint160(Hash160(vchData.begin(), vchData.end()));
+        type = 3;
+        return true;
     } else if (vchVersion == Params().Base58Prefix(CChainParams::PUBKEY_ADDRESS)) {
         memcpy(&hashBytes, &vchData[0], 20);
         type = 1;
@@ -290,6 +392,26 @@ bool CNavCoinAddress::GetKeyID(CKeyID& keyID) const
         return false;
     uint160 id;
     memcpy(&id, &vchData[0], 20);
+    keyID = CKeyID(id);
+    return true;
+}
+
+bool CNavCoinAddress::GetStakingKeyID(CKeyID& keyID) const
+{
+    if (!IsValid() || vchVersion != Params().Base58Prefix(CChainParams::COLDSTAKING_ADDRESS))
+        return false;
+    uint160 id;
+    memcpy(&id, &vchData[0], 20);
+    keyID = CKeyID(id);
+    return true;
+}
+
+bool CNavCoinAddress::GetSpendingKeyID(CKeyID& keyID) const
+{
+    if (!IsValid() || vchVersion != Params().Base58Prefix(CChainParams::COLDSTAKING_ADDRESS))
+        return false;
+    uint160 id;
+    memcpy(&id, &vchData[20], 20);
     keyID = CKeyID(id);
     return true;
 }

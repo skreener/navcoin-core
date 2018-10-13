@@ -343,7 +343,7 @@ UniValue getrawtransaction(const UniValue& params, bool fHelp)
 
     {
         LOCK(cs_main);
-        if (!GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, true))
+        if (!GetTransaction(hash, tx, pcoinsTip, Params().GetConsensus(), hashBlock, true))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available about transaction");
 
         BlockMap::iterator mi = mapBlockIndex.find(hashBlock);
@@ -429,7 +429,7 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
     if (pblockindex == NULL)
     {
         CTransaction tx;
-        if (!GetTransaction(oneTxid, tx, Params().GetConsensus(), hashBlock, false) || hashBlock.IsNull())
+        if (!GetTransaction(oneTxid, tx, pcoinsTip, Params().GetConsensus(), hashBlock, false) || hashBlock.IsNull())
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not yet in block");
         if (!mapBlockIndex.count(hashBlock))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Transaction index corrupt");
@@ -515,7 +515,7 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp)
             "      \"data\": x.xxx,     (string, required) The key is hex encoded data, the numeric value (can be string) is the " + CURRENCY_UNIT + " amount\n"
             "      ...\n"
             "    }\n"
-            "3. \"anon-destination\"    (string, optional) Encrypted destination address if you're sending a NAVtech transaction \n"
+            "3. \"strdzeel\"            (string, optional) Attached string metadata \n"
             "4. \"index\"               (numeric, optional, default=-1) If greater than -1, it will only print the raw data of the output or input on the index \"index\"\n"
             "4. \"toggle-input-dump\"   (bool, optional, default=false) Sets whether the input (true) or the output (false) at the index \"index\" is dumped \n"
             "\nResult:\n"

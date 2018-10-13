@@ -1,4 +1,5 @@
 // Copyright (c) 2016 The Bitcoin Core developers
+// Copyright (c) 2018 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -11,7 +12,7 @@
 /** What block version to use for new blocks (pre versionbits) */
 static const int32_t VERSIONBITS_LAST_OLD_BLOCK_VERSION = 7;
 /** What bits to set in version for versionbits blocks */
-static const int32_t VERSIONBITS_TOP_BITS = 0x70000000UL;
+static const int32_t VERSIONBITS_TOP_BITS = 0x00000000UL;
 static const int32_t VERSIONBITS_TOP_BITS_SIG = 0x71000000UL;
 /** What bitmask determines whether versionbits is in use */
 static const int32_t VERSIONBITS_TOP_MASK = 0xF0000000UL;
@@ -33,12 +34,15 @@ static const int32_t VERSIONBITS_NUM_BITS = 29;
 * Bit 7 -> C FUND ACCUMULATION
 * Bit 8 -> NTP SYNC
 * Bit 14 -> C FUND ACCUMULATION SPREAD
+* Bit 17 -> Zerocoin
 *
 * ACTIVATION
 *
 * Bit 5 -> SEGWIT
 * Bit 6 -> C FUND
 * Bit 7 -> NTP SYNC
+* Bit 12 -> CFUND ACCUMULATION
+* Bit 13 -> COLD STAKING
 * Bit 8 -> CFUND ACCUMULATION
 * Bit 13 -> COLD STAKING
 * Bit 14 -> C FUND ACCUMULATION SPREAD
@@ -49,7 +53,8 @@ static const int32_t VERSIONBITS_NUM_BITS = 29;
 static const int32_t nSegWitVersionMask = 0x00000020;
 static const int32_t nCFundVersionMask = 0x00000040;
 static const int32_t nNSyncVersionMask = 0x00000080;
-static const int32_t nCFundAccVersionMask = 0x00000100;
+static const int32_t nCFundAccVersionMask = 0x00001000;
+static const int32_t nColdStakingVersionMask = 0x00002000;
 static const int32_t nCFundAccSpreadVersionMask = 0x00004000;
 static const int32_t nCFundAmountV2Mask = 0x00010000;
 

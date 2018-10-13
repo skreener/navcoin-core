@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2018 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -16,10 +17,12 @@
 
 #include "chainparams.h"
 #include "key.h"
+#include "libzerocoin/Keys.h"
 #include "pubkey.h"
 #include "script/script.h"
 #include "script/standard.h"
 #include "support/allocators/zeroafterfree.h"
+#include "streams.h"
 
 #include <string>
 #include <vector>
@@ -80,6 +83,7 @@ protected:
 
     CBase58Data();
     void SetData(const std::vector<unsigned char> &vchVersionIn, const void* pdata, size_t nSize);
+    void SetData(const std::vector<unsigned char> &vchVersionIn, const void* pdata, size_t nSize, const void* pdata2, size_t nSize2);
     void SetData(const std::vector<unsigned char> &vchVersionIn, const unsigned char *pbegin, const unsigned char *pend);
 
 public:
@@ -96,28 +100,46 @@ public:
 };
 
 /** base58-encoded NavCoin addresses.
- * Public-key-hash-addresses have version 0 (or 111 testnet).
+ * Public-key-hash-addresses have version 111 (or 20 testnet).
  * The data vector contains RIPEMD160(SHA256(pubkey)), where pubkey is the serialized public key.
- * Script-hash-addresses have version 5 (or 196 testnet).
+ * Script-hash-addresses have version 28 (or 96 testnet).
  * The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
+ * Cold-staking-addresses have version 196 (or 63 testnet).
+ * The data vector contains RIPEMD160(SHA256(stakingkey)) || RIPEMD160(SHA256(spendingkey)), where stakingkey and spendingkey are the serialized public keys.
  */
 class CNavCoinAddress : public CBase58Data {
 public:
     bool Set(const CKeyID &id);
+    bool Set(const CKeyID &id, const CKeyID &id2);
+    bool Set(const libzerocoin::CPrivateAddress &id);
     bool Set(const CScriptID &id);
     bool Set(const CTxDestination &dest);
     bool IsValid() const;
     bool IsValid(const CChainParams &params) const;
+    bool IsColdStakingAddress(const CChainParams& params) const;
 
     CNavCoinAddress() {}
     CNavCoinAddress(const CTxDestination &dest) { Set(dest); }
+    CNavCoinAddress(const CKeyID &id, const CKeyID &id2) { Set(id, id2); }
+    CNavCoinAddress(const libzerocoin::CPrivateAddress &id) { Set(id); }
     CNavCoinAddress(const std::string& strAddress) { SetString(strAddress); }
     CNavCoinAddress(const char* pszAddress) { SetString(pszAddress); }
 
     CTxDestination Get() const;
     bool GetKeyID(CKeyID &keyID) const;
+    bool GetStakingKeyID(CKeyID &keyID) const;
+    bool GetSpendingKeyID(CKeyID &keyID) const;
     bool GetIndexKey(uint160& hashBytes, int& type) const;
     bool IsScript() const;
+
+    bool IsPrivateAddress(const CChainParams& params) const;
+
+    bool GetStakingAddress(CNavCoinAddress &address) const;
+    bool GetSpendingAddress(CNavCoinAddress &address) const;
+
+    bool GetBlindingCommitment(CBigNum &bc) const;
+    bool GetZeroPubKey(CPubKey &zerokey) const;
+
 };
 
 /**

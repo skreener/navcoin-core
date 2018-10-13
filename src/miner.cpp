@@ -865,7 +865,7 @@ bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees)
   CKey key;
   CMutableTransaction txCoinStake;
   CTransaction txNew;
-  int nBestHeight = pindexBestHeader->nHeight;
+  int nBestHeight = chainActive.Tip()->nHeight;
 
   txCoinStake.nTime = GetAdjustedTime();
   txCoinStake.nTime &= ~STAKE_TIMESTAMP_MASK;
@@ -879,7 +879,7 @@ bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees)
       if (wallet.CreateCoinStake(wallet, pblock->nBits, nSearchInterval, nFees, txCoinStake, key))
       {
 
-          if (txCoinStake.nTime >= pindexBestHeader->GetPastTimeLimit()+1)
+          if (txCoinStake.nTime >= chainActive.Tip()->GetPastTimeLimit()+1)
           {
               // make sure coinstake would meet timestamp protocol
               //    as it would be the same as the block timestamp
@@ -925,7 +925,7 @@ bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees)
                   CWalletTx& prevTx = pwalletMain->mapWallet[prevHash];
                   const CScript& scriptPubKey = prevTx.vout[n].scriptPubKey;
                   SignatureData sigdata;
-                  signSuccess = ProduceSignature(TransactionSignatureCreator(&wallet, &txNewConst, i, prevTx.vout[n].nValue, SIGHASH_ALL), scriptPubKey, sigdata);
+                  signSuccess = ProduceSignature(TransactionSignatureCreator(&wallet, &txNewConst, i, prevTx.vout[n].nValue, SIGHASH_ALL), scriptPubKey, sigdata, true);
 
                   if (!signSuccess) {
                       return false;
@@ -949,7 +949,6 @@ bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees)
 
               pblock->vtx[0].UpdateHash();
               pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
-
               return key.Sign(pblock->GetHash(), pblock->vchBlockSig);
           }
       }
@@ -963,7 +962,7 @@ bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees)
 
 bool CheckStake(CBlock* pblock, CWallet& wallet, const CChainParams& chainparams)
 {
-    arith_uint256 proofHash = arith_uint256(0), hashTarget = arith_uint256(0);
+    uint256 proofHash = 0, hashTarget = 0;
     uint256 hashBlock = pblock->GetHash();
 
     if(!pblock->IsProofOfStake())
@@ -973,7 +972,7 @@ bool CheckStake(CBlock* pblock, CWallet& wallet, const CChainParams& chainparams
         return error("CheckStake(): could not find previous block");
 
     // verify hash target and signature of coinstake tx
-    if (!CheckProofOfStake(mapBlockIndex[pblock->hashPrevBlock], pblock->vtx[1], pblock->nBits, proofHash, hashTarget, NULL))
+    if (!CheckProofOfStake(mapBlockIndex[pblock->hashPrevBlock], pblock->vtx[1], pcoinsTip, pblock->nBits, proofHash, hashTarget, NULL))
         return error("CheckStake() : proof-of-stake checking failed");
 
     //// debug print

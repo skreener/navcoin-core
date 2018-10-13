@@ -186,6 +186,12 @@ enum opcodetype
     OP_YES = 0xc4,
     OP_NO = 0xc5,
 
+    OP_COINSTAKE = 0xc6,
+
+    // zerocoin
+    OP_ZEROCOINMINT = 0xc7,
+    OP_ZEROCOINSPEND = 0xc8,
+
     // template matching params
     OP_SMALLDATA = 0xf9,
     OP_SMALLINTEGER = 0xfa,
@@ -649,8 +655,13 @@ public:
             }
             if (0 <= opcode && opcode <= OP_PUSHDATA4)
                 str += fShort? ValueString(vch).substr(0, 10) : ValueString(vch);
-            else
+            else {
                 str += GetOpName(opcode);
+                if (opcode == OP_ZEROCOINSPEND) {
+                    //Zerocoinspend has no further op codes.
+                    break;
+                }
+            }
         }
         return str;
     }
@@ -671,6 +682,11 @@ public:
     unsigned int GetSigOpCount(const CScript& scriptSig) const;
 
     bool IsPayToPublicKeyHash() const;
+    bool IsPayToPublicKey() const;
+
+    bool IsColdStaking() const;
+
+    bool IsColdStake() const;
 
     bool IsPayToScriptHash() const;
     bool IsPayToWitnessScriptHash() const;
@@ -683,6 +699,10 @@ public:
     bool IsPaymentRequestVoteYes() const;
     bool IsPaymentRequestVoteNo() const;
     bool ExtractVote(uint256 &hash, bool &vote) const;
+
+    bool IsZerocoinMint() const;
+    bool IsZerocoinSpend() const;
+    bool ExtractZerocoinMintData(CPubKey &zkey, std::vector<unsigned char> &commitment) const;
 
     /** Called by IsStandardTx and P2SH/BIP62 VerifyScript (which makes it consensus-critical). */
     bool IsPushOnly(const_iterator pc) const;

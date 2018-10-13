@@ -397,7 +397,6 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-maxtimeoffset=<n>", strprintf(_("Max number of seconds allowed as clock offset for a peer (default: %u)"), MAXIMUM_TIME_OFFSET));
     strUsage += HelpMessageGroup(_("Connection options:"));
     strUsage += HelpMessageOpt("-addnode=<ip>", _("Add a node to connect to and attempt to keep the connection open"));
-    strUsage += HelpMessageOpt("-addanonserver=<ip>", _("Add a NavTech node to use for private transactions"));
     strUsage += HelpMessageOpt("-banscore=<n>", strprintf(_("Threshold for disconnecting misbehaving peers (default: %u)"), DEFAULT_BANSCORE_THRESHOLD));
     strUsage += HelpMessageOpt("-bantime=<n>", strprintf(_("Number of seconds to keep misbehaving peers from reconnecting (default: %u)"), DEFAULT_MISBEHAVING_BANTIME));
     strUsage += HelpMessageOpt("-banversion=<string>", strprintf(_("Version of wallet to be banned")));
@@ -1612,6 +1611,9 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                               MIN_BLOCKS_TO_KEEP);
                 }
 
+                bool fReindexSupply = false;
+
+
                 {
                     LOCK(cs_main);
                     CBlockIndex* tip = chainActive.Tip();
@@ -1621,10 +1623,38 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                                          "Only rebuild the block database if you are sure that your computer's date and time are correct");
                         break;
                     }
+
+                    CBlockIndex* firstBlock = chainActive[1];
+
+                    if(tip && tip->GetBlockHash() != chainparams.GetConsensus().hashGenesisBlock
+                            && firstBlock != NULL && firstBlock->nMoneySupply == 0)
+                    {
+                        LogPrintf("Reindexing money supply...\n");
+                        fReindexSupply = true;
+                    }
+
+                    int nFirstZeroHeight = 0;
+                    pblocktree->ReadFirstZeroCoinBlock(nFirstZeroHeight);
+
+                    CBlockIndex* firstZeroBlock = chainActive[nFirstZeroHeight];
+                    CBlockIndex* prevZeroBlock = chainActive[nFirstZeroHeight];
+
+                    if(nFirstZeroHeight != 0
+                            && ((firstZeroBlock && (firstZeroBlock->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) != VERSIONBITS_TOP_BITS_ZEROCOIN)
+                             || (prevZeroBlock && (prevZeroBlock->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN))) {
+                        CBlockIndex* pindex = chainActive.Genesis();
+                        while (pindex) {
+                            if ((pindex->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
+                                break;
+                            pindex = chainActive.Next(pindex);
+                        }
+                        pblocktree->WriteFirstZeroCoinBlock(pindex ? pindex->nHeight : 0);
+                        LogPrintf("First zerocoin block ammended to %d\n", pindex ? pindex->nHeight : 0);
+                    }
                 }
 
-                if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, GetArg("-checklevel", DEFAULT_CHECKLEVEL),
-                                          GetArg("-checkblocks", DEFAULT_CHECKBLOCKS))) {
+                if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, 4,
+                                          fReindexSupply ? 0 : GetArg("-checkblocks", DEFAULT_CHECKBLOCKS))) {
                     strLoadError = _("Corrupted block database detected");
                     break;
                 }

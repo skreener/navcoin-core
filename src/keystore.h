@@ -44,12 +44,29 @@ public:
     virtual bool RemoveWatchOnly(const CScript &dest) =0;
     virtual bool HaveWatchOnly(const CScript &dest) const =0;
     virtual bool HaveWatchOnly() const =0;
+
+    //! ZeroCoin Address Parameters
+    virtual bool GetObfuscationJ(CBigNum& oj) const =0;
+    virtual bool GetObfuscationK(CBigNum& ok) const =0;
+    virtual bool GetBlindingCommitment(CBigNum& bc) const =0;
+    virtual bool GetZeroKey(CKey& zk) const =0;
+    virtual bool SetObfuscationJ(const CBigNum& oj) =0;
+    virtual bool SetObfuscationK(const CBigNum& ok) =0;
+    virtual bool SetBlindingCommitment(const CBigNum& bc) =0;
+    virtual bool SetZeroKey(const CKey& zk) =0;
+
 };
 
 typedef std::map<CKeyID, CKey> KeyMap;
 typedef std::map<CKeyID, CPubKey> WatchKeyMap;
 typedef std::map<CScriptID, CScript > ScriptMap;
 typedef std::set<CScript> WatchOnlySet;
+struct ZeroCoinAddressParameters {
+    CBigNum obfuscationJ;
+    CBigNum obfuscationK;
+    CBigNum blindingCommitment;
+    CKey zerokey;
+};
 
 /** Basic key store, that keeps keys in an address->secret map */
 class CBasicKeyStore : public CKeyStore
@@ -59,6 +76,7 @@ protected:
     WatchKeyMap mapWatchKeys;
     ScriptMap mapScripts;
     WatchOnlySet setWatchOnly;
+    ZeroCoinAddressParameters zcParameters;
 
 public:
     bool AddKeyPubKey(const CKey& key, const CPubKey &pubkey);
@@ -106,6 +124,58 @@ public:
     virtual bool RemoveWatchOnly(const CScript &dest);
     virtual bool HaveWatchOnly(const CScript &dest) const;
     virtual bool HaveWatchOnly() const;
+
+    bool GetObfuscationJ(CBigNum& oj) const {
+        if(zcParameters.obfuscationJ == CBigNum())
+            return false;
+        oj = zcParameters.obfuscationJ;
+        return true;
+    }
+    bool GetObfuscationK(CBigNum& ok) const {
+        if(zcParameters.obfuscationK == CBigNum())
+            return false;
+        ok = zcParameters.obfuscationK;
+        return true;
+
+    }
+    bool GetBlindingCommitment(CBigNum& bc) const {
+        if(zcParameters.blindingCommitment == CBigNum())
+            return false;
+        bc = zcParameters.blindingCommitment;
+        return true;
+
+    }
+    bool GetZeroKey(CKey& zk) const {
+        if(!zcParameters.zerokey.IsValid())
+            return false;
+        zk = zcParameters.zerokey;
+        return true;
+
+    }
+    bool SetObfuscationJ(const CBigNum& oj) {
+        if(oj == CBigNum())
+            return false;
+        zcParameters.obfuscationJ = oj;
+        return true;
+    }
+    bool SetObfuscationK(const CBigNum& ok) {
+        if(ok == CBigNum())
+            return false;
+        zcParameters.obfuscationK = ok;
+        return true;
+    }
+    bool SetBlindingCommitment(const CBigNum& bc) {
+        if(bc == CBigNum())
+            return false;
+        zcParameters.blindingCommitment = bc;
+        return true;
+    }
+    bool SetZeroKey(const CKey& zk) {
+        if(!zk.IsValid())
+            return false;
+        zcParameters.zerokey = zk;
+        return true;
+    }
 };
 
 typedef std::vector<unsigned char, secure_allocator<unsigned char> > CKeyingMaterial;

@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2018 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -146,6 +147,15 @@ bool CWalletDB::WriteOrderPosNext(int64_t nOrderPosNext)
 {
     nWalletDBUpdated++;
     return Write(std::string("orderposnext"), nOrderPosNext);
+}
+
+bool CWalletDB::WriteZeroCoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey)
+{
+    nWalletDBUpdated++;
+    return Write(std::string("obfuscationj"), obfuscationJ) &&
+           Write(std::string("obfuscationk"), obfuscationK) &&
+           Write(std::string("blindingcommitment"), blindingCommitment) &&
+           Write(std::string("zerokey"), std::vector<unsigned char>(zerokey.begin(), zerokey.end()));
 }
 
 bool CWalletDB::WriteDefaultKey(const CPubKey& vchPubKey)
@@ -550,6 +560,32 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
         {
             ssValue >> pwallet->vchDefaultKey;
         }
+        else if (strType == "obfuscationj")
+        {
+            CBigNum oj;
+            ssValue >> oj;
+            pwallet->SetObfuscationJ(oj);
+        }
+        else if (strType == "obfuscationk")
+        {
+            CBigNum ok;
+            ssValue >> ok;
+            pwallet->SetObfuscationK(ok);
+        }
+        else if (strType == "blindingcommitment")
+        {
+            CBigNum bc;
+            ssValue >> bc;
+            pwallet->SetBlindingCommitment(bc);
+        }
+        else if (strType == "zerokey")
+        {
+            CKey zk;
+            std::vector<unsigned char> vch(ssValue.size());
+            ssValue >> vch;
+            zk.Set(vch.begin(),vch.end(), true);
+            pwallet->SetZeroKey(zk);
+        }
         else if (strType == "pool")
         {
             int64_t nIndex;
@@ -778,6 +814,32 @@ DBErrors CWalletDB::FindWalletTx(CWallet* pwallet, vector<uint256>& vTxHash, vec
 
                 vTxHash.push_back(hash);
                 vWtx.push_back(wtx);
+            }
+            else if (strType == "obfuscationj")
+            {
+                CBigNum oj;
+                ssValue >> oj;
+                pwallet->SetObfuscationJ(oj);
+            }
+            else if (strType == "obfuscationk")
+            {
+                CBigNum ok;
+                ssValue >> ok;
+                pwallet->SetObfuscationJ(ok);
+            }
+            else if (strType == "blindingcommitment")
+            {
+                CBigNum bc;
+                ssValue >> bc;
+                pwallet->SetBlindingCommitment(bc);
+            }
+            else if (strType == "zerokey")
+            {
+                CKey zk;
+                std::vector<unsigned char> vch(ssValue.size());
+                ssValue >> vch;
+                zk.Set(vch.begin(),vch.end(), true);
+                pwallet->SetZeroKey(zk);
             }
         }
         pcursor->close();
