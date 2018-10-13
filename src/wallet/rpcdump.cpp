@@ -557,6 +557,42 @@ UniValue dumpprivkey(const UniValue& params, bool fHelp)
     return CNavCoinSecret(vchSecret).ToString();
 }
 
+UniValue dumpprivateparameters(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp)
+        throw runtime_error(
+            "dumpprivateparameters\n"
+            "\nReveals the private parameters of the anonymous identity.\n"
+            "\"obfuscationJ\"                (string) The obfuscation J value\n"
+            "\"obfuscationK\"                (string) The obfuscation K value\n"
+            "\"zeroPrivKey\"                 (string) The anonymous identity private key\n"
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    EnsureWalletIsUnlocked();
+
+    CBigNum oj; CBigNum ok; CKey zk;
+
+    if(!pwalletMain->GetObfuscationJ(oj))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error reading obfuscation j value");
+    if(!pwalletMain->GetObfuscationK(ok))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error reading obfuscation j value");
+    if(!pwalletMain->GetZeroKey(zk))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error reading obfuscation j value");
+
+    UniValue ret(UniValue::VOBJ);
+
+    ret.push_back(Pair("obfuscationJ", oj.GetHex()));
+    ret.push_back(Pair("obfuscationK", ok.GetHex()));
+    ret.push_back(Pair("zeroPrivKey", HexStr(zk.begin(), zk.end())));
+
+    return ret;
+}
+
 
 UniValue dumpwallet(const UniValue& params, bool fHelp)
 {
