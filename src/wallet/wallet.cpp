@@ -1710,32 +1710,6 @@ CPubKey CWallet::GenerateNewHDMasterKey()
     return pubkey;
 }
 
-CPubKey CWallet::GenerateNewZeroKey()
-{
-    CKey key;
-    key.MakeNewKey(true);
-
-    int64_t nCreationTime = GetTime();
-    CKeyMetadata metadata(nCreationTime);
-
-    // calculate the pubkey
-    CPubKey pubkey = key.GetPubKey();
-    assert(key.VerifyPubKey(pubkey));
-
-    {
-        LOCK(cs_wallet);
-
-        // mem store the metadata
-        mapKeyMetadata[pubkey.GetID()] = metadata;
-
-        // write the key&metadata to the database
-        if (!AddKeyPubKey(key, pubkey))
-            throw std::runtime_error("CWallet::GenerateNewKey(): AddKey failed");
-    }
-
-    return pubkey;
-}
-
 bool CWallet::SetHDMasterKey(const CPubKey& pubkey)
 {
     LOCK(cs_wallet);
@@ -3248,8 +3222,6 @@ DBErrors CWallet::LoadWallet(bool& fFirstRunRet, bool& fFirstZeroRunRet)
     fFirstRunRet = !vchDefaultKey.IsValid();
 
     CBigNum oj; CBigNum ok; CBigNum bc; CKey zk;
-
-    LogPrintf("%d %d %d %d\n", GetObfuscationJ(oj), GetObfuscationK(ok), GetBlindingCommitment(bc), GetZeroKey(zk));
 
     fFirstZeroRunRet = !(GetObfuscationJ(oj) && GetObfuscationK(ok) && GetBlindingCommitment(bc) && GetZeroKey(zk));
 
