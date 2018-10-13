@@ -3246,7 +3246,12 @@ DBErrors CWallet::LoadWallet(bool& fFirstRunRet, bool& fFirstZeroRunRet)
     if (nLoadWalletRet != DB_LOAD_OK)
         return nLoadWalletRet;
     fFirstRunRet = !vchDefaultKey.IsValid();
-    fFirstZeroRunRet = obfuscationJ == CBigNum() || obfuscationK == CBigNum() || blindingCommitment == CBigNum() || !zerokey.IsValid();
+
+    CBigNum oj; CBigNum ok; CBigNum bc; CKey zk;
+
+    LogPrintf("%d %d %d %d\n", GetObfuscationJ(oj), GetObfuscationK(ok), GetBlindingCommitment(bc), GetZeroKey(zk));
+
+    fFirstZeroRunRet = !(GetObfuscationJ(oj) && GetObfuscationK(ok) && GetBlindingCommitment(bc) && GetZeroKey(zk));
 
     uiInterface.LoadWallet(this);
 
@@ -3355,11 +3360,10 @@ bool CWallet::SetZeroCoinValues(const CBigNum& obfuscationJ, const CBigNum& obfu
         if (!CWalletDB(strWalletFile).WriteZeroCoinValues(obfuscationJ, obfuscationK, blindingCommitment, zerokey))
             return false;
     }
-    this->obfuscationJ = obfuscationJ;
-    this->obfuscationK = obfuscationK;
-    this->blindingCommitment = blindingCommitment;
-    this->zerokey = zerokey;
-    return true;
+    return this->SetObfuscationJ(obfuscationJ) &&
+            this->SetObfuscationK(obfuscationK) &&
+            this->SetBlindingCommitment(blindingCommitment) &&
+            this->SetZeroKey(zerokey);
 }
 
 bool CWallet::SetDefaultKey(const CPubKey &vchPubKey)

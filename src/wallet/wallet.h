@@ -753,11 +753,6 @@ public:
 
     CPubKey vchDefaultKey;
 
-    CBigNum obfuscationJ;
-    CBigNum obfuscationK;
-    CBigNum blindingCommitment;
-    CKey zerokey;
-
     std::set<COutPoint> setLockedCoins;
 
     int64_t nTimeFirstKey;

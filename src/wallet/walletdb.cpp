@@ -562,21 +562,29 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
         }
         else if (strType == "obfuscationj")
         {
-            ssValue >> pwallet->obfuscationJ;
+            CBigNum oj;
+            ssValue >> oj;
+            pwallet->SetObfuscationJ(oj);
         }
         else if (strType == "obfuscationk")
         {
-            ssValue >> pwallet->obfuscationK;
+            CBigNum ok;
+            ssValue >> ok;
+            pwallet->SetObfuscationK(ok);
         }
         else if (strType == "blindingcommitment")
         {
-            ssValue >> pwallet->blindingCommitment;
+            CBigNum bc;
+            ssValue >> bc;
+            pwallet->SetBlindingCommitment(bc);
         }
         else if (strType == "zerokey")
         {
+            CKey zk;
             std::vector<unsigned char> vch(ssValue.size());
             ssValue >> vch;
-            pwallet->zerokey.Set(vch.begin(),vch.end(), true);
+            zk.Set(vch.begin(),vch.end(), true);
+            pwallet->SetZeroKey(zk);
         }
         else if (strType == "pool")
         {
@@ -653,10 +661,6 @@ static bool IsKeyType(string strType)
 DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
 {
     pwallet->vchDefaultKey = CPubKey();
-    pwallet->obfuscationJ = CBigNum();
-    pwallet->obfuscationK = CBigNum();
-    pwallet->blindingCommitment = CBigNum();
-    pwallet->zerokey = CKey();
     CWalletScanState wss;
     bool fNoncriticalErrors = false;
     DBErrors result = DB_LOAD_OK;
@@ -764,10 +768,6 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
 DBErrors CWalletDB::FindWalletTx(CWallet* pwallet, vector<uint256>& vTxHash, vector<CWalletTx>& vWtx)
 {
     pwallet->vchDefaultKey = CPubKey();
-    pwallet->obfuscationJ = CBigNum();
-    pwallet->obfuscationK = CBigNum();
-    pwallet->blindingCommitment = CBigNum();
-    pwallet->zerokey = CKey();
     bool fNoncriticalErrors = false;
     DBErrors result = DB_LOAD_OK;
 
@@ -814,6 +814,32 @@ DBErrors CWalletDB::FindWalletTx(CWallet* pwallet, vector<uint256>& vTxHash, vec
 
                 vTxHash.push_back(hash);
                 vWtx.push_back(wtx);
+            }
+            else if (strType == "obfuscationj")
+            {
+                CBigNum oj;
+                ssValue >> oj;
+                pwallet->SetObfuscationJ(oj);
+            }
+            else if (strType == "obfuscationk")
+            {
+                CBigNum ok;
+                ssValue >> ok;
+                pwallet->SetObfuscationJ(ok);
+            }
+            else if (strType == "blindingcommitment")
+            {
+                CBigNum bc;
+                ssValue >> bc;
+                pwallet->SetBlindingCommitment(bc);
+            }
+            else if (strType == "zerokey")
+            {
+                CKey zk;
+                std::vector<unsigned char> vch(ssValue.size());
+                ssValue >> vch;
+                zk.Set(vch.begin(),vch.end(), true);
+                pwallet->SetZeroKey(zk);
             }
         }
         pcursor->close();

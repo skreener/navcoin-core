@@ -80,7 +80,12 @@ isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
     case TX_ZEROCOIN:
     {
         CPubKey p(vSolutions[0]); CBigNum c(vSolutions[1]);
-        libzerocoin::PrivateCoin pc(&Params().GetConsensus().Zerocoin_Params, libzerocoin::IntToZerocoinDenomination(1), pwalletMain->zerokey, p, pwalletMain->blindingCommitment, c);
+        CKey zk; CBigNum bc;
+        if(!keystore.GetZeroKey(zk))
+            break;
+        if(!keystore.GetBlindingCommitment(bc))
+            break;
+        libzerocoin::PrivateCoin pc(&Params().GetConsensus().Zerocoin_Params, libzerocoin::IntToZerocoinDenomination(1), zk, p, bc, c);
         if(pc.isValid())
             return ISMINE_SPENDABLE_PRIVATE;
         break;

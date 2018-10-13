@@ -161,7 +161,11 @@ UniValue getprivateaddress(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    libzerocoin::CPrivateAddress pa(&Params().GetConsensus().Zerocoin_Params,pwalletMain->blindingCommitment,pwalletMain->zerokey);
+    CKey zk; CBigNum bc;
+    pwalletMain->GetBlindingCommitment(bc);
+    pwalletMain->GetZeroKey(zk);
+
+    libzerocoin::CPrivateAddress pa(&Params().GetConsensus().Zerocoin_Params,bc,zk);
 
     return CNavCoinAddress(pa).ToString();
 }
