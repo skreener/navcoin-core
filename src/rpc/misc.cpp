@@ -276,7 +276,10 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
         }
         if (address.IsPrivateAddress(Params())) {
             ret.push_back(Pair("isprivateaddress", true));
-            libzerocoin::CPrivateAddress pa(&Params().GetConsensus().Zerocoin_Params,pwalletMain->blindingCommitment,pwalletMain->zerokey);
+            CKey zk; CBigNum bc;
+            pwalletMain->GetBlindingCommitment(bc);
+            pwalletMain->GetZeroKey(zk);
+            libzerocoin::CPrivateAddress pa(&Params().GetConsensus().Zerocoin_Params,bc,zk);
             ret.push_back(Pair("ismine", CNavCoinAddress(pa) == address ? true :false));
         } else {
             ret.push_back(Pair("ismine", (mine & ISMINE_SPENDABLE) ? true : false));
