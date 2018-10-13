@@ -1016,9 +1016,6 @@ public:
     /* Generates a new HD master key (will not be activated) */
     CPubKey GenerateNewHDMasterKey();
 
-    /* Generates a new key pair for Zerocoin */
-    CPubKey GenerateNewZeroKey();
-
     /* Set the current HD master key (will reset the chain child index counters) */
     bool SetHDMasterKey(const CPubKey& key);
 };
