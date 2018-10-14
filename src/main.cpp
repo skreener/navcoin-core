@@ -2430,6 +2430,8 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
 
                 const CTxIn input = tx.vin[j];
 
+                const CCoins* coins = view.AccessCoins(tx.vin[j].prevout.hash);
+
                 if (fSpentIndex) {
                     // undo and delete the spent index
                     spentIndex.push_back(make_pair(CSpentIndexKey(input.prevout.hash, input.prevout.n), CSpentIndexValue()));
@@ -3037,6 +3039,19 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
               }
 
+              if (block.IsProofOfStake())
+              {
+                  // ppcoin: coin stake tx earns reward instead of paying fee
+                  uint64_t nCoinAge;
+                  if (!TransactionGetCoinAge(const_cast<CTransaction&>(block.vtx[1]), nCoinAge, view))
+                      return error("ConnectBlock() : %s unable to get coin age for coinstake", block.vtx[1].GetHash().ToString());
+
+                  int64_t nCalculatedStakeReward = GetProofOfStakeReward(pindex->nHeight, nCoinAge, nFees, pindex->pprev);
+
+                  if (nStakeReward > nCalculatedStakeReward)
+                      return state.DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%d vs calculated=%d)", nStakeReward, nCalculatedStakeReward));
+              }
+
             }
 
             std::vector<CScriptCheck> vChecks;
@@ -3293,19 +3308,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     }
 
     pindex->nMoneySupply += nCreated - nZeroCreated + nZeroBurnt - nFees;
-
-    if (block.IsProofOfStake())
-    {
-        // ppcoin: coin stake tx earns reward instead of paying fee
-        uint64_t nCoinAge;
-        if (!TransactionGetCoinAge(const_cast<CTransaction&>(block.vtx[1]), nCoinAge, view))
-            return error("ConnectBlock() : %s unable to get coin age for coinstake", block.vtx[1].GetHash().ToString());
-
-        int64_t nCalculatedStakeReward = GetProofOfStakeReward(pindex->nHeight, nCoinAge, nFees, pindex->pprev);
-
-        if (nStakeReward > nCalculatedStakeReward)
-            return state.DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%d vs calculated=%d)", nStakeReward, nCalculatedStakeReward));
-    }
 
     if (!control.Wait()) {
         return state.DoS(100, false);
