@@ -1632,22 +1632,24 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                         fReindexSupply = true;
                     }
 
-                    int nFirstZeroHeight = 0;
-                    pblocktree->ReadFirstZeroCoinBlock(nFirstZeroHeight);
+                    std::pair<int, uint256> firstZero = make_pair(0, uint256());
+                    pblocktree->ReadFirstZeroCoinBlock(firstZero);
 
-                    CBlockIndex* firstZeroBlock = chainActive[nFirstZeroHeight];
-                    CBlockIndex* prevZeroBlock = chainActive[nFirstZeroHeight-1];
+                    CBlockIndex* firstZeroBlock = chainActive[firstZero.first];
+                    CBlockIndex* prevZeroBlock = chainActive[firstZero.first-1];
 
-                    if(nFirstZeroHeight != 0
+                    if(firstZero.first != 0
                             && ((firstZeroBlock && (firstZeroBlock->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) != VERSIONBITS_TOP_BITS_ZEROCOIN)
-                             || (prevZeroBlock && (prevZeroBlock->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN))) {
+                            || (prevZeroBlock && (prevZeroBlock->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
+                            || (!firstZeroBlock)
+                            || (firstZeroBlock->GetBlockHash() != firstZero.second))) {
                         CBlockIndex* pindex = chainActive.Genesis();
                         while (pindex) {
                             if ((pindex->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
                                 break;
                             pindex = chainActive.Next(pindex);
                         }
-                        pblocktree->WriteFirstZeroCoinBlock(pindex ? pindex->nHeight : 0);
+                        pblocktree->WriteFirstZeroCoinBlock(make_pair(pindex ? pindex->nHeight : 0, pindex ? pindex->GetBlockHash() : uint256()));
                         LogPrintf("First zerocoin block ammended to %d\n", pindex ? pindex->nHeight : 0);
                     }
                 }

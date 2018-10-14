@@ -170,8 +170,8 @@ public:
     bool WritePaymentRequestIndex(const std::vector<std::pair<uint256, CFund::CPaymentRequest> >&vect);
     bool GetPaymentRequestIndex(std::vector<CFund::CPaymentRequest>&vect);
     bool UpdatePaymentRequestIndex(const std::vector<std::pair<uint256, CFund::CPaymentRequest> >&vect);
-    bool ReadFirstZeroCoinBlock(int &nHeight);
-    bool WriteFirstZeroCoinBlock(int nHeight);
+    bool ReadFirstZeroCoinBlock(std::pair<int, uint256> &firstZero);
+    bool WriteFirstZeroCoinBlock(std::pair<int, uint256> firstZero);
     bool ReadCoinMint(CBigNum coinValue, uint256 &txHash);
     bool ReadCoinMint(uint256 coinValueHash, uint256 &txHash);
     bool WriteCoinMint(CBigNum coinValue, uint256 txHash);

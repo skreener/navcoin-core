@@ -1195,9 +1195,9 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
 
     // Check that zPIV mints are not already known
     if (tx.HasZerocoinMint()) {
-        int nZeroCoinHeight = 0;
-        pblocktree->ReadFirstZeroCoinBlock(nZeroCoinHeight);
-        if(chainActive.Tip()->nHeight < nZeroCoinHeight || nZeroCoinHeight == 0)
+        std::pair<int, uint256> firstZero = make_pair(0, uint256());
+        pblocktree->ReadFirstZeroCoinBlock(firstZero);
+        if(chainActive.Tip()->nHeight < firstZero.first || firstZero.first == 0)
             return state.Invalid(error("%s: too early zerocoin mint", __func__));
     }
 
@@ -3646,11 +3646,11 @@ bool static DisconnectTip(CValidationState& state, const CChainParams& chainpara
     // Update chainActive and related variables.
     UpdateTip(pindexDelete->pprev, chainparams);
 
-    int nFirstZeroHeight = 0;
-    pblocktree->ReadFirstZeroCoinBlock(nFirstZeroHeight);
+    std::pair<int, uint256> firstZero = make_pair(0, uint256());
+    pblocktree->ReadFirstZeroCoinBlock(firstZero);
 
-    if(nFirstZeroHeight == pindexDelete->nHeight)
-        if(!pblocktree->WriteFirstZeroCoinBlock(0))
+    if(firstZero.first == pindexDelete->nHeight)
+        if(!pblocktree->WriteFirstZeroCoinBlock(make_pair(0, uint256())))
             return AbortNode(state, "Failed to write height of first Zerocoin block");
 
     std::vector<CFund::CPaymentRequest> vecPaymentRequest;
@@ -3829,11 +3829,11 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
     mempool.removeForBlock(pblock->vtx, pindexNew->nHeight, txConflicted, !IsInitialBlockDownload());
     // Update chainActive & related variables.
 
-    int nFirstZeroHeight = 0;
-    pblocktree->ReadFirstZeroCoinBlock(nFirstZeroHeight);
+    std::pair<int, uint256> firstZero = make_pair(0, uint256());
+    pblocktree->ReadFirstZeroCoinBlock(firstZero);
 
-    if(nFirstZeroHeight == 0 && IsZerocoinEnabled(pindexNew->pprev, Params().GetConsensus()))
-        if(!pblocktree->WriteFirstZeroCoinBlock(pindexNew->nHeight))
+    if(firstZero.first == 0 && IsZerocoinEnabled(pindexNew->pprev, Params().GetConsensus()))
+        if(!pblocktree->WriteFirstZeroCoinBlock(make_pair(pindexNew->nHeight,pindexNew->GetBlockHash())))
             return AbortNode(state, "Failed to write height of first Zerocoin block");
 
     UpdateTip(pindexNew, chainparams);
