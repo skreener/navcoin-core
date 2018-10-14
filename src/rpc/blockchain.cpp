@@ -53,6 +53,19 @@ UniValue blockheaderToJSON(const CBlockIndex* blockindex)
     result.push_back(Pair("time", (int64_t)blockindex->nTime));
     result.push_back(Pair("mediantime", (int64_t)blockindex->GetMedianTimePast()));
     result.push_back(Pair("mint", ValueFromAmount(blockindex->nMint)));
+    result.push_back(Pair("publicmoneysupply", ValueFromAmount(blockindex->nMoneySupply)));
+    CAmount totalMoneySupply = 0;
+    UniValue privateMoneySupply(UniValue::VOBJ);
+    for (auto const& it : blockindex->mapZerocoinSupply)
+    {
+        privateMoneySupply.push_back(Pair(to_string(libzerocoin::ZerocoinDenominationToInt(it.first)), it.second));
+        totalMoneySupply += libzerocoin::ZerocoinDenominationToInt(it.first) * it.second;
+    }
+    totalMoneySupply *= COIN;
+    privateMoneySupply.push_back(Pair("total", ValueFromAmount(totalMoneySupply)));
+    result.push_back(Pair("privatemoneysupply", privateMoneySupply));
+    totalMoneySupply += blockindex->nMoneySupply;
+    result.push_back(Pair("totalmoneysupply", ValueFromAmount(totalMoneySupply)));
     result.push_back(Pair("nonce", (uint64_t)blockindex->nNonce));
     result.push_back(Pair("bits", strprintf("%08x", blockindex->nBits)));
     result.push_back(Pair("difficulty", GetDifficulty(blockindex)));
