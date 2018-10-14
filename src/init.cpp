@@ -1626,10 +1626,9 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
                     CBlockIndex* firstBlock = chainActive[1];
 
-                    if(tip && tip->GetBlockHash() != chainparams.GetConsensus().hashGenesisBlock
-                            && firstBlock != NULL && firstBlock->nMoneySupply == 0)
+                    if(firstBlock != NULL && firstBlock->nMoneySupply == 0)
                     {
-                        LogPrintf("Reindexing money supply...\n");
+                        LogPrintf("Reindexing money supply...\n", firstBlock->nMoneySupply);
                         fReindexSupply = true;
                     }
 
@@ -1637,7 +1636,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                     pblocktree->ReadFirstZeroCoinBlock(nFirstZeroHeight);
 
                     CBlockIndex* firstZeroBlock = chainActive[nFirstZeroHeight];
-                    CBlockIndex* prevZeroBlock = chainActive[nFirstZeroHeight];
+                    CBlockIndex* prevZeroBlock = chainActive[nFirstZeroHeight-1];
 
                     if(nFirstZeroHeight != 0
                             && ((firstZeroBlock && (firstZeroBlock->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) != VERSIONBITS_TOP_BITS_ZEROCOIN)
