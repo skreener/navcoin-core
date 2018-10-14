@@ -101,12 +101,12 @@ bool CBlockTreeDB::ReadLastBlockFile(int &nFile) {
     return Read(DB_LAST_BLOCK, nFile);
 }
 
-bool CBlockTreeDB::ReadFirstZeroCoinBlock(int &nHeight) {
-    return Read(DB_ZEROCOIN_BLOCK, nHeight);
+bool CBlockTreeDB::ReadFirstZeroCoinBlock(std::pair<int, uint256> &firstZero) {
+    return Read(DB_ZEROCOIN_BLOCK, firstZero);
 }
 
-bool CBlockTreeDB::WriteFirstZeroCoinBlock(int nHeight) {
-    return Write(DB_ZEROCOIN_BLOCK, nHeight);
+bool CBlockTreeDB::WriteFirstZeroCoinBlock(std::pair<int, uint256> firstZero) {
+    return Write(DB_ZEROCOIN_BLOCK, firstZero);
 }
 
 bool CBlockTreeDB::ReadCoinMint(uint256 coinValueHash, uint256 &txHash) {
