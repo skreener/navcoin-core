@@ -2641,6 +2641,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     pindex->nCFLocked    = pindex->pprev != NULL ? pindex->pprev->nCFLocked : 0;
     pindex->nMoneySupply = pindex->pprev != NULL ? pindex->pprev->nMoneySupply : 0;
 
+    if(pindex->pprev != NULL)
+    {
+        pindex->mapZerocoinSupply
+                         = pindex->pprev->mapZerocoinSupply;
+    }
+
     pindex->vProposalVotes.clear();
     pindex->vPaymentRequestVotes.clear();
 
@@ -2825,6 +2831,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     txdata.reserve(block.vtx.size()); // Required so that pointers to individual PrecomputedTransactionData don't get invalidated
 
     CAmount nCreated = 0;
+    CAmount nZeroCreated = 0;
+    CAmount nZeroBurnt = 0;
 
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
@@ -2880,6 +2888,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
                 if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, out, state, &pubCoin))
                     return state.Invalid(error("%s: zerocoin mint failed contextual check", __func__));
+
+                pindex->mapZerocoinSupply[libzerocoin::AmountToZerocoinDenomination(out.nValue)]++;
+                nZeroCreated += out.nValue;
 
                 vZeroMints.push_back(make_pair(pubCoin.getValue(), tx.GetHash()));
             }
@@ -3023,7 +3034,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                   } else {
                     nStakeReward -= Params().GetConsensus().nCommunityFundAmount * nMultiplier;
                   }
-
 
               }
 
@@ -3210,6 +3220,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         pos.nTxOffset += ::GetSerializeSize(tx, SER_DISK, CLIENT_VERSION);
     }
 
+    pindex->nMint = nCreated - nFees;
+
     int64_t nTime3 = GetTimeMicros(); nTimeConnect += nTime3 - nTime2;
     LogPrint("bench", "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs]\n", (unsigned)block.vtx.size(), 0.001 * (nTime3 - nTime2), 0.001 * (nTime3 - nTime2) / block.vtx.size(), nInputs <= 1 ? 0 : 0.001 * (nTime3 - nTime2) / (nInputs-1), nTimeConnect * 0.000001);
 
@@ -3280,7 +3292,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
     }
 
-    pindex->nMoneySupply += nCreated;
+    pindex->nMoneySupply += nCreated - nZeroCreated + nZeroBurnt - nFees;
 
     if (block.IsProofOfStake())
     {

@@ -553,9 +553,9 @@ public:
         READWRITE(nCFLocked);
         READWRITE(vPaymentRequestVotes);
         READWRITE(vProposalVotes);
+        READWRITE(nMoneySupply);
         if((this->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN) {
             READWRITE(nAccumulatorCheckpoint);
-            READWRITE(nMoneySupply);
             READWRITE(mapZerocoinSupply);
             READWRITE(vMintDenominationsInBlock);
         }

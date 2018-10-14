@@ -1628,7 +1628,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
                     if(firstBlock != NULL && firstBlock->nMoneySupply == 0)
                     {
-                        LogPrintf("Reindexing money supply...\n", firstBlock->nMoneySupply);
+                        LogPrintf("Reindexing money supply...\n");
                         fReindexSupply = true;
                     }
 
