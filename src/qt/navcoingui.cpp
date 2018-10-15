@@ -138,6 +138,9 @@ NavCoinGUI::NavCoinGUI(const PlatformStyle *platformStyle, const NetworkStyle *n
     openRPCConsoleAction(0),
     openAction(0),
     showHelpMessageAction(0),
+    unlockWalletAction(0),
+    lockWalletAction(0),
+    toggleStakingAction(0),
     trayIcon(0),
     trayIconMenu(0),
     notificator(0),
@@ -145,12 +148,9 @@ NavCoinGUI::NavCoinGUI(const PlatformStyle *platformStyle, const NetworkStyle *n
     helpMessageDialog(0),
     prevBlocks(0),
     spinnerFrame(0),
-    unlockWalletAction(0),
-    lockWalletAction(0),
-    toggleStakingAction(0),
+    platformStyle(platformStyle),
     updatePriceAction(0),
-    fShowingVoting(0),
-    platformStyle(platformStyle)
+    fShowingVoting(0)
 {
     GUIUtil::restoreWindowGeometry("nWindow", QSize(840, 600), this);
     //setFixedSize(QSize(840, 600));

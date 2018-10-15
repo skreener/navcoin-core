@@ -47,9 +47,16 @@ public:
     void setFocus();
 
     void setTotalAmount(const CAmount& amount);
+    void setTotalPrivateAmount(const CAmount& amount);
     void useFullAmount();
+    void useFullPrivateAmount();
+    void disablePrivateSend();
+    void enablePrivateSend();
+    void disablePublicSend();
+    void enablePublicSend();
 
     CAmount totalAmount;
+    CAmount totalPrivateAmount;
 
 public Q_SLOTS:
     void clear();

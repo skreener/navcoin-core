@@ -22,5 +22,6 @@ QString Skinize()
            "QLineEdit { background: #fff; border-radius: 4px; border: 1px solid #7d7d7d; padding:5px }"
            "#unlockStakingButton { border-image: url(:/icons/lock_closed)  0 0 0 0 stretch stretch; border: 0px; }"
            "QLabel { color: #616998 }"
-           "QCheckBox { color: #616998 }";
+           "QCheckBox { color: #616998 }"
+           "QRadioButton { color: #616998 }";
 }

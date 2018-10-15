@@ -76,6 +76,7 @@ SendCoinsDialog::SendCoinsDialog(const PlatformStyle *platformStyle, QWidget *pa
     connect(clipboardLowOutputAction, SIGNAL(triggered()), this, SLOT(coinControlClipboardLowOutput()));
     connect(clipboardChangeAction, SIGNAL(triggered()), this, SLOT(coinControlClipboardChange()));
     connect(ui->fullAmountBtn,  SIGNAL(clicked()), this, SLOT(useFullAmount()));
+    connect(ui->fullPrivateAmountBtn,  SIGNAL(clicked()), this, SLOT(useFullPrivateAmount()));
 
     ui->labelCoinControlQuantity->addAction(clipboardQuantityAction);
     ui->labelCoinControlAmount->addAction(clipboardAmountAction);
@@ -144,7 +145,7 @@ void SendCoinsDialog::setModel(WalletModel *model)
         setBalance(model->getBalance(), model->getUnconfirmedBalance(), model->getStake(), model->getImmatureBalance(),
                    model->getWatchBalance(), model->getWatchUnconfirmedBalance(), model->getWatchImmatureBalance(),
                    model->getColdStakingBalance(), model->getPrivateBalance());
-        connect(model, SIGNAL(balanceChanged(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)), this, SLOT(setBalance(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)));
+        connect(model, SIGNAL(balanceChanged(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)), this, SLOT(setBalance(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)));
         connect(model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
         updateDisplayUnit();
 
@@ -511,13 +512,36 @@ void SendCoinsDialog::setBalance(const CAmount& balance, const CAmount& unconfir
         if(entry)
         {
             entry->setTotalAmount(balance);
+            entry->setTotalPrivateAmount(privateBalance);
+            if(balance > 0)
+                entry->enablePublicSend();
+            else
+                entry->disablePublicSend();
+
+            if(privateBalance > 0)
+                entry->enablePrivateSend();
+            else
+                entry->disablePrivateSend();
         }
     }
 
     if(model && model->getOptionsModel())
     {
-        ui->labelBalance->setText(NavCoinUnits::formatWithUnit(0, balance) + (model->getOptionsModel()->getDisplayUnit() != 0 ?( " (" + NavCoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), balance) + ")") : ""));
+        ui->labelTransparentBalance->setText(NavCoinUnits::formatWithUnit(0, balance) + (model->getOptionsModel()->getDisplayUnit() != 0 ?( " (" + NavCoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), balance) + ")") : ""));
+        ui->labelPrivateBalance->setText(NavCoinUnits::formatWithUnit(0, privateBalance) + (model->getOptionsModel()->getDisplayUnit() != 0 ?( " (" + NavCoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), privateBalance) + ")") : ""));
     }
+}
+
+void SendCoinsDialog::useFullPrivateAmount()
+{
+  for(int i = 0; i < ui->entries->count(); ++i)
+  {
+      SendCoinsEntry *entry = qobject_cast<SendCoinsEntry*>(ui->entries->itemAt(i)->widget());
+      if(entry)
+      {
+          entry->useFullPrivateAmount();
+      }
+  }
 }
 
 void SendCoinsDialog::useFullAmount()
@@ -597,8 +621,8 @@ void SendCoinsDialog::minimizeFeeSection(bool fMinimize)
     //ui->buttonMinimizeFee->setVisible(!fMinimize);
     ui->frameFeeSelection->setVisible(!fMinimize);
     ui->sendButton       ->setVisible(fMinimize);
-    ui->label            ->setVisible(fMinimize);
-    ui->labelBalance     ->setVisible(fMinimize);
+    //ui->label            ->setVisible(fMinimize);
+    //ui->labelBalance     ->setVisible(fMinimize);
     //ui->horizontalLayoutSmartFee->setContentsMargins(0, (fMinimize ? 0 : 6), 0, 0);
 
     fFeeMinimized = fMinimize;
