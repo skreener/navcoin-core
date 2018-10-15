@@ -2888,7 +2888,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
                 libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
 
-                if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, out, state, &pubCoin))
+                if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, out, state, vZeroMints, &pubCoin))
                     return state.Invalid(error("%s: zerocoin mint failed contextual check", __func__));
 
                 pindex->mapZerocoinSupply[libzerocoin::AmountToZerocoinDenomination(out.nValue)]++;

@@ -11,6 +11,6 @@
 #include "primitives/transaction.h"
 
 bool TxOutToPublicCoin(const libzerocoin::ZerocoinParams *params, const CTxOut& txout, libzerocoin::PublicCoin& pubCoin, CValidationState& state);
-bool CheckZerocoinMint(const libzerocoin::ZerocoinParams *params, const CTxOut& txout, CValidationState& state, libzerocoin::PublicCoin* pPubCoin = NULL);
+bool CheckZerocoinMint(const libzerocoin::ZerocoinParams *params, const CTxOut& txout, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen = std::vector<std::pair<CBigNum, uint256>>(), libzerocoin::PublicCoin* pPubCoin = NULL);
 
 #endif // ZEROCHAIN_H
