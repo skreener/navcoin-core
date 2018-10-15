@@ -2895,6 +2895,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 nZeroCreated += out.nValue;
 
                 vZeroMints.push_back(make_pair(pubCoin.getValue(), tx.GetHash()));
+                if(!pindex->mapMints.count(pubCoin.getDenomination()))
+                    pindex->mapMints[pubCoin.getDenomination()]=std::vector<CBigNum>();
+                pindex->mapMints.at(pubCoin.getDenomination()).push_back(pubCoin.getValue());
             }
         }
 
@@ -3234,6 +3237,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         vPos.push_back(std::make_pair(tx.GetHash(), pos));
         pos.nTxOffset += ::GetSerializeSize(tx, SER_DISK, CLIENT_VERSION);
     }
+
+
 
     pindex->nMint = nCreated - nFees;
 
