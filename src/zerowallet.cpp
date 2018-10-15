@@ -35,12 +35,14 @@ bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, v
         }
         minDenomination *= COIN;
         CAmount nRemainingValue = nValue;
+        int nCount = 0;
         while (nRemainingValue >= minDenomination)
         {
             if(nRemainingValue >= sumDenominations)
             {
                 for (unsigned int i = 0; i < libzerocoin::zerocoinDenomList.size(); i++) {
                     mapDenominations[libzerocoin::zerocoinDenomList[i]]++;
+                    nCount++;
                 }
                 nRemainingValue -= sumDenominations;
                 continue;
@@ -50,6 +52,7 @@ bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, v
                 CAmount value = libzerocoin::ZerocoinDenominationToInt(libzerocoin::zerocoinDenomList[nIndex]) * COIN;
                 if(nRemainingValue >= value) {
                     mapDenominations[libzerocoin::zerocoinDenomList[nIndex]]++;
+                    nCount++;
                     nRemainingValue -= value;
                     continue;
                 }
@@ -59,7 +62,7 @@ bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, v
         for ( it = mapDenominations.begin(); it != mapDenominations.end(); it++ )
         {
             for (unsigned int i = 0; i < it->second; i++) {
-                CRecipient recipient = {scriptPubKey, libzerocoin::ZerocoinDenominationToInt(it->first)  * COIN, fSubtractFeeFromAmount, ""};
+                CRecipient recipient = {GetScriptForDestination(address), libzerocoin::ZerocoinDenominationToInt(it->first)  * COIN, fSubtractFeeFromAmount, ""};
                 vecSend.push_back(recipient);
             }
         }
