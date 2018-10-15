@@ -66,6 +66,18 @@ UniValue blockheaderToJSON(const CBlockIndex* blockindex)
     result.push_back(Pair("privatemoneysupply", privateMoneySupply));
     totalMoneySupply += blockindex->nMoneySupply;
     result.push_back(Pair("totalmoneysupply", ValueFromAmount(totalMoneySupply)));
+    UniValue vMints(UniValue::VOBJ);
+    for (auto const& it : blockindex->mapMints)
+    {
+        UniValue vMintsDenom(UniValue::VARR);
+
+        for (auto const& it_ : it.second)
+        {
+            vMintsDenom.push_back(it_.GetHex());
+        }
+        vMints.push_back(Pair(to_string(libzerocoin::ZerocoinDenominationToInt(it.first)), vMintsDenom));
+    }
+    result.push_back(Pair("zeromints", vMints));
     result.push_back(Pair("nonce", (uint64_t)blockindex->nNonce));
     result.push_back(Pair("bits", strprintf("%08x", blockindex->nBits)));
     result.push_back(Pair("difficulty", GetDifficulty(blockindex)));
