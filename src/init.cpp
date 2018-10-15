@@ -1793,12 +1793,12 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     StartNode(threadGroup, scheduler);
 
     // ********************************************************* Step 12: finished
-
     SetRPCWarmupFinished();
 
 #ifdef ENABLE_WALLET
     // Generate coins in the background
     SetStaking(GetBoolArg("-staking", true));
+    uiInterface.InitMessage(_("Starting staker thread..."));
     threadGroup.create_thread(boost::bind(&NavCoinStaker, boost::cref(chainparams)));
 #endif
 
