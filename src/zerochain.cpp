@@ -23,7 +23,7 @@ bool TxOutToPublicCoin(const libzerocoin::ZerocoinParams *params, const CTxOut& 
     return true;
 }
 
-bool CheckZerocoinMint(const libzerocoin::ZerocoinParams *params, const CTxOut& txout, CValidationState& state, libzerocoin::PublicCoin* pPubCoin)
+bool CheckZerocoinMint(const libzerocoin::ZerocoinParams *params, const CTxOut& txout, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen, libzerocoin::PublicCoin* pPubCoin)
 {
     libzerocoin::PublicCoin pubCoin(params);
     if(!TxOutToPublicCoin(params, txout, pubCoin, state))
@@ -34,6 +34,13 @@ bool CheckZerocoinMint(const libzerocoin::ZerocoinParams *params, const CTxOut& 
 
     if (!pubCoin.isValid())
         return state.DoS(100, error("CheckZerocoinMint() : PubCoin does not validate"));
+
+    for(auto& it : vSeen)
+    {
+        if (it.first == pubCoin.getValue())
+            return error("%s: pubcoin %s was already seen in this block", __func__,
+                         pubCoin.getValue().GetHex().substr(0, 10));
+    }
 
     uint256 txid;
     if (pblocktree->ReadCoinMint(pubCoin.getValue(), txid))
