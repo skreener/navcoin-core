@@ -313,12 +313,12 @@ bool CCryptoKeyStore::EncryptZeroParameters(CKeyingMaterial& vMasterKeyIn)
         std::vector<unsigned char> vchJ = zcParameters.obfuscationJ.getvch();
         CKeyingMaterial vchSecretJ(vchJ.begin(), vchJ.end());
         std::vector<unsigned char> vchCryptedSecretJ;
-        if (!EncryptSecret(vMasterKeyIn, vchSecretJ, uint256(), vchCryptedSecretJ))
+        if (!EncryptSecret(vMasterKeyIn, vchSecretJ, zcParameters.blindingCommitment.getuint256(), vchCryptedSecretJ))
             return false;
         std::vector<unsigned char> vchK = zcParameters.obfuscationK.getvch();
         CKeyingMaterial vchSecretK(vchK.begin(), vchK.end());
         std::vector<unsigned char> vchCryptedSecretK;
-        if (!EncryptSecret(vMasterKeyIn, vchSecretK, uint256(), vchCryptedSecretK))
+        if (!EncryptSecret(vMasterKeyIn, vchSecretK, zcParameters.zerokey.GetPubKey().GetHash(), vchCryptedSecretK))
             return false;
 
         zcCryptedParameters.obfuscationJ = vchCryptedSecretJ;
@@ -336,7 +336,7 @@ bool CCryptoKeyStore::GetObfuscationJ(CBigNum& oj) const
     CKeyingMaterial vchSecret;
     {
         LOCK(cs_KeyStore);
-        if(!DecryptSecret(vMasterKey, zcCryptedParameters.obfuscationJ, uint256(), vchSecret))
+        if(!DecryptSecret(vMasterKey, zcCryptedParameters.obfuscationJ, zcParameters.blindingCommitment.getuint256(), vchSecret))
             return false;
     }
 
@@ -363,7 +363,7 @@ bool CCryptoKeyStore::GetObfuscationK(CBigNum& ok) const
     CKeyingMaterial vchSecret;
     {
         LOCK(cs_KeyStore);
-        if(!DecryptSecret(vMasterKey, zcCryptedParameters.obfuscationK, uint256(), vchSecret))
+        if(!DecryptSecret(vMasterKey, zcCryptedParameters.obfuscationK, zcParameters.zerokey.GetPubKey().GetHash(), vchSecret))
             return false;
     }
 
@@ -399,7 +399,7 @@ bool CCryptoKeyStore::SetObfuscationJ(const CBigNum& oj)
         if (!SetCrypted())
             return false;
 
-        if (!EncryptSecret(vMasterKey, vchSecret, uint256(), zcCryptedParameters.obfuscationJ))
+        if (!EncryptSecret(vMasterKey, vchSecret, zcParameters.blindingCommitment.getuint256(), zcCryptedParameters.obfuscationJ))
             return false;
     }
 
@@ -425,7 +425,7 @@ bool CCryptoKeyStore::SetObfuscationK(const CBigNum& ok)
         if (!SetCrypted())
             return false;
 
-        if (!EncryptSecret(vMasterKey, vchSecret, uint256(), zcCryptedParameters.obfuscationK))
+        if (!EncryptSecret(vMasterKey, vchSecret, zcParameters.zerokey.GetPubKey().GetHash(), zcCryptedParameters.obfuscationK))
             return false;
     }
 
