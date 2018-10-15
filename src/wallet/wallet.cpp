@@ -470,6 +470,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     // Calculate coin age reward
     int64_t nReward;
     {
+        LOCK(cs_wallet);
+
         uint64_t nCoinAge;
         CTransaction ptxNew = CTransaction(txNew);
         CCoinsViewCache view(pcoinsTip);
