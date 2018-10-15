@@ -45,6 +45,10 @@ public:
     QSpacerItem *horizontalSpacer_15;
     QSpacerItem *horizontalSpacer_3;
     QSpacerItem *verticalSpacer_3;
+    QHBoxLayout *horizontalLayout_4;
+    QSpacerItem *horizontalSpacer_7;
+    QPushButton *privateAddressButton;
+    QSpacerItem *horizontalSpacer_8;
     QHBoxLayout *horizontalLayout_7;
     QSpacerItem *horizontalSpacer_13;
     QPushButton *copyClipboardButton;
@@ -153,6 +157,25 @@ public:
 
         verticalLayout->addItem(verticalSpacer_3);
 
+        horizontalLayout_4 = new QHBoxLayout();
+        horizontalLayout_4->setObjectName(QStringLiteral("horizontalLayout_4"));
+        horizontalSpacer_7 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+        horizontalLayout_4->addItem(horizontalSpacer_7);
+
+        privateAddressButton = new QPushButton(getAddressToReceive);
+        privateAddressButton->setObjectName(QStringLiteral("privateAddressButton"));
+        privateAddressButton->setStyleSheet(QStringLiteral(""));
+
+        horizontalLayout_4->addWidget(privateAddressButton);
+
+        horizontalSpacer_8 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+        horizontalLayout_4->addItem(horizontalSpacer_8);
+
+
+        verticalLayout->addLayout(horizontalLayout_4);
+
         horizontalLayout_7 = new QHBoxLayout();
         horizontalLayout_7->setObjectName(QStringLiteral("horizontalLayout_7"));
         horizontalSpacer_13 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
@@ -161,16 +184,19 @@ public:
 
         copyClipboardButton = new QPushButton(getAddressToReceive);
         copyClipboardButton->setObjectName(QStringLiteral("copyClipboardButton"));
+        copyClipboardButton->setStyleSheet(QStringLiteral(""));
 
         horizontalLayout_7->addWidget(copyClipboardButton);
 
         requestPaymentButton = new QPushButton(getAddressToReceive);
         requestPaymentButton->setObjectName(QStringLiteral("requestPaymentButton"));
+        requestPaymentButton->setStyleSheet(QStringLiteral(""));
 
         horizontalLayout_7->addWidget(requestPaymentButton);
 
         requestNewAddressButton = new QPushButton(getAddressToReceive);
         requestNewAddressButton->setObjectName(QStringLiteral("requestNewAddressButton"));
+        requestNewAddressButton->setStyleSheet(QStringLiteral(""));
 
         horizontalLayout_7->addWidget(requestNewAddressButton);
 
@@ -189,11 +215,13 @@ public:
 
         newAddressButton = new QPushButton(getAddressToReceive);
         newAddressButton->setObjectName(QStringLiteral("newAddressButton"));
+        newAddressButton->setStyleSheet(QStringLiteral(""));
 
         horizontalLayout_3->addWidget(newAddressButton);
 
         coldStakingButton = new QPushButton(getAddressToReceive);
         coldStakingButton->setObjectName(QStringLiteral("coldStakingButton"));
+        coldStakingButton->setStyleSheet(QStringLiteral(""));
 
         horizontalLayout_3->addWidget(coldStakingButton);
 
@@ -224,6 +252,7 @@ public:
 #ifndef QT_NO_TOOLTIP
         lblQRCode->setToolTip(QApplication::translate("getAddressToReceive", "QR Code", nullptr));
 #endif // QT_NO_TOOLTIP
+        privateAddressButton->setText(QApplication::translate("getAddressToReceive", "Show Private Address", nullptr));
         copyClipboardButton->setText(QApplication::translate("getAddressToReceive", "Copy to clipboard", nullptr));
         requestPaymentButton->setText(QApplication::translate("getAddressToReceive", "Request payment", nullptr));
         requestNewAddressButton->setText(QApplication::translate("getAddressToReceive", "List old addresses", nullptr));

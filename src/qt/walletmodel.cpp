@@ -24,6 +24,7 @@
 #include <stdint.h>
 
 #include <QDebug>
+#include <QProgressDialog>
 #include <QSet>
 #include <QTimer>
 

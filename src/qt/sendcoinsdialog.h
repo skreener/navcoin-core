@@ -58,6 +58,7 @@ public Q_SLOTS:
                     const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance, const CAmount& coldStakingBalance,
                     const CAmount& privateBalance);
     void useFullAmount();
+    void useFullPrivateAmount();
 
 private:
     Ui::SendCoinsDialog *ui;

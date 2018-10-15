@@ -21,8 +21,8 @@ SendCoinsEntry::SendCoinsEntry(const PlatformStyle *platformStyle, QWidget *pare
     QStackedWidget(parent),
     ui(new Ui::SendCoinsEntry),
     model(0),
-    platformStyle(platformStyle),
-    totalAmount(0)
+    totalAmount(0),
+    platformStyle(platformStyle)
 {
     ui->setupUi(this);
 
@@ -59,6 +59,10 @@ SendCoinsEntry::~SendCoinsEntry()
     delete ui;
 }
 
+void SendCoinsEntry::setTotalPrivateAmount(const CAmount& amount)
+{
+    totalPrivateAmount = amount;
+}
 
 void SendCoinsEntry::setTotalAmount(const CAmount& amount)
 {
@@ -68,6 +72,39 @@ void SendCoinsEntry::setTotalAmount(const CAmount& amount)
 void SendCoinsEntry::useFullAmount()
 {
     ui->payAmount->setValue(totalAmount);
+    ui->sendPublic->setChecked(true);
+    ui->sendPrivate->setChecked(false);
+}
+
+void SendCoinsEntry::useFullPrivateAmount()
+{
+    ui->payAmount->setValue(totalPrivateAmount);
+    ui->sendPublic->setChecked(false);
+    ui->sendPrivate->setChecked(true);
+}
+
+void SendCoinsEntry::disablePrivateSend()
+{
+    ui->sendPrivate->setEnabled(false);
+    ui->sendPrivate->setChecked(false);
+}
+
+void SendCoinsEntry::enablePrivateSend()
+{
+    if(totalPrivateAmount > 0)
+        ui->sendPrivate->setEnabled(true);
+}
+
+void SendCoinsEntry::disablePublicSend()
+{
+    ui->sendPublic->setEnabled(false);
+    ui->sendPublic->setChecked(false);
+}
+
+void SendCoinsEntry::enablePublicSend()
+{
+    if(totalAmount > 0)
+        ui->sendPublic->setEnabled(true);
 }
 
 void SendCoinsEntry::updateAddressBook()
