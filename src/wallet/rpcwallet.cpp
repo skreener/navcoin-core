@@ -2972,6 +2972,8 @@ int GetsStakeSubTotal(vStakePeriodRange_T& aRange)
     {
         pcoin = &(*it).second;
 
+        LOCK(cs_main);
+
         // skip orphan block or immature
         if  ((!pcoin->GetDepthInMainChain()) || (pcoin->GetBlocksToMaturity()>0))
             continue;
