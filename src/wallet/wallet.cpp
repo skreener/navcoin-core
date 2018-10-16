@@ -470,8 +470,6 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     // Calculate coin age reward
     int64_t nReward;
     {
-        LOCK(cs_wallet);
-
         uint64_t nCoinAge;
         CTransaction ptxNew = CTransaction(txNew);
         CCoinsViewCache view(pcoinsTip);
@@ -981,6 +979,8 @@ bool CWallet::IsSpent(const uint256& hash, unsigned int n) const
     for (TxSpends::const_iterator it = range.first; it != range.second; ++it)
     {
         const uint256& wtxid = it->second;
+        if(it->first.n != n)
+            continue;
         std::map<uint256, CWalletTx>::const_iterator mit = mapWallet.find(wtxid);
         if (mit != mapWallet.end()) {
             int depth = mit->second.GetDepthInMainChain();
@@ -2292,7 +2292,7 @@ bool CWalletTx::IsTrusted() const
         if (parent == NULL)
             return false;
         const CTxOut& parentOut = parent->vout[txin.prevout.n];
-        if (pwallet->IsMine(parentOut) != ISMINE_SPENDABLE)
+        if (pwallet->IsMine(parentOut) != ISMINE_SPENDABLE && pwallet->IsMine(parentOut) != ISMINE_SPENDABLE_PRIVATE)
             return false;
     }
     return true;
@@ -3228,7 +3228,6 @@ DBErrors CWallet::LoadWallet(bool& fFirstRunRet, bool& fFirstZeroRunRet)
     {
         if (CDB::Rewrite(strWalletFile, "\x04pool"))
         {
-            LOCK(cs_wallet);
             setKeyPool.clear();
             // Note: can't top-up keypool here, because wallet is locked.
             // User will be prompted to unlock wallet the next operation
