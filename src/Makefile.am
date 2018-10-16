@@ -157,6 +157,7 @@ NAVCOIN_CORE_H = \
   wallet/rpcwallet.h \
   wallet/wallet.h \
   wallet/walletdb.h \
+  zeroaccumulators.h \
   zerochain.h \
   zerowallet.h \
   zmq/zmqabstractnotifier.h \
@@ -214,6 +215,7 @@ libnavcoin_server_a_SOURCES = \
   utils/dns_utils.cpp \
   validationinterface.cpp \
   versionbits.cpp \
+  zeroaccumulators.cpp \
   zerochain.cpp \
   zerowallet.cpp \
   $(NAVCOIN_CORE_H)
@@ -374,6 +376,7 @@ libzerocoin_libnavcoin_zerocoin_a_SOURCES = \
   libzerocoin/Accumulator.h \
   libzerocoin/AccumulatorProofOfKnowledge.h \
   libzerocoin/bignum.h \
+  libzerocoin/bignum.cpp \
   libzerocoin/Coin.h \
   libzerocoin/CoinSpend.h \
   libzerocoin/Commitment.h \
@@ -395,6 +398,13 @@ libzerocoin_libnavcoin_zerocoin_a_SOURCES = \
   libzerocoin/Params.cpp \
   libzerocoin/SerialNumberSignatureOfKnowledge.cpp \
   libzerocoin/SerialNumberProofOfKnowledge.cpp
+
+if USE_NUM_GMP
+libzerocoin_libnavcoin_zerocoin_a_SOURCES += libzerocoin/bignum_gmp.cpp
+endif
+if USE_NUM_OPENSSL
+libzerocoin_libnavcoin_zerocoin_a_SOURCES += libzerocoin/bignum_openssl.cpp
+endif
 
 libzerocoin_libnavcoin_zerocoin_a_LIBADD = $(LIBSECP256K1)
 libzerocoin_libnavcoin_zerocoin_a_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/secp256k1/include $(SSL_CFLAGS)
