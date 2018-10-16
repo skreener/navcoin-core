@@ -9,6 +9,7 @@
 #include "script/standard.h"
 
 #include <stdint.h>
+#include <uint256.h>
 
 class CKeyStore;
 class CScript;
@@ -29,6 +30,8 @@ enum isminetype
 };
 /** used for bitflags of isminetype */
 typedef uint8_t isminefilter;
+
+std::vector<uint256> vMyMints;
 
 isminetype IsMine(const CKeyStore& keystore, const CScript& scriptPubKey);
 isminetype IsMine(const CKeyStore& keystore, const CTxDestination& dest);

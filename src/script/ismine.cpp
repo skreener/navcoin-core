@@ -81,13 +81,18 @@ isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
     {
         CPubKey p(vSolutions[0]); CBigNum c(vSolutions[1]);
         CKey zk; CBigNum bc;
+        uint256 scriptHash = Hash(scriptPubKey.begin(), scriptPubKey.end());
+        if(std::find(vMyMints.begin(), vMyMints.end(), scriptHash) != vMyMints.end())
+            return ISMINE_SPENDABLE_PRIVATE;
         if(!keystore.GetZeroKey(zk))
             break;
         if(!keystore.GetBlindingCommitment(bc))
             break;
         libzerocoin::PrivateCoin pc(&Params().GetConsensus().Zerocoin_Params, libzerocoin::IntToZerocoinDenomination(1), zk, p, bc, c);
-        if(pc.isValid())
+        if(pc.isValid()) {
+            vMyMints.push_back(scriptHash);
             return ISMINE_SPENDABLE_PRIVATE;
+        }
         break;
     }
     case TX_SCRIPTHASH:
