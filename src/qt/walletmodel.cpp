@@ -231,9 +231,9 @@ bool WalletModel::validateAddress(const QString &address)
   return addressParsed.IsValid();
 }
 
-WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransaction &transaction, const CCoinControl *coinControl)
+WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransaction &transaction, CAmount& total, const CCoinControl *coinControl)
 {
-    CAmount total = 0;
+    total = 0;
     bool fSubtractFeeFromAmount = false;
     QList<SendCoinsRecipient> recipients = transaction.getRecipients();
     std::vector<CRecipient> vecSend;
@@ -295,7 +295,14 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
 
             vecSend.insert(vecSend.end(), vecSendTemp.begin(), vecSendTemp.end());
 
-            total += rcp.amount;
+            CAmount nAmountToSend = 0;
+
+            for (auto& it: vecSendTemp)
+            {
+                nAmountToSend += it.nAmount;
+            }
+
+            total += nAmountToSend;
         }
     }
     if(setAddress.size() != nAddresses)

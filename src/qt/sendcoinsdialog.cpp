@@ -232,11 +232,13 @@ void SendCoinsDialog::on_sendButton_clicked()
     // prepare transaction for getting txFee earlier
     WalletModelTransaction currentTransaction(recipients);
 
+    CAmount nTotalAmount = 0;
+
     WalletModel::SendCoinsReturn prepareStatus;
     if (model->getOptionsModel()->getCoinControlFeatures()) // coin control enabled
-        prepareStatus = model->prepareTransaction(currentTransaction, CoinControlDialog::coinControl);
+        prepareStatus = model->prepareTransaction(currentTransaction, nTotalAmount, CoinControlDialog::coinControl);
     else
-        prepareStatus = model->prepareTransaction(currentTransaction);
+        prepareStatus = model->prepareTransaction(currentTransaction, nTotalAmount);
 
     // process prepareStatus and on error generate message shown to user
     processSendCoinsReturn(prepareStatus,
@@ -264,14 +266,15 @@ void SendCoinsDialog::on_sendButton_clicked()
 
 
     CAmount txFee = currentTransaction.getTransactionFee();
-    CAmount nTotalAmount = 0;
 
-    QString questionString = tr("Are you sure you want to send?");
+    CAmount nOriginalAmount = 0;
 
     Q_FOREACH(const SendCoinsRecipient &rcp, currentTransaction.getRecipients())
     {
-      nTotalAmount += rcp.amount;
+        nOriginalAmount += rcp.amount;
     }
+
+    QString questionString = tr("Are you sure you want to send?");
 
     // Format confirmation message
     QStringList formatted;
@@ -323,6 +326,10 @@ void SendCoinsDialog::on_sendButton_clicked()
             questionString.append(" (" + QString::number((double)currentTransaction.getTransactionSize() / 1000) + " kB)");
 
         }
+        questionString.append("<br><br><span style=\"color:red\">" + tr("WARNING!") + "</span> " +
+                              tr("You originally asked to send ") +
+                              NavCoinUnits::formatHtmlWithUnit(model->getOptionsModel()->getDisplayUnit(), nOriginalAmount) +
+                              tr(" but this is not an allowed amount"));
 
     }
 
@@ -330,7 +337,7 @@ void SendCoinsDialog::on_sendButton_clicked()
 
     // add total amount in all subdivision units
     questionString.append("<hr />");
-    CAmount totalAmount = currentTransaction.getTotalTransactionAmount() + txFee;
+    CAmount totalAmount = nTotalAmount + txFee;
     QStringList alternativeUnits;
     Q_FOREACH(NavCoinUnits::Unit u, NavCoinUnits::availableUnits())
     {
