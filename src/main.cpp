@@ -1700,8 +1700,6 @@ bool GetTransaction(const uint256 &hash, CTransaction &txOut, const CCoinsViewCa
 
     CBlockIndex *pindexSlow = NULL;
 
-    LOCK(cs_main);
-
     std::shared_ptr<const CTransaction> ptx = mempool.get(hash);
     if (ptx)
     {
@@ -2430,8 +2428,6 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
 
                 const CTxIn input = tx.vin[j];
 
-                const CCoins* coins = view.AccessCoins(tx.vin[j].prevout.hash);
-
                 if (fSpentIndex) {
                     // undo and delete the spent index
                     spentIndex.push_back(make_pair(CSpentIndexKey(input.prevout.hash, input.prevout.n), CSpentIndexValue()));
@@ -3042,19 +3038,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
               }
 
-              if (block.IsProofOfStake())
-              {
-                  // ppcoin: coin stake tx earns reward instead of paying fee
-                  uint64_t nCoinAge;
-                  if (!TransactionGetCoinAge(const_cast<CTransaction&>(block.vtx[1]), nCoinAge, view))
-                      return error("ConnectBlock() : %s unable to get coin age for coinstake", block.vtx[1].GetHash().ToString());
-
-                  int64_t nCalculatedStakeReward = GetProofOfStakeReward(pindex->nHeight, nCoinAge, nFees, pindex->pprev);
-
-                  if (nStakeReward > nCalculatedStakeReward)
-                      return state.DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%d vs calculated=%d)", nStakeReward, nCalculatedStakeReward));
-              }
-
             }
 
             std::vector<CScriptCheck> vChecks;
@@ -3226,7 +3209,24 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 LogPrint("cfund","New payment request %s\n",tx.GetHash().ToString());
             }
         }
+    }
 
+    if (block.IsProofOfStake())
+    {
+        // ppcoin: coin stake tx earns reward instead of paying fee
+        uint64_t nCoinAge;
+        if (!TransactionGetCoinAge(const_cast<CTransaction&>(block.vtx[1]), nCoinAge, view))
+            return error("ConnectBlock() : %s unable to get coin age for coinstake", block.vtx[1].GetHash().ToString());
+
+        int64_t nCalculatedStakeReward = GetProofOfStakeReward(pindex->nHeight, nCoinAge, nFees, pindex->pprev);
+
+        if (nStakeReward > nCalculatedStakeReward)
+            return state.DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%d vs calculated=%d)", nStakeReward, nCalculatedStakeReward));
+    }
+
+    for (unsigned int i = 0; i < block.vtx.size(); i++)
+    {
+        const CTransaction &tx = block.vtx[i];
 
         CTxUndo undoDummy;
         if (i > 0) {
@@ -8447,7 +8447,9 @@ bool TransactionGetCoinAge(CTransaction& transaction, uint64_t& nCoinAge, const 
         uint256 hashBlock = uint256();
 
         if (!GetTransaction(txin.prevout.hash, txPrev, view, Params().GetConsensus(), hashBlock, true))
-            continue;  // previous transaction not in main chain
+        {
+            return error("TransactionGetCoinAge: Can't get coin age of transaction out of the main chain");  // previous transaction not in main chain
+        }
 
         if (transaction.nTime < txPrev.nTime)
             return false;  // Transaction timestamp violation
@@ -8458,7 +8460,9 @@ bool TransactionGetCoinAge(CTransaction& transaction, uint64_t& nCoinAge, const 
         CBlockIndex* pblockindex = mapBlockIndex[hashBlock];
 
         if (pblockindex->nTime + Params().GetConsensus().nStakeMinAge > transaction.nTime)
-            continue; // only count coins meeting min age requirement
+        {
+            return error("TransactionGetCoinAge: Coins do not meet min age requirement");  // previous transaction not in main chain
+        } // only count coins meeting min age requirement
 
         int64_t nValueIn = txPrev.vout[txin.prevout.n].nValue;
         bnCentSecond += CBigNum(nValueIn) * (transaction.nTime-txPrev.nTime) / CENT;
@@ -8809,6 +8813,7 @@ bool CheckKernel(CBlockIndex* pindexPrev, const CCoinsViewCache& view, unsigned 
 
     CTransaction txPrev;
     uint256 hashBlock = uint256();
+
     if (!GetTransaction(prevout.hash, txPrev, view, Params().GetConsensus(), hashBlock, true)){
         LogPrintf("CheckKernel : Could not find previous transaction %s\n",prevout.hash.ToString());
         return false;
