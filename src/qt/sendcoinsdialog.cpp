@@ -293,21 +293,21 @@ void SendCoinsDialog::on_sendButton_clicked()
         {
             if(rcp.label.length() > 0) // label with address
             {
-                recipientElement = tr("%1 to %2").arg((rcp.isanon ? " Private payment " : "" ) +amount, GUIUtil::HtmlEscape(rcp.label));
+                recipientElement = tr("%1 to %2").arg((rcp.isanon ? tr(" Private payment ")  : "" ) +amount, GUIUtil::HtmlEscape(rcp.label));
                 recipientElement.append(QString(" (%1)").arg(address));
             }
             else // just address
             {
-                recipientElement = tr("%1 to %2").arg((rcp.isanon ?  " Private payment " : "" ) +amount, address);
+                recipientElement = tr("%1 to %2").arg((rcp.isanon ?  tr(" Private payment ")  : "" ) +amount, address);
             }
         }
         else if(!rcp.authenticatedMerchant.isEmpty()) // authenticated payment request
         {
-            recipientElement = tr("%1 to %2").arg((rcp.isanon ? " Private payment " : "") +amount, GUIUtil::HtmlEscape(rcp.authenticatedMerchant));
+            recipientElement = tr("%1 to %2").arg((rcp.isanon ? tr(" Private payment ")  : "") +amount, GUIUtil::HtmlEscape(rcp.authenticatedMerchant));
         }
         else // unauthenticated payment request
         {
-            recipientElement = tr("%1 to %2").arg((rcp.isanon ? " Private payment " : "") +amount, address);
+            recipientElement = tr("%1 to %2").arg((rcp.isanon ? tr(" Private payment ") : "") +amount, address);
         }
 
         formatted.append(recipientElement);
@@ -326,10 +326,12 @@ void SendCoinsDialog::on_sendButton_clicked()
             questionString.append(" (" + QString::number((double)currentTransaction.getTransactionSize() / 1000) + " kB)");
 
         }
-        questionString.append("<br><br><span style=\"color:red\">" + tr("WARNING!") + "</span> " +
-                              tr("You originally asked to send ") +
-                              NavCoinUnits::formatHtmlWithUnit(model->getOptionsModel()->getDisplayUnit(), nOriginalAmount) +
-                              tr(" but this is not an allowed amount"));
+        if(nOriginalAmount != nTotalAmount) {
+            questionString.append("<br><br><span style=\"color:red\">" + tr("WARNING!") + "</span> " +
+                                  tr("You originally asked to send ") +
+                                  NavCoinUnits::formatHtmlWithUnit(model->getOptionsModel()->getDisplayUnit(), nOriginalAmount) +
+                                  tr(" but this is not an allowed amount"));
+        }
 
     }
 
