@@ -62,7 +62,7 @@ bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, v
         for ( it = mapDenominations.begin(); it != mapDenominations.end(); it++ )
         {
             for (unsigned int i = 0; i < it->second; i++) {
-                CRecipient recipient = {GetScriptForDestination(address), libzerocoin::ZerocoinDenominationToInt(it->first)  * COIN, fSubtractFeeFromAmount, ""};
+                CRecipient recipient = {GetScriptForDestination(address), libzerocoin::ZerocoinDenominationToInt(it->first)  * COIN, false, ""};
                 vecSend.push_back(recipient);
             }
         }
