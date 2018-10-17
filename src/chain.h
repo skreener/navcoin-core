@@ -14,6 +14,7 @@
 #include "uint256.h"
 #include "util.h"
 #include "utilmoneystr.h"
+#include "zeroaccumulators.h"
 
 #include <vector>
 
@@ -233,7 +234,7 @@ public:
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
     uint32_t nSequenceId;
 
-    uint256 nAccumulatorCheckpoint;
+    uint256 nAccumulatorChecksum;
     CAmount nMoneySupply;
 
     std::map<libzerocoin::CoinDenomination, int64_t> mapZerocoinSupply;
@@ -269,7 +270,7 @@ public:
         vProposalVotes.clear();
         vPaymentRequestVotes.clear();
         nMoneySupply = 0;
-        nAccumulatorCheckpoint = 0;
+        nAccumulatorChecksum = 0;
         // Start supply of each denomination with 0s
         for (auto& denom : libzerocoin::zerocoinDenomList) {
             mapZerocoinSupply.insert(make_pair(denom, 0));
@@ -292,7 +293,7 @@ public:
         nBits          = block.nBits;
         nNonce         = block.nNonce;
         if((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
-            nAccumulatorCheckpoint = block.nAccumulatorCheckpoint;
+            nAccumulatorChecksum = block.nAccumulatorChecksum;
     }
 
     CBlockIndex(const CBlock& block)
@@ -317,7 +318,7 @@ public:
         nBits          = block.nBits;
         nNonce         = block.nNonce;
         if((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
-            nAccumulatorCheckpoint = block.nAccumulatorCheckpoint;
+            nAccumulatorChecksum = block.nAccumulatorChecksum;
     }
 
     uint256 GetBlockTrust() const
@@ -360,7 +361,7 @@ public:
         block.nBits          = nBits;
         block.nNonce         = nNonce;
         if((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
-            block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
+            block.nAccumulatorChecksum = nAccumulatorChecksum;
         return block;
     }
 
@@ -555,7 +556,7 @@ public:
         READWRITE(vProposalVotes);
         READWRITE(nMoneySupply);
         if((this->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN) {
-            READWRITE(nAccumulatorCheckpoint);
+            READWRITE(nAccumulatorChecksum);
             READWRITE(mapZerocoinSupply);
             READWRITE(mapMints);
         }
@@ -571,7 +572,7 @@ public:
         block.nBits           = nBits;
         block.nNonce          = nNonce;
         if((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
-            block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
+            block.nAccumulatorChecksum = nAccumulatorChecksum;
 
         const_cast<CDiskBlockIndex*>(this)->blockHash = block.GetHash();
 

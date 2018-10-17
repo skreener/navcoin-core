@@ -499,7 +499,7 @@ if GLIBC_BACK_COMPAT
   libnavcoinconsensus_la_SOURCES += compat/glibc_compat.cpp
 endif
 
-libnavcoinconsensus_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined $(RELDFLAGS)
+libnavcoinconsensus_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined $(RELDFLAGS) $(BOOST_LIBS)
 libnavcoinconsensus_la_LIBADD = $(LIBSECP256K1)
 libnavcoinconsensus_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir)/obj -I$(srcdir)/secp256k1/include -DBUILD_NAVCOIN_INTERNAL
 libnavcoinconsensus_la_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)

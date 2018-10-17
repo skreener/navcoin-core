@@ -12,5 +12,6 @@
 
 bool TxOutToPublicCoin(const libzerocoin::ZerocoinParams *params, const CTxOut& txout, libzerocoin::PublicCoin& pubCoin, CValidationState& state);
 bool CheckZerocoinMint(const libzerocoin::ZerocoinParams *params, const CTxOut& txout, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen = std::vector<std::pair<CBigNum, uint256>>(), libzerocoin::PublicCoin* pPubCoin = NULL);
+bool BlockToZeroCoinMints(const libzerocoin::ZerocoinParams *params, const CBlock* block, std::vector<libzerocoin::PublicCoin> &vPubCoins);
 
 #endif // ZEROCHAIN_H

@@ -35,6 +35,7 @@ static const char DB_LAST_BLOCK = 'l';
 static const char DB_ZEROCOIN_BLOCK = 'y';
 static const char DB_ZEROCOIN_MINTINDEX = 'M';
 static const char DB_ZEROCOIN_SPENDINDEX = 'S';
+static const char DB_ZEROCOIN_ACCUMULATOR = 'K';
 
 CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true, false, 64)
 {
@@ -209,6 +210,22 @@ bool CBlockTreeDB::EraseCoinSpend(CBigNum coinSerial) {
     uint256 hash = Hash(ss.begin(), ss.end());
 
     return Erase(make_pair(DB_ZEROCOIN_SPENDINDEX, hash));
+}
+
+bool CBlockTreeDB::ReadZeroCoinAccumulator(uint256 accumulatorChecksum, std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> &accumulatorMap)
+{
+    return Read(make_pair(DB_ZEROCOIN_ACCUMULATOR, accumulatorChecksum), accumulatorMap);
+}
+
+bool CBlockTreeDB::WriteZeroCoinAccumulator(uint256 accumulatorChecksum, std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> accumulatorMap)
+{
+    return Write(make_pair(DB_ZEROCOIN_ACCUMULATOR, accumulatorChecksum), accumulatorMap);
+}
+
+bool CBlockTreeDB::EraseZeroCoinAccumulator(uint256 accumulatorChecksum)
+{
+    return Erase(make_pair(DB_ZEROCOIN_ACCUMULATOR, accumulatorChecksum));
+
 }
 
 CCoinsViewCursor *CCoinsViewDB::Cursor() const
@@ -579,8 +596,8 @@ bool CBlockTreeDB::LoadBlockIndexGuts(boost::function<CBlockIndex*(const uint256
                 pindexNew->nMoneySupply   = diskindex.nMoneySupply;
 
                 //zerocoin
-                pindexNew->nAccumulatorCheckpoint
-                                          = diskindex.nAccumulatorCheckpoint;
+                pindexNew->nAccumulatorChecksum
+                                          = diskindex.nAccumulatorChecksum;
                 pindexNew->mapZerocoinSupply
                                           = diskindex.mapZerocoinSupply;
                 pindexNew->mapMints

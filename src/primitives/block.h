@@ -10,6 +10,7 @@
 #include "serialize.h"
 #include "uint256.h"
 #include "hash.h"
+#include "zeroaccumulators.h"
 
 /** Zerocoin blocks version bits need to signal this */
 static const int32_t VERSIONBITS_TOP_BITS_ZEROCOIN = 0x80000000UL;
@@ -31,7 +32,7 @@ public:
     uint32_t nTime;
     uint32_t nBits;
     uint32_t nNonce;
-    uint256 nAccumulatorCheckpoint;
+    uint256 nAccumulatorChecksum;
 
     CBlockHeader()
     {
@@ -49,7 +50,7 @@ public:
         READWRITE(nBits);
         READWRITE(nNonce);
         if((this->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
-            READWRITE(nAccumulatorCheckpoint);
+            READWRITE(nAccumulatorChecksum);
     }
 
     void SetNull()
@@ -60,7 +61,7 @@ public:
         nTime = 0;
         nBits = 0;
         nNonce = 0;
-        nAccumulatorCheckpoint = 0;
+        nAccumulatorChecksum = 0;
     }
 
     bool IsNull() const
