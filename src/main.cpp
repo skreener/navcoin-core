@@ -2635,6 +2635,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     AssertLockHeld(cs_main);
 
+    AccumulatorMap mapAccumulators(&Params().GetConsensus().Zerocoin_Params);
+
     pindex->nCFSupply    = pindex->pprev != NULL ? pindex->pprev->nCFSupply : 0;
     pindex->nCFLocked    = pindex->pprev != NULL ? pindex->pprev->nCFLocked : 0;
     pindex->nMoneySupply = pindex->pprev != NULL ? pindex->pprev->nMoneySupply : 0;
@@ -2643,6 +2645,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     {
         pindex->mapZerocoinSupply
                          = pindex->pprev->mapZerocoinSupply;
+        if (IsZerocoinEnabled(pindex->pprev, chainparams.GetConsensus()) && pindex->pprev->nAccumulatorChecksum != uint256()) {
+            mapAccumulators.Load(pindex->pprev->nAccumulatorChecksum);
+        }
     }
 
     pindex->vProposalVotes.clear();
@@ -2894,6 +2899,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 if(!pindex->mapMints.count(pubCoin.getDenomination()))
                     pindex->mapMints[pubCoin.getDenomination()]=std::vector<CBigNum>();
                 pindex->mapMints.at(pubCoin.getDenomination()).push_back(pubCoin.getValue());
+                if(!mapAccumulators.Accumulate(pubCoin))
+                    return state.Invalid(error("%s: could not accumulate pubCoin %s from tx %s", __func__, pubCoin.getValue().GetHex(), tx.GetHash().ToString()));
             }
         }
 
@@ -3208,6 +3215,19 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
                 LogPrint("cfund","New payment request %s\n",tx.GetHash().ToString());
             }
+        }
+    }
+
+    if (IsZerocoinEnabled(pindex->pprev, chainparams.GetConsensus())) {
+        if (pindex->nAccumulatorChecksum != mapAccumulators.GetChecksum())
+        {
+            return state.DoS(10, error("ConnectBlock(): block accumulator checksum is not valid (valid=%d vs sent=%d)",
+                                       mapAccumulators.GetChecksum().ToString(), pindex->nAccumulatorChecksum.ToString()),
+                             REJECT_INVALID, "bad-zero-accumulator-checksum");
+        }
+        else if(!mapAccumulators.Save())
+        {
+            return AbortNode(state, "Failed to write zerocoin accumulator checksum");
         }
     }
 
@@ -3659,6 +3679,9 @@ bool static DisconnectTip(CValidationState& state, const CChainParams& chainpara
     if(firstZero.first == pindexDelete->nHeight)
         if(!pblocktree->WriteFirstZeroCoinBlock(make_pair(0, uint256())))
             return AbortNode(state, "Failed to write height of first Zerocoin block");
+
+    if(!pblocktree->EraseZeroCoinAccumulator(pindexDelete->nAccumulatorChecksum))
+        return AbortNode(state, "Failed to remove zerocoin accumulator checksum");
 
     std::vector<CFund::CPaymentRequest> vecPaymentRequest;
     std::vector<CFund::CProposal> vecProposal;

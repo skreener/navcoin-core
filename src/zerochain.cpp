@@ -23,6 +23,31 @@ bool TxOutToPublicCoin(const libzerocoin::ZerocoinParams *params, const CTxOut& 
     return true;
 }
 
+bool BlockToZeroCoinMints(const libzerocoin::ZerocoinParams *params, const CBlock* block, std::vector<libzerocoin::PublicCoin> &vPubCoins)
+{
+    for (auto& tx : block->vtx) {
+        for (auto& out : tx.vout) {
+            if (!out.IsZerocoinMint())
+                continue;
+
+            libzerocoin::PublicCoin pubCoin(params);
+
+            libzerocoin::CoinDenomination denomination = libzerocoin::AmountToZerocoinDenomination(out.nValue);
+            if (denomination == libzerocoin::ZQ_ERROR)
+                return error("BlockToZeroCoinMints(): txout.nValue is not a valid denomination value");
+
+            std::vector<unsigned char> c; CPubKey p;
+            if(!out.scriptPubKey.ExtractZerocoinMintData(p, c))
+                return error("BlockToZeroCoinMints(): Could not extract Zerocoin mint data");
+
+            libzerocoin::PublicCoin checkPubCoin(params, denomination, CBigNum(c), p);
+            vPubCoins.push_back(checkPubCoin);
+        }
+    }
+
+    return true;
+}
+
 bool CheckZerocoinMint(const libzerocoin::ZerocoinParams *params, const CTxOut& txout, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen, libzerocoin::PublicCoin* pPubCoin)
 {
     libzerocoin::PublicCoin pubCoin(params);

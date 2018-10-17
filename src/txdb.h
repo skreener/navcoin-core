@@ -186,6 +186,9 @@ public:
     bool EraseCoinSpend(CBigNum coinSerial);
     bool EraseCoinSpend(uint256 coinSerialHash);
     bool UpdateCoinSpendIndex(const std::vector<std::pair<CBigNum, uint256> >&vect);
+    bool ReadZeroCoinAccumulator(uint256 accumulatorChecksum, std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> &accumulatorMap);
+    bool WriteZeroCoinAccumulator(uint256 accumulatorChecksum, std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> accumulatorMap);
+    bool EraseZeroCoinAccumulator(uint256 accumulatorChecksum);
 };
 
 #endif // NAVCOIN_TXDB_H

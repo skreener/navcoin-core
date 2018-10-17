@@ -77,7 +77,8 @@ UniValue blockheaderToJSON(const CBlockIndex* blockindex)
         }
         vMints.push_back(Pair(to_string(libzerocoin::ZerocoinDenominationToInt(it.first)), vMintsDenom));
     }
-    result.push_back(Pair("zeromints", vMints));
+    result.push_back(Pair("zeromints", vMints));    
+    result.push_back(Pair("accumulatorschecksum", blockindex->nAccumulatorChecksum.GetHex()));
     result.push_back(Pair("nonce", (uint64_t)blockindex->nNonce));
     result.push_back(Pair("bits", strprintf("%08x", blockindex->nBits)));
     result.push_back(Pair("difficulty", GetDifficulty(blockindex)));

@@ -34,6 +34,7 @@
 #include "versionbits.h"
 #include "wallet/wallet.h"
 #include "kernel.h"
+#include <zerochain.h>
 
 #include <algorithm>
 #include <boost/thread.hpp>
@@ -309,6 +310,25 @@ CBlockTemplate* BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bo
     pblock->nBits          = GetNextTargetRequired(pindexPrev, fProofOfStake);
     pblock->nNonce         = 0;
     pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(pblock->vtx[0]);
+
+    if(IsZerocoinEnabled(pindexPrev, chainparams.GetConsensus()))
+    {
+        AccumulatorMap mapAccumulators(&Params().GetConsensus().Zerocoin_Params);
+        if(pindexPrev->nAccumulatorChecksum != uint256())
+            mapAccumulators.Load(pindexPrev->nAccumulatorChecksum);
+
+        std::vector<libzerocoin::PublicCoin> vPubCoins;
+        BlockToZeroCoinMints(&chainparams.GetConsensus().Zerocoin_Params, pblock, vPubCoins);
+
+        for(auto& it: vPubCoins)
+        {
+            if(!mapAccumulators.Accumulate(it, false))
+                LogPrintf("Error! Trying to accumulate coin\n");
+
+        }
+        pblock->nAccumulatorChecksum
+                = mapAccumulators.GetChecksum();
+    }
 
     if (pFees)
       *pFees = nFees;
