@@ -3,6 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "chainparams.h"
 #include "zeroaccumulators.h"
 #include "main.h"
 #include "txdb.h"
@@ -120,6 +121,52 @@ bool AccumulatorMap::Save()
 
     if (!pblocktree->WriteZeroCoinAccumulator(GetChecksum(), vAcc))
         return error("%s : cannot write zerocoin accumulator checksum %s", __func__, GetChecksum().ToString());
+
+    return true;
+}
+
+bool CalculateAccumulatorChecksum(CChain& chain, int nHeight, AccumulatorMap& mapAccumulators)
+{
+    std::pair<int, uint256> firstZero = make_pair(0, uint256());
+
+    pblocktree->ReadFirstZeroCoinBlock(firstZero);
+
+    CBlockIndex* pLastChecksum = chain[max((unsigned int)firstZero.first,
+                 nHeight - Params().GetConsensus().nRecalculateAccumulatorChecksum)];
+    CBlockIndex* pLastAccumulated = chain[max((unsigned int)firstZero.first,
+                 nHeight - Params().GetConsensus().nAccumulatorChecksumBlockDelay)];
+
+    if (pLastChecksum)
+    {
+        if (pLastChecksum->nAccumulatorChecksum != uint256())
+            mapAccumulators.Load(pLastChecksum->nAccumulatorChecksum);
+
+        if (pLastAccumulated)
+        {
+            if ((nHeight % Params().GetConsensus().nRecalculateAccumulatorChecksum) == 0)
+            {
+                unsigned int nCount = 0;
+
+                while (pLastAccumulated && nCount < Params().GetConsensus().nRecalculateAccumulatorChecksum)
+                {
+                    if ((pLastAccumulated->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) != VERSIONBITS_TOP_BITS_ZEROCOIN ||
+                            pLastAccumulated->nHeight < firstZero.first)
+                        break;
+
+                    for (auto& it: pLastChecksum->mapMints)
+                        for (auto& pc: it.second)
+                            if (!mapAccumulators.Increment(it.first, pc))
+                                return error("Error! Trying to accumulate coin\n");
+
+                    pLastAccumulated = pLastAccumulated->pprev;
+
+                    nCount++;
+                }
+
+            }
+
+        }
+    }
 
     return true;
 }
