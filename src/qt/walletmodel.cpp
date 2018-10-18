@@ -287,10 +287,15 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
             ++nAddresses;
 
             vector<CRecipient> vecSendTemp;
+            bool fNeedsMinting = false;
 
             // Parse NavCoin address
-            if (!DestinationToVecRecipients(rcp.amount, rcp.address.toStdString(), vecSendTemp, rcp.fSubtractFeeFromAmount, false)) {
+            if (!DestinationToVecRecipients(rcp.amount, rcp.address.toStdString(), vecSendTemp, rcp.fSubtractFeeFromAmount, false, fNeedsMinting)) {
                 return InvalidAddress;
+            }
+
+            if(fNeedsMinting && !MintVecRecipientsGui(rcp.address.toStdString(), vecSendTemp)) {
+                return TransactionCreationFailed;
             }
 
             vecSend.insert(vecSend.end(), vecSendTemp.begin(), vecSendTemp.end());
@@ -362,6 +367,33 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
     }
 
     return SendCoinsReturn(OK);
+}
+
+bool WalletModel::MintVecRecipientsGui(const std::string &strAddress, vector<CRecipient> &vecSend)
+{
+    CNavCoinAddress a(strAddress);
+
+    if(!a.IsValid())
+        return false;
+
+    unsigned int i = 0;
+    CTxDestination address = a.Get();
+
+    showProgress(tr("Constructing transaction..."), 0);
+
+    for(auto& it: vecSend)
+    {
+        unsigned int nProgress = (i++)*100/vecSend.size();
+
+        if(nProgress > 0)
+            showProgress(tr("Constructing transaction..."), nProgress);
+
+        it.scriptPubKey = GetScriptForDestination(address);
+    }
+
+    showProgress(tr("Constructing transaction..."), 100);
+
+    return true;
 }
 
 WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &transaction, const CCoinControl *coinControl)
