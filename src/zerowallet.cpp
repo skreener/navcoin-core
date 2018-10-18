@@ -4,7 +4,7 @@
 
 #include "zerowallet.h"
 
-bool DestinationToVecRecipients(CAmount nValue, const std::string &strAddress, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount, bool fDonate)
+bool DestinationToVecRecipients(CAmount nValue, const std::string &strAddress, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting)
 {
     CNavCoinAddress a(strAddress);
 
@@ -13,13 +13,15 @@ bool DestinationToVecRecipients(CAmount nValue, const std::string &strAddress, v
 
     CTxDestination address = a.Get();
 
-    return DestinationToVecRecipients(nValue, address, vecSend, fSubtractFeeFromAmount, fDonate);
+    return DestinationToVecRecipients(nValue, address, vecSend, fSubtractFeeFromAmount, fDonate, fRetNeedsZeroMinting);
 }
 
-bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount, bool fDonate)
+bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting)
 {
     vecSend.clear();
     CScript scriptPubKey = GetScriptForDestination(address);
+
+    fRetNeedsZeroMinting = false;
 
     if(fDonate)
       CFund::SetScriptForCommunityFundContribution(scriptPubKey);
@@ -58,11 +60,15 @@ bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, v
                 }
             }
         }
+
+        if (nCount > 0)
+            fRetNeedsZeroMinting = true;
+
         map <libzerocoin::CoinDenomination, unsigned int>::iterator it;
         for ( it = mapDenominations.begin(); it != mapDenominations.end(); it++ )
         {
             for (unsigned int i = 0; i < it->second; i++) {
-                CRecipient recipient = {GetScriptForDestination(address), libzerocoin::ZerocoinDenominationToInt(it->first)  * COIN, false, ""};
+                CRecipient recipient = {scriptPubKey, libzerocoin::ZerocoinDenominationToInt(it->first)  * COIN, false, ""};
                 vecSend.push_back(recipient);
             }
         }
@@ -73,5 +79,27 @@ bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, v
 
     random_shuffle(vecSend.begin(), vecSend.end(), GetRandInt);
 
+    return true;
+}
+
+bool MintVecRecipients(const std::string &strAddress, vector<CRecipient> &vecSend)
+{
+    CNavCoinAddress a(strAddress);
+
+    if(!a.IsValid())
+        return false;
+
+    CTxDestination address = a.Get();
+
+    return MintVecRecipients(address, vecSend);
+}
+
+bool MintVecRecipients(const CTxDestination &address, vector<CRecipient> &vecSend)
+{
+    for(auto& it: vecSend)
+    {
+        CScript vMintScript = GetScriptForDestination(address);
+        it.scriptPubKey = vMintScript;
+    }
     return true;
 }
