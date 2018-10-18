@@ -5,8 +5,12 @@
 #ifndef NAV_ACCUMULATORMAP_H
 #define NAV_ACCUMULATORMAP_H
 
+#include "primitives/block.h"
 #include "libzerocoin/Accumulator.h"
 #include "libzerocoin/Coin.h"
+
+class CBlock;
+class CChain;
 
 //A map with an accumulator for each denomination
 class AccumulatorMap
@@ -25,4 +29,6 @@ public:
     bool Load(uint256 nCheckpoint);
     bool Save();
 };
+
+bool CalculateAccumulatorChecksum(CChain& chain, int nHeight, AccumulatorMap& mapAccumulators);
 #endif //NAV_ACCUMULATORMAP_H

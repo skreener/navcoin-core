@@ -110,6 +110,8 @@ struct Params {
     /** Zerocoin parameters **/
     std::string zerocoinModulus;
     libzerocoin::ZerocoinParams Zerocoin_Params;
+    unsigned int nRecalculateAccumulatorChecksum;
+    unsigned int nAccumulatorChecksumBlockDelay;
 };
 } // namespace Consensus
 

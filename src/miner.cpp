@@ -314,20 +314,8 @@ CBlockTemplate* BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bo
     if(IsZerocoinEnabled(pindexPrev, chainparams.GetConsensus()))
     {
         AccumulatorMap mapAccumulators(&Params().GetConsensus().Zerocoin_Params);
-        if(pindexPrev->nAccumulatorChecksum != uint256())
-            mapAccumulators.Load(pindexPrev->nAccumulatorChecksum);
-
-        std::vector<libzerocoin::PublicCoin> vPubCoins;
-        BlockToZeroCoinMints(&chainparams.GetConsensus().Zerocoin_Params, pblock, vPubCoins);
-
-        for(auto& it: vPubCoins)
-        {
-            if(!mapAccumulators.Accumulate(it, false))
-                LogPrintf("Error! Trying to accumulate coin\n");
-
-        }
-        pblock->nAccumulatorChecksum
-                = mapAccumulators.GetChecksum();
+        CalculateAccumulatorChecksum(chainActive, nHeight, mapAccumulators);
+        pblock->nAccumulatorChecksum = mapAccumulators.GetChecksum();
     }
 
     if (pFees)
