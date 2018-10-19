@@ -16,12 +16,15 @@
 
 #include <QApplication>
 #include <QClipboard>
+#include <QSettings>
 
 SendCoinsEntry::SendCoinsEntry(const PlatformStyle *platformStyle, QWidget *parent) :
     QStackedWidget(parent),
+    totalAmount(0),
+    totalPrivateAmount(0),
+    fPrivate(0),
     ui(new Ui::SendCoinsEntry),
     model(0),
-    totalAmount(0),
     platformStyle(platformStyle)
 {
     ui->setupUi(this);
@@ -49,6 +52,16 @@ SendCoinsEntry::SendCoinsEntry(const PlatformStyle *platformStyle, QWidget *pare
     connect(ui->deleteButton_is, SIGNAL(clicked()), this, SLOT(deleteClicked()));
     connect(ui->deleteButton_s, SIGNAL(clicked()), this, SLOT(deleteClicked()));
     connect(ui->addressBookCheckBox, SIGNAL(clicked()), this, SLOT(updateAddressBook()));
+    connect(ui->sendPublic, SIGNAL(clicked()), this, SLOT(sendPublicChanged()));
+    connect(ui->sendPrivate, SIGNAL(clicked()), this, SLOT(sendPrivateChanged()));
+
+    QSettings settings;
+
+    bool fDefaultPrivate = settings.value("defaultprivate", false).toBool();
+
+    ui->sendPublic->setChecked(!fDefaultPrivate);
+    ui->sendPrivate->setChecked(fDefaultPrivate);
+    fPrivate = fDefaultPrivate;
 
     ui->labellLabel->setVisible(ui->addressBookCheckBox->isChecked());
     ui->addAsLabel->setVisible(ui->addressBookCheckBox->isChecked());
@@ -57,6 +70,20 @@ SendCoinsEntry::SendCoinsEntry(const PlatformStyle *platformStyle, QWidget *pare
 SendCoinsEntry::~SendCoinsEntry()
 {
     delete ui;
+}
+
+void SendCoinsEntry::sendPublicChanged()
+{
+    fPrivate = !((bool)ui->sendPublic->isChecked() && ui->sendPublic->isCheckable());
+    QSettings settings;
+    settings.setValue("defaultprivate", !ui->sendPublic->isChecked());
+}
+
+void SendCoinsEntry::sendPrivateChanged()
+{
+    fPrivate = (bool)ui->sendPrivate->isChecked() && ui->sendPrivate->isCheckable();
+    QSettings settings;
+    settings.setValue("defaultprivate", ui->sendPrivate->isChecked());
 }
 
 void SendCoinsEntry::setTotalPrivateAmount(const CAmount& amount)
@@ -74,6 +101,7 @@ void SendCoinsEntry::useFullAmount()
     ui->payAmount->setValue(totalAmount);
     ui->sendPublic->setChecked(true);
     ui->sendPrivate->setChecked(false);
+    fPrivate = false;
 }
 
 void SendCoinsEntry::useFullPrivateAmount()
@@ -81,12 +109,14 @@ void SendCoinsEntry::useFullPrivateAmount()
     ui->payAmount->setValue(totalPrivateAmount);
     ui->sendPublic->setChecked(false);
     ui->sendPrivate->setChecked(true);
+    fPrivate = true;
 }
 
 void SendCoinsEntry::disablePrivateSend()
 {
     ui->sendPrivate->setEnabled(false);
     ui->sendPrivate->setChecked(false);
+    fPrivate = false;
 }
 
 void SendCoinsEntry::enablePrivateSend()
