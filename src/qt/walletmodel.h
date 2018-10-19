@@ -212,6 +212,7 @@ public:
 
     bool transactionCanBeAbandoned(uint256 hash) const;
     bool abandonTransaction(uint256 hash) const;
+    void checkBalanceChanged();
 
 private:
     CWallet *wallet;
@@ -243,7 +244,6 @@ private:
 
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
-    void checkBalanceChanged();
 
 Q_SIGNALS:
     // Signal that balance in wallet changed

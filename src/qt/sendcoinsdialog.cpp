@@ -522,15 +522,6 @@ void SendCoinsDialog::setBalance(const CAmount& balance, const CAmount& unconfir
         {
             entry->setTotalAmount(balance);
             entry->setTotalPrivateAmount(privateBalance);
-            if(balance > 0)
-                entry->enablePublicSend();
-            else
-                entry->disablePublicSend();
-
-            if(privateBalance > 0)
-                entry->enablePrivateSend();
-            else
-                entry->disablePrivateSend();
         }
     }
 
