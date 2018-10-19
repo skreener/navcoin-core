@@ -58,6 +58,8 @@ public:
     CAmount totalAmount;
     CAmount totalPrivateAmount;
 
+    bool fPrivate;
+
 public Q_SLOTS:
     void clear();
 
@@ -72,6 +74,8 @@ private Q_SLOTS:
     void on_addressBookButton_clicked();
     void updateDisplayUnit();
     void updateAddressBook();
+    void sendPrivateChanged();
+    void sendPublicChanged();
 
 private:
     SendCoinsRecipient recipient;
