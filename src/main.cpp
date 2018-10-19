@@ -3238,8 +3238,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         pos.nTxOffset += ::GetSerializeSize(tx, SER_DISK, CLIENT_VERSION);
     }
 
-
-
     pindex->nMint = nCreated - nFees;
 
     int64_t nTime3 = GetTimeMicros(); nTimeConnect += nTime3 - nTime2;

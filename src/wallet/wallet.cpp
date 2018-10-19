@@ -30,6 +30,7 @@
 #include "utilmoneystr.h"
 #include "kernel.h"
 #include "pos.h"
+#include "zerochain.h"
 
 #include <assert.h>
 
@@ -2114,16 +2115,29 @@ CAmount CWalletTx::GetCredit(const isminefilter& filter) const
 
 CAmount CWalletTx::GetImmatureCredit(bool fUseCache) const
 {
-    if ((IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0 && IsInMainChain())
-    {
-        if (fUseCache && fImmatureCreditCached)
-            return nImmatureCreditCached;
-        nImmatureCreditCached = pwallet->GetCredit(*this, ISMINE_SPENDABLE);
-        fImmatureCreditCached = true;
-        return nImmatureCreditCached;
+    CAmount nRet = 0;
+
+    uint256 hashTx = GetHash();
+    for (unsigned int i = 0; i < vout.size(); i++) {
+        if (!vout[i].IsZerocoinMint())
+            continue;
+        CBlockIndex* pindex = mapBlockIndex[hashBlock];
+        if (!pindex)
+            continue;
+        unsigned int nCount = 0;
+        if (!CountMintsFromHeight(pindex->nHeight, libzerocoin::AmountToZerocoinDenomination(vout[i].nValue), nCount))
+            continue;
+        LogPrintf("mint count %d\n", nCount);
+        if (!pwallet->IsSpent(hashTx, i) && pindex && nCount <= 10)
+        {
+            const CTxOut &txout = vout[i];
+            nRet += pwallet->GetCredit(txout, ISMINE_SPENDABLE_PRIVATE);
+            if (!MoneyRange(nRet))
+                throw std::runtime_error("CWalletTx::GetImmatureCredit() : value out of range");
+        }
     }
 
-    return 0;
+    return nRet;
 }
 
 CAmount CWalletTx::GetAvailableCredit(bool fUseCache) const
@@ -2194,7 +2208,15 @@ CAmount CWalletTx::GetAvailablePrivateCredit() const
     uint256 hashTx = GetHash();
     for (unsigned int i = 0; i < vout.size(); i++)
     {
-        if (!pwallet->IsSpent(hashTx, i))
+        if (!vout[i].IsZerocoinMint())
+            continue;
+        CBlockIndex* pindex = mapBlockIndex[hashBlock];
+        if (!pindex)
+            continue;
+        unsigned int nCount = 0;
+        if (!CountMintsFromHeight(pindex->nHeight, libzerocoin::AmountToZerocoinDenomination(vout[i].nValue), nCount))
+            continue;
+        if (!pwallet->IsSpent(hashTx, i) && pindex && nCount > 10)
         {
             const CTxOut &txout = vout[i];
             nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE_PRIVATE);

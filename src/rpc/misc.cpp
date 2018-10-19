@@ -89,9 +89,11 @@ UniValue getinfo(const UniValue& params, bool fHelp)
 #ifdef ENABLE_WALLET
     if (pwalletMain) {
         obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
-        obj.push_back(Pair("balance",       ValueFromAmount(pwalletMain->GetBalance())));
-        obj.push_back(Pair("private_balance",
-                                            ValueFromAmount(pwalletMain->GetPrivateBalance())));
+        obj.push_back(Pair("public_balance",       ValueFromAmount(pwalletMain->GetBalance())));
+        UniValue pb(UniValue::VOBJ);
+        pb.push_back(Pair("spendable", ValueFromAmount(pwalletMain->GetPrivateBalance())));
+        pb.push_back(Pair("immature", ValueFromAmount(pwalletMain->GetImmatureBalance())));
+        obj.push_back(Pair("private_balance", pb));
         obj.push_back(Pair("coldstaking_balance",
                                             ValueFromAmount(pwalletMain->GetColdStakingBalance())));
         obj.push_back(Pair("newmint",       ValueFromAmount(pwalletMain->GetNewMint())));
