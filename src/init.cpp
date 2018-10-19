@@ -43,6 +43,7 @@
 #include "validationinterface.h"
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
+#include "zerowallet.h"
 #endif
 #include <stdint.h>
 #include <stdio.h>
@@ -1715,6 +1716,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         if (!pwalletMain)
             return false;
     }
+    pwalletMain->SetSecurityLevel(DEFAULT_MINT_MATURITY);
 #else // ENABLE_WALLET
     LogPrintf("No wallet support compiled in!\n");
 #endif // !ENABLE_WALLET

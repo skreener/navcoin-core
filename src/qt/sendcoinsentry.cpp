@@ -61,7 +61,7 @@ SendCoinsEntry::SendCoinsEntry(const PlatformStyle *platformStyle, QWidget *pare
 
     bool fDefaultPrivate = settings.value("defaultprivate", false).toBool();
 
-    nSecurityLevel = settings.value("securitylevel", pwalletMain->GetSecurityLevel()).toInt();
+    nSecurityLevel = settings.value("securitylevel", pwalletMain->GetSecurityLevel()).toInt() - 1;
     ui->securityLevel->setValue(nSecurityLevel);
 
     ui->sendPublic->setChecked(!fDefaultPrivate);
@@ -101,7 +101,7 @@ void SendCoinsEntry::securityLevelChanged(int level)
 {
     nSecurityLevel = level;
     QSettings settings;
-    settings.setValue("securitylevel", level);
+    settings.setValue("securitylevel", level + 1);
     pwalletMain->SetSecurityLevel(level);
     if(model)
         model->checkBalanceChanged();
@@ -271,6 +271,7 @@ SendCoinsRecipient SendCoinsEntry::getValue()
     recipient.amount = ui->payAmount->value();
     recipient.message = ui->messageTextLabel->text();
     recipient.fSubtractFeeFromAmount = (ui->checkboxSubtractFeeFromAmount->checkState() == Qt::Checked);
+    recipient.isanon = ui->sendPrivate->isChecked();
 
     return recipient;
 }

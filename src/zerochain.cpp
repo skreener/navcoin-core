@@ -81,7 +81,6 @@ bool CountMintsFromHeight(unsigned int nInitialHeight, libzerocoin::CoinDenomina
     nRet = 0;
     CBlockIndex* pindex = chainActive[nInitialHeight];
 
-    LogPrintf("Looking for mints for %d from %d\n", libzerocoin::ZerocoinDenominationToAmount(denom), nInitialHeight);
     while(pindex)
     {
         CBlock block;
@@ -94,7 +93,6 @@ bool CountMintsFromHeight(unsigned int nInitialHeight, libzerocoin::CoinDenomina
             {
                 if(out.IsZerocoinMint() && denom == libzerocoin::AmountToZerocoinDenomination(out.nValue))
                 {
-                    LogPrintf("found %s at %d\n", out.scriptPubKey.ToString().substr(0,15), pindex->nHeight);
                     nRet++;
                 }
             }

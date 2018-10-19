@@ -207,7 +207,7 @@ void OverviewPage::setBalance(const CAmount& balance, const CAmount& unconfirmed
     ui->labelColdStaking->setVisible(showColdStaking);
     ui->labelColdStakingText->setVisible(showColdStaking);
 
-    bool showPrivate = privateBalance != 0;
+    bool showPrivate = true;
 
     ui->labelPrivate->setVisible(showPrivate);
     ui->labelPrivateText->setVisible(showPrivate);

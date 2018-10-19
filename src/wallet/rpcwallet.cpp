@@ -393,7 +393,7 @@ UniValue getaddressesbyaccount(const UniValue& params, bool fHelp)
     return ret;
 }
 
-static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, std::string strDZeel = "", bool donate = false)
+static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, std::string strDZeel = "", bool fPrivate = false, bool donate = false)
 {
     CAmount curBalance = pwalletMain->GetBalance();
 
@@ -409,7 +409,7 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
     bool fNeedsMinting = false;
 
     // Parse NavCoin address
-    if (!DestinationToVecRecipients(nValue, address, vecSend, fSubtractFeeFromAmount, donate, fNeedsMinting)) {
+    if (!DestinationToVecRecipients(nValue, address, vecSend, fSubtractFeeFromAmount, donate, fNeedsMinting, fPrivate)) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: Could not construct the vector of recipients!");
     }
 
@@ -423,7 +423,7 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
     std::string strError;
     int nChangePosRet = -1;
 
-    if (!pwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, NULL, true, strDZeel)) {
+    if (!pwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, fPrivate, NULL, true, strDZeel)) {
         if (!fSubtractFeeFromAmount && nValue + nFeeRequired > pwalletMain->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
@@ -514,7 +514,7 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
 
     wtx.strDZeel = strDZeel;
 
-    SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, strDZeel);
+    SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, strDZeel, false);
 
     return wtx.GetHash().GetHex();
 }
@@ -606,7 +606,7 @@ UniValue createproposal(const UniValue& params, bool fHelp)
 
     EnsureWalletIsUnlocked();
 
-    SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, "", true);
+    SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, "", false, true);
 
     UniValue ret(UniValue::VOBJ);
 
@@ -717,7 +717,7 @@ UniValue createpaymentrequest(const UniValue& params, bool fHelp)
     if(wtx.strDZeel.length() > 1024)
         throw JSONRPCError(RPC_TYPE_ERROR, "String too long");
 
-    SendMoney(address.Get(), 10000, fSubtractFeeFromAmount, wtx, "", true);
+    SendMoney(address.Get(), 10000, fSubtractFeeFromAmount, wtx, "", false, true);
 
     UniValue ret(UniValue::VOBJ);
 
@@ -765,7 +765,7 @@ UniValue donatefund(const UniValue& params, bool fHelp)
 
     EnsureWalletIsUnlocked();
 
-    SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, "", true);
+    SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, "", false, true);
 
     return wtx.GetHash().GetHex();
 }
@@ -1296,7 +1296,7 @@ UniValue sendmany(const UniValue& params, bool fHelp)
     CAmount nFeeRequired = 0;
     int nChangePosRet = -1;
     string strFailReason;
-    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason);
+    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason, false);
     if (!fCreated)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strFailReason);
     if (!pwalletMain->CommitTransaction(wtx, keyChange))
@@ -2843,6 +2843,7 @@ UniValue fundrawtransaction(const UniValue& params, bool fHelp)
                             "     \"changePosition\"    (numeric, optional, default random) The index of the change output\n"
                             "     \"includeWatching\"   (boolean, optional, default false) Also select inputs which are watch only\n"
                             "     \"lockUnspents\"      (boolean, optional, default false) Lock selected unspent outputs\n"
+                            "     \"private\"           (boolean, optional, default false) Try to spend private coin outputs\n"
                             "     \"feeRate\"           (numeric, optional, default not set: makes wallet determine the fee) Set a specific feerate (" + CURRENCY_UNIT + " per KB)\n"
                             "   }\n"
                             "                         for backward compatibility: passing in a true instead of an object will result in {\"includeWatching\":true}\n"
@@ -2870,6 +2871,7 @@ UniValue fundrawtransaction(const UniValue& params, bool fHelp)
     int changePosition = -1;
     bool includeWatching = false;
     bool lockUnspents = false;
+    bool fPrivate = false;
     CFeeRate feeRate = CFeeRate(0);
     bool overrideEstimatedFeerate = false;
 
@@ -2889,6 +2891,7 @@ UniValue fundrawtransaction(const UniValue& params, bool fHelp)
                 {"changePosition", UniValueType(UniValue::VNUM)},
                 {"includeWatching", UniValueType(UniValue::VBOOL)},
                 {"lockUnspents", UniValueType(UniValue::VBOOL)},
+                {"private", UniValueType(UniValue::VBOOL)},
                 {"feeRate", UniValueType()}, // will be checked below
             },
             true, true);
@@ -2907,6 +2910,9 @@ UniValue fundrawtransaction(const UniValue& params, bool fHelp)
 
         if (options.exists("includeWatching"))
             includeWatching = options["includeWatching"].get_bool();
+
+        if (options.exists("private"))
+            fPrivate = options["private"].get_bool();
 
         if (options.exists("lockUnspents"))
             lockUnspents = options["lockUnspents"].get_bool();
@@ -2934,7 +2940,7 @@ UniValue fundrawtransaction(const UniValue& params, bool fHelp)
     CAmount nFeeOut;
     string strFailReason;
 
-    if(!pwalletMain->FundTransaction(tx, nFeeOut, overrideEstimatedFeerate, feeRate, changePosition, strFailReason, includeWatching, lockUnspents, changeAddress))
+    if(!pwalletMain->FundTransaction(tx, nFeeOut, overrideEstimatedFeerate, feeRate, changePosition, strFailReason, includeWatching, lockUnspents, changeAddress, fPrivate))
         throw JSONRPCError(RPC_INTERNAL_ERROR, strFailReason);
 
     UniValue result(UniValue::VOBJ);
