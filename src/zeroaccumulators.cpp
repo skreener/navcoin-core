@@ -133,18 +133,21 @@ bool CalculateAccumulatorChecksum(CChain& chain, int nHeight, AccumulatorMap& ma
 
     CBlockIndex* pLastChecksum = chain[max((unsigned int)firstZero.first,
                  nHeight - Params().GetConsensus().nRecalculateAccumulatorChecksum)];
-    CBlockIndex* pLastAccumulated = chain[max((unsigned int)firstZero.first,
-                 nHeight - Params().GetConsensus().nAccumulatorChecksumBlockDelay)];
 
     if (pLastChecksum)
     {
         if (pLastChecksum->nAccumulatorChecksum != uint256())
             mapAccumulators.Load(pLastChecksum->nAccumulatorChecksum);
 
-        if (pLastAccumulated)
+        if ((nHeight % Params().GetConsensus().nRecalculateAccumulatorChecksum) == 0)
         {
-            if ((nHeight % Params().GetConsensus().nRecalculateAccumulatorChecksum) == 0)
+
+            CBlockIndex* pLastAccumulated = chain[max((unsigned int)firstZero.first,
+                                                      nHeight - Params().GetConsensus().nAccumulatorChecksumBlockDelay)];
+
+            if (pLastAccumulated)
             {
+
                 unsigned int nCount = 0;
 
                 while (pLastAccumulated && nCount < Params().GetConsensus().nRecalculateAccumulatorChecksum)
