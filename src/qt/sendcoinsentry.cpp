@@ -23,6 +23,7 @@ SendCoinsEntry::SendCoinsEntry(const PlatformStyle *platformStyle, QWidget *pare
     totalAmount(0),
     totalPrivateAmount(0),
     fPrivate(0),
+    nSecurityLevel(0),
     ui(new Ui::SendCoinsEntry),
     model(0),
     platformStyle(platformStyle)
@@ -54,13 +55,19 @@ SendCoinsEntry::SendCoinsEntry(const PlatformStyle *platformStyle, QWidget *pare
     connect(ui->addressBookCheckBox, SIGNAL(clicked()), this, SLOT(updateAddressBook()));
     connect(ui->sendPublic, SIGNAL(clicked()), this, SLOT(sendPublicChanged()));
     connect(ui->sendPrivate, SIGNAL(clicked()), this, SLOT(sendPrivateChanged()));
+    connect(ui->securityLevel, SIGNAL(valueChanged(int)), this, SLOT(securityLevelChanged(int)));
 
     QSettings settings;
 
     bool fDefaultPrivate = settings.value("defaultprivate", false).toBool();
 
+    nSecurityLevel = settings.value("securitylevel", pwalletMain->GetSecurityLevel()).toInt();
+    ui->securityLevel->setValue(nSecurityLevel);
+
     ui->sendPublic->setChecked(!fDefaultPrivate);
     ui->sendPrivate->setChecked(fDefaultPrivate);
+    ui->securityLevel->setVisible(fDefaultPrivate);
+    ui->securityLevelLabel->setVisible(fDefaultPrivate);
     fPrivate = fDefaultPrivate;
 
     ui->labellLabel->setVisible(ui->addressBookCheckBox->isChecked());
@@ -77,6 +84,8 @@ void SendCoinsEntry::sendPublicChanged()
     fPrivate = !((bool)ui->sendPublic->isChecked() && ui->sendPublic->isCheckable());
     QSettings settings;
     settings.setValue("defaultprivate", !ui->sendPublic->isChecked());
+    ui->securityLevel->setVisible(fPrivate);
+    ui->securityLevelLabel->setVisible(fPrivate);
 }
 
 void SendCoinsEntry::sendPrivateChanged()
@@ -84,6 +93,18 @@ void SendCoinsEntry::sendPrivateChanged()
     fPrivate = (bool)ui->sendPrivate->isChecked() && ui->sendPrivate->isCheckable();
     QSettings settings;
     settings.setValue("defaultprivate", ui->sendPrivate->isChecked());
+    ui->securityLevel->setVisible(fPrivate);
+    ui->securityLevelLabel->setVisible(fPrivate);
+}
+
+void SendCoinsEntry::securityLevelChanged(int level)
+{
+    nSecurityLevel = level;
+    QSettings settings;
+    settings.setValue("securitylevel", level);
+    pwalletMain->SetSecurityLevel(level);
+    if(model)
+        model->checkBalanceChanged();
 }
 
 void SendCoinsEntry::setTotalPrivateAmount(const CAmount& amount)
@@ -102,6 +123,8 @@ void SendCoinsEntry::useFullAmount()
     ui->sendPublic->setChecked(true);
     ui->sendPrivate->setChecked(false);
     fPrivate = false;
+    ui->securityLevel->setVisible(fPrivate);
+    ui->securityLevelLabel->setVisible(fPrivate);
 }
 
 void SendCoinsEntry::useFullPrivateAmount()
@@ -110,31 +133,8 @@ void SendCoinsEntry::useFullPrivateAmount()
     ui->sendPublic->setChecked(false);
     ui->sendPrivate->setChecked(true);
     fPrivate = true;
-}
-
-void SendCoinsEntry::disablePrivateSend()
-{
-    ui->sendPrivate->setEnabled(false);
-    ui->sendPrivate->setChecked(false);
-    fPrivate = false;
-}
-
-void SendCoinsEntry::enablePrivateSend()
-{
-    if(totalPrivateAmount > 0)
-        ui->sendPrivate->setEnabled(true);
-}
-
-void SendCoinsEntry::disablePublicSend()
-{
-    ui->sendPublic->setEnabled(false);
-    ui->sendPublic->setChecked(false);
-}
-
-void SendCoinsEntry::enablePublicSend()
-{
-    if(totalAmount > 0)
-        ui->sendPublic->setEnabled(true);
+    ui->securityLevel->setVisible(fPrivate);
+    ui->securityLevelLabel->setVisible(fPrivate);
 }
 
 void SendCoinsEntry::updateAddressBook()

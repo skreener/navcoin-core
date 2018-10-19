@@ -50,15 +50,12 @@ public:
     void setTotalPrivateAmount(const CAmount& amount);
     void useFullAmount();
     void useFullPrivateAmount();
-    void disablePrivateSend();
-    void enablePrivateSend();
-    void disablePublicSend();
-    void enablePublicSend();
 
     CAmount totalAmount;
     CAmount totalPrivateAmount;
 
     bool fPrivate;
+    unsigned int nSecurityLevel;
 
 public Q_SLOTS:
     void clear();
@@ -76,6 +73,7 @@ private Q_SLOTS:
     void updateAddressBook();
     void sendPrivateChanged();
     void sendPublicChanged();
+    void securityLevelChanged(int level);
 
 private:
     SendCoinsRecipient recipient;
