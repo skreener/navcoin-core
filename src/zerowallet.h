@@ -9,9 +9,11 @@
 #include "wallet/wallet.h"
 #include "random.h"
 
+#define DEFAULT_MINT_MATURITY 10
+
 // NEEDS UNIT TEST
-bool DestinationToVecRecipients(CAmount nValue, const std::string &address, vector<CRecipient> &vecSend,  bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting);
-bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting);
+bool DestinationToVecRecipients(CAmount nValue, const std::string &address, vector<CRecipient> &vecSend,  bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate = false);
+bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate = false);
 bool MintVecRecipients(const std::string &strAddress, vector<CRecipient> &vecSend);
 bool MintVecRecipients(const CTxDestination &address, vector<CRecipient> &vecSend);
 #endif // ZEROWALLET_H

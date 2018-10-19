@@ -245,12 +245,16 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
 
     QSet<QString> setAddress; // Used to detect duplicates
     int nAddresses = 0;
+    bool fPrivate = false;
 
     // Pre-check input data for validity
     Q_FOREACH(const SendCoinsRecipient &rcp, recipients)
     {
         if (rcp.fSubtractFeeFromAmount)
             fSubtractFeeFromAmount = true;
+
+        if (rcp.isanon)
+            fPrivate = true;
 
         if (rcp.paymentRequest.IsInitialized())
         {   // PaymentRequest...
@@ -290,7 +294,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
             bool fNeedsMinting = false;
 
             // Parse NavCoin address
-            if (!DestinationToVecRecipients(rcp.amount, rcp.address.toStdString(), vecSendTemp, rcp.fSubtractFeeFromAmount, false, fNeedsMinting)) {
+            if (!DestinationToVecRecipients(rcp.amount, rcp.address.toStdString(), vecSendTemp, rcp.fSubtractFeeFromAmount, false, fNeedsMinting, rcp.isanon)) {
                 return InvalidAddress;
             }
 
@@ -338,7 +342,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
 
         CWalletTx* newTx = transaction.getTransaction();
 
-        fCreated = wallet->CreateTransaction(vecSend, *newTx, *keyChange, nFeeRequired, nChangePosRet, strFailReason, coinControl, true, "");
+        fCreated = wallet->CreateTransaction(vecSend, *newTx, *keyChange, nFeeRequired, nChangePosRet, strFailReason, fPrivate, coinControl, true, "");
         if (newTx->fSpendsColdStaking)
             transaction.fSpendsColdStaking = true;
 

@@ -205,7 +205,6 @@ void SendCoinsDialog::on_sendButton_clicked()
         if(entry->validate())
         {
             SendCoinsRecipient recipient = entry->getValue();
-            recipient.isanon = false;
             recipients.append(recipient);
         }
         else
