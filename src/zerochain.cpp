@@ -75,3 +75,32 @@ bool CheckZerocoinMint(const libzerocoin::ZerocoinParams *params, const CTxOut& 
 
     return true;
 }
+
+bool CountMintsFromHeight(unsigned int nInitialHeight, libzerocoin::CoinDenomination denom, unsigned int& nRet)
+{
+    nRet = 0;
+    CBlockIndex* pindex = chainActive[nInitialHeight];
+
+    LogPrintf("Looking for mints for %d from %d\n", libzerocoin::ZerocoinDenominationToAmount(denom), nInitialHeight);
+    while(pindex)
+    {
+        CBlock block;
+        if (!ReadBlockFromDisk(block, pindex, Params().GetConsensus()))
+            return false;
+
+        for (auto& tx: block.vtx)
+        {
+            for (CTxOut& out: tx.vout)
+            {
+                if(out.IsZerocoinMint() && denom == libzerocoin::AmountToZerocoinDenomination(out.nValue))
+                {
+                    LogPrintf("found %s at %d\n", out.scriptPubKey.ToString().substr(0,15), pindex->nHeight);
+                    nRet++;
+                }
+            }
+        }
+        pindex = chainActive.Next(pindex);
+    }
+
+    return true;
+}
