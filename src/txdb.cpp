@@ -36,6 +36,7 @@ static const char DB_ZEROCOIN_BLOCK = 'y';
 static const char DB_ZEROCOIN_MINTINDEX = 'M';
 static const char DB_ZEROCOIN_SPENDINDEX = 'S';
 static const char DB_ZEROCOIN_ACCUMULATOR = 'K';
+static const char DB_ZEROCOIN_ACCMINTINDEX = 'm';
 
 CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true, false, 64)
 {
@@ -102,11 +103,11 @@ bool CBlockTreeDB::ReadLastBlockFile(int &nFile) {
     return Read(DB_LAST_BLOCK, nFile);
 }
 
-bool CBlockTreeDB::ReadFirstZeroCoinBlock(std::pair<int, uint256> &firstZero) {
+bool CBlockTreeDB::ReadFirstZerocoinBlock(std::pair<int, uint256> &firstZero) {
     return Read(DB_ZEROCOIN_BLOCK, firstZero);
 }
 
-bool CBlockTreeDB::WriteFirstZeroCoinBlock(std::pair<int, uint256> firstZero) {
+bool CBlockTreeDB::WriteFirstZerocoinBlock(std::pair<int, uint256> firstZero) {
     return Write(DB_ZEROCOIN_BLOCK, firstZero);
 }
 
@@ -161,6 +162,57 @@ bool CBlockTreeDB::EraseCoinMint(CBigNum coinValue) {
     return Erase(make_pair(DB_ZEROCOIN_MINTINDEX, hash));
 }
 
+bool CBlockTreeDB::ReadAccMint(uint256 coinValueHash, uint256 &blockHash) {
+    return Read(make_pair(DB_ZEROCOIN_ACCMINTINDEX, coinValueHash), blockHash);
+}
+
+bool CBlockTreeDB::ReadAccMint(CBigNum coinValue, uint256 &blockHash) {
+    CDataStream ss(SER_GETHASH, 0);
+    ss << coinValue;
+    uint256 hash = Hash(ss.begin(), ss.end());
+
+    return Read(make_pair(DB_ZEROCOIN_ACCMINTINDEX, hash), blockHash);
+}
+
+bool CBlockTreeDB::WriteAccMint(uint256 coinValueHash, uint256 blockHash) {
+    return Write(make_pair(DB_ZEROCOIN_ACCMINTINDEX, coinValueHash), blockHash);
+}
+
+bool CBlockTreeDB::WriteAccMint(CBigNum coinValue, uint256 blockHash) {
+    CDataStream ss(SER_GETHASH, 0);
+    ss << coinValue;
+    uint256 hash = Hash(ss.begin(), ss.end());
+
+    return Write(make_pair(DB_ZEROCOIN_ACCMINTINDEX, hash), blockHash);
+}
+
+bool CBlockTreeDB::UpdateAccMintIndex(const std::vector<std::pair<CBigNum, uint256> >&vect) {
+    CDBBatch batch(*this);
+    for (std::vector<std::pair<CBigNum, uint256> >::const_iterator it=vect.begin(); it!=vect.end(); it++) {
+        CDataStream ss(SER_GETHASH, 0);
+        ss << it->first;
+        uint256 hash = Hash(ss.begin(), ss.end());
+        if (it->second.IsNull()) {
+            batch.Erase(make_pair(DB_ZEROCOIN_ACCMINTINDEX, hash));
+        } else {
+            batch.Write(make_pair(DB_ZEROCOIN_ACCMINTINDEX, hash), it->second);
+        }
+    }
+    return WriteBatch(batch, true);
+}
+
+bool CBlockTreeDB::EraseAccMint(uint256 coinValueHash) {
+    return Erase(make_pair(DB_ZEROCOIN_ACCMINTINDEX, coinValueHash));
+}
+
+bool CBlockTreeDB::EraseAccMint(CBigNum coinValue) {
+    CDataStream ss(SER_GETHASH, 0);
+    ss << coinValue;
+    uint256 hash = Hash(ss.begin(), ss.end());
+
+    return Erase(make_pair(DB_ZEROCOIN_ACCMINTINDEX, hash));
+}
+
 bool CBlockTreeDB::ReadCoinSpend(CBigNum coinSerial, uint256 &txHash) {
     CDataStream ss(SER_GETHASH, 0);
     ss << coinSerial;
@@ -212,17 +264,17 @@ bool CBlockTreeDB::EraseCoinSpend(CBigNum coinSerial) {
     return Erase(make_pair(DB_ZEROCOIN_SPENDINDEX, hash));
 }
 
-bool CBlockTreeDB::ReadZeroCoinAccumulator(uint256 accumulatorChecksum, std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> &accumulatorMap)
+bool CBlockTreeDB::ReadZerocoinAccumulator(uint256 accumulatorChecksum, std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> &accumulatorMap)
 {
     return Read(make_pair(DB_ZEROCOIN_ACCUMULATOR, accumulatorChecksum), accumulatorMap);
 }
 
-bool CBlockTreeDB::WriteZeroCoinAccumulator(uint256 accumulatorChecksum, std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> accumulatorMap)
+bool CBlockTreeDB::WriteZerocoinAccumulator(uint256 accumulatorChecksum, std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> accumulatorMap)
 {
     return Write(make_pair(DB_ZEROCOIN_ACCUMULATOR, accumulatorChecksum), accumulatorMap);
 }
 
-bool CBlockTreeDB::EraseZeroCoinAccumulator(uint256 accumulatorChecksum)
+bool CBlockTreeDB::EraseZerocoinAccumulator(uint256 accumulatorChecksum)
 {
     return Erase(make_pair(DB_ZEROCOIN_ACCUMULATOR, accumulatorChecksum));
 
