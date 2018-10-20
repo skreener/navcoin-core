@@ -170,8 +170,8 @@ public:
     bool WritePaymentRequestIndex(const std::vector<std::pair<uint256, CFund::CPaymentRequest> >&vect);
     bool GetPaymentRequestIndex(std::vector<CFund::CPaymentRequest>&vect);
     bool UpdatePaymentRequestIndex(const std::vector<std::pair<uint256, CFund::CPaymentRequest> >&vect);
-    bool ReadFirstZeroCoinBlock(std::pair<int, uint256> &firstZero);
-    bool WriteFirstZeroCoinBlock(std::pair<int, uint256> firstZero);
+    bool ReadFirstZerocoinBlock(std::pair<int, uint256> &firstZero);
+    bool WriteFirstZerocoinBlock(std::pair<int, uint256> firstZero);
     bool ReadCoinMint(CBigNum coinValue, uint256 &txHash);
     bool ReadCoinMint(uint256 coinValueHash, uint256 &txHash);
     bool WriteCoinMint(CBigNum coinValue, uint256 txHash);
@@ -179,6 +179,13 @@ public:
     bool EraseCoinMint(CBigNum coinValue);
     bool EraseCoinMint(uint256 coinValueHash);
     bool UpdateCoinMintIndex(const std::vector<std::pair<CBigNum, uint256> >&vect);
+    bool ReadAccMint(CBigNum coinValue, uint256 &txHash);
+    bool ReadAccMint(uint256 coinValueHash, uint256 &txHash);
+    bool WriteAccMint(CBigNum coinValue, uint256 txHash);
+    bool WriteAccMint(uint256 coinValueHash, uint256 txHash);
+    bool EraseAccMint(CBigNum coinValue);
+    bool EraseAccMint(uint256 coinValueHash);
+    bool UpdateAccMintIndex(const std::vector<std::pair<CBigNum, uint256> >&vect);
     bool ReadCoinSpend(CBigNum coinSerial, uint256 &txHash);
     bool ReadCoinSpend(uint256 coinSerialHash, uint256 &txHash);
     bool WriteCoinSpend(CBigNum coinSerial, uint256 txHash);
@@ -186,9 +193,9 @@ public:
     bool EraseCoinSpend(CBigNum coinSerial);
     bool EraseCoinSpend(uint256 coinSerialHash);
     bool UpdateCoinSpendIndex(const std::vector<std::pair<CBigNum, uint256> >&vect);
-    bool ReadZeroCoinAccumulator(uint256 accumulatorChecksum, std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> &accumulatorMap);
-    bool WriteZeroCoinAccumulator(uint256 accumulatorChecksum, std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> accumulatorMap);
-    bool EraseZeroCoinAccumulator(uint256 accumulatorChecksum);
+    bool ReadZerocoinAccumulator(uint256 accumulatorChecksum, std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> &accumulatorMap);
+    bool WriteZerocoinAccumulator(uint256 accumulatorChecksum, std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> accumulatorMap);
+    bool EraseZerocoinAccumulator(uint256 accumulatorChecksum);
 };
 
 #endif // NAVCOIN_TXDB_H
