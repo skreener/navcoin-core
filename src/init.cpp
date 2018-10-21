@@ -1634,7 +1634,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                     }
 
                     std::pair<int, uint256> firstZero = make_pair(0, uint256());
-                    pblocktree->ReadFirstZeroCoinBlock(firstZero);
+                    pblocktree->ReadFirstZerocoinBlock(firstZero);
 
                     CBlockIndex* firstZeroBlock = chainActive[firstZero.first];
                     CBlockIndex* prevZeroBlock = chainActive[firstZero.first-1];
@@ -1650,7 +1650,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                                 break;
                             pindex = chainActive.Next(pindex);
                         }
-                        pblocktree->WriteFirstZeroCoinBlock(make_pair(pindex ? pindex->nHeight : 0, pindex ? pindex->GetBlockHash() : uint256()));
+                        pblocktree->WriteFirstZerocoinBlock(make_pair(pindex ? pindex->nHeight : 0, pindex ? pindex->GetBlockHash() : uint256()));
                         LogPrintf("First zerocoin block ammended to %d\n", pindex ? pindex->nHeight : 0);
                     }
                 }

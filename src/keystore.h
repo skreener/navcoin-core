@@ -45,7 +45,7 @@ public:
     virtual bool HaveWatchOnly(const CScript &dest) const =0;
     virtual bool HaveWatchOnly() const =0;
 
-    //! ZeroCoin Address Parameters
+    //! Zerocoin Address Parameters
     virtual bool GetObfuscationJ(CBigNum& oj) const =0;
     virtual bool GetObfuscationK(CBigNum& ok) const =0;
     virtual bool GetBlindingCommitment(CBigNum& bc) const =0;
@@ -61,7 +61,7 @@ typedef std::map<CKeyID, CKey> KeyMap;
 typedef std::map<CKeyID, CPubKey> WatchKeyMap;
 typedef std::map<CScriptID, CScript > ScriptMap;
 typedef std::set<CScript> WatchOnlySet;
-struct ZeroCoinAddressParameters {
+struct ZerocoinAddressParameters {
     CBigNum obfuscationJ;
     CBigNum obfuscationK;
     CBigNum blindingCommitment;
@@ -71,7 +71,7 @@ struct ZeroCoinAddressParameters {
         obfuscationK = CBigNum();
     }
 };
-struct CryptedZeroCoinAddressParameters {
+struct CryptedZerocoinAddressParameters {
     std::vector<unsigned char> obfuscationJ;
     std::vector<unsigned char> obfuscationK;
     CBigNum blindingCommitment;
@@ -86,7 +86,7 @@ protected:
     WatchKeyMap mapWatchKeys;
     ScriptMap mapScripts;
     WatchOnlySet setWatchOnly;
-    ZeroCoinAddressParameters zcParameters;
+    ZerocoinAddressParameters zcParameters;
 
 public:
     bool AddKeyPubKey(const CKey& key, const CPubKey &pubkey);
