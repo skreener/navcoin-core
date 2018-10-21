@@ -149,7 +149,7 @@ bool CWalletDB::WriteOrderPosNext(int64_t nOrderPosNext)
     return Write(std::string("orderposnext"), nOrderPosNext);
 }
 
-bool CWalletDB::WriteZeroCoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey)
+bool CWalletDB::WriteZerocoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey)
 {
     nWalletDBUpdated++;
     return Write(std::string("obfuscationj"), obfuscationJ) &&
@@ -158,7 +158,7 @@ bool CWalletDB::WriteZeroCoinValues(const CBigNum& obfuscationJ, const CBigNum& 
            Write(std::string("zerokey"), std::vector<unsigned char>(zerokey.begin(), zerokey.end()));
 }
 
-bool CWalletDB::WriteZeroCoinValues(const std::vector<unsigned char>& obfuscationJ, const std::vector<unsigned char>& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey)
+bool CWalletDB::WriteZerocoinValues(const std::vector<unsigned char>& obfuscationJ, const std::vector<unsigned char>& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey)
 {
     nWalletDBUpdated++;
     return Write(std::string("cobfuscationj"), obfuscationJ) &&
@@ -169,7 +169,7 @@ bool CWalletDB::WriteZeroCoinValues(const std::vector<unsigned char>& obfuscatio
            Write(std::string("zerokey"), std::vector<unsigned char>(zerokey.begin(), zerokey.end()));
 }
 
-bool CWalletDB::WriteZeroCoinValues(const CWallet* pwallet)
+bool CWalletDB::WriteZerocoinValues(const CWallet* pwallet)
 {
     std::vector<unsigned char> vchCOj; std::vector<unsigned char> vchCOk;
     CBigNum oj; CBigNum ok; CBigNum bc; CKey zk;
@@ -189,9 +189,9 @@ bool CWalletDB::WriteZeroCoinValues(const CWallet* pwallet)
         return false;
 
     if (vchCOj.empty() || vchCOk.empty()) {
-        if (!WriteZeroCoinValues(oj, ok, bc, zk))
+        if (!WriteZerocoinValues(oj, ok, bc, zk))
             return false;
-    } else if (!WriteZeroCoinValues(vchCOj, vchCOk, bc, zk))
+    } else if (!WriteZerocoinValues(vchCOj, vchCOk, bc, zk))
         return false;
 
     return true;

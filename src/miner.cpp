@@ -314,7 +314,8 @@ CBlockTemplate* BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bo
     if(IsZerocoinEnabled(pindexPrev, chainparams.GetConsensus()))
     {
         AccumulatorMap mapAccumulators(&Params().GetConsensus().Zerocoin_Params);
-        CalculateAccumulatorChecksum(chainActive, nHeight, mapAccumulators);
+        std::vector<std::pair<CBigNum, uint256>> vDummy;
+        CalculateAccumulatorChecksum(nHeight, mapAccumulators, uint256(), vDummy);
         pblock->nAccumulatorChecksum = mapAccumulators.GetChecksum();
     }
 
