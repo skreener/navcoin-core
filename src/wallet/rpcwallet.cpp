@@ -414,7 +414,7 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
     }
 
     if(fNeedsMinting && !MintVecRecipients(address, vecSend)) {
-        throw JSONRPCError(RPC_WALLET_ERROR, "Error: Could not create ZeroCoin Mints!");
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error: Could not create Zerocoin Mints!");
     }
 
     // Create and send the transaction

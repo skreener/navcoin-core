@@ -123,7 +123,7 @@ class CCryptoKeyStore : public CBasicKeyStore
 {
 private:
     CryptedKeyMap mapCryptedKeys;
-    CryptedZeroCoinAddressParameters zcCryptedParameters;
+    CryptedZerocoinAddressParameters zcCryptedParameters;
 
     CKeyingMaterial vMasterKey;
 
