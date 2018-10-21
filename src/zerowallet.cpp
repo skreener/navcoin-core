@@ -100,10 +100,22 @@ bool MintVecRecipients(const std::string &strAddress, vector<CRecipient> &vecSen
 
 bool MintVecRecipients(const CTxDestination &address, vector<CRecipient> &vecSend)
 {
+    unsigned int i = 0;
+
+    uiInterface.ShowProgress(_("Constructing transaction..."), 0);
+
     for(auto& it: vecSend)
     {
+        unsigned int nProgress = (i++)*100/vecSend.size();
+
+        if (nProgress > 0)
+            uiInterface.ShowProgress(_("Constructing transaction..."), nProgress);
+
         CScript vMintScript = GetScriptForDestination(address);
         it.scriptPubKey = vMintScript;
     }
+
+    uiInterface.ShowProgress(_("Constructing transaction..."), 100);
+
     return true;
 }

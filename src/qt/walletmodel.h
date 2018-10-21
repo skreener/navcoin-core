@@ -172,8 +172,6 @@ public:
     // Wallet backup
     bool backupWallet(const QString &filename);
 
-    bool MintVecRecipientsGui(const std::string &strAddress, vector<CRecipient> &vecSend);
-
     // RAI object for unlocking wallet, returned by requestUnlock()
     class UnlockContext
     {
