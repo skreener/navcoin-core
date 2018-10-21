@@ -1074,7 +1074,7 @@ bool CWallet::EncryptWallet(const SecureString& strWalletPassphrase)
             assert(false);
         }
 
-        pwalletdbEncryption->WriteZeroCoinValues(this);
+        pwalletdbEncryption->WriteZerocoinValues(this);
 
         LogPrintf("Encrypted zerocoin parameters written\n");
 
@@ -2125,8 +2125,17 @@ CAmount CWalletTx::GetImmatureCredit(bool fUseCache) const
         CBlockIndex* pindex = mapBlockIndex[hashBlock];
         if (!pindex)
             continue;
+        std::vector<unsigned char> c; CPubKey p;
+        if(!vout[i].scriptPubKey.ExtractZerocoinMintData(p, c))
+            continue;
+        uint256 blockhash;
+        if(!pblocktree->ReadAccMint(CBigNum(c), blockhash))
+            continue;
+        if(blockhash == uint256())
+            continue;
         unsigned int nCount = 0;
-        if (!CountMintsFromHeight(pindex->nHeight, libzerocoin::AmountToZerocoinDenomination(vout[i].nValue), nCount))
+        if (mapBlockIndex.count(blockhash) && !CountMintsFromHeight(mapBlockIndex[blockhash]->nHeight+1,
+            libzerocoin::AmountToZerocoinDenomination(vout[i].nValue), nCount))
             continue;
         if (!pwallet->IsSpent(hashTx, i) && pindex && nCount < pwalletMain->GetSecurityLevel())
         {
@@ -2213,8 +2222,16 @@ CAmount CWalletTx::GetAvailablePrivateCredit() const
         CBlockIndex* pindex = mapBlockIndex[hashBlock];
         if (!pindex)
             continue;
+        std::vector<unsigned char> c; CPubKey p;
+        if(!vout[i].scriptPubKey.ExtractZerocoinMintData(p, c))
+            continue;
+        uint256 blockhash;
+        if (!pblocktree->ReadAccMint(CBigNum(c), blockhash) || blockhash == uint256())
+            continue;
+        if (!mapBlockIndex.count(blockhash))
+            continue;
         unsigned int nCount = 0;
-        if (!CountMintsFromHeight(pindex->nHeight, libzerocoin::AmountToZerocoinDenomination(vout[i].nValue), nCount))
+        if (!CountMintsFromHeight(mapBlockIndex[blockhash]->nHeight+1, libzerocoin::AmountToZerocoinDenomination(vout[i].nValue), nCount))
             continue;
         if (!pwallet->IsSpent(hashTx, i) && pindex && nCount >= pwalletMain->GetSecurityLevel())
         {
@@ -2446,6 +2463,21 @@ CAmount CWallet::GetUnconfirmedBalance() const
             const CWalletTx* pcoin = &(*it).second;
             if (!pcoin->IsTrusted() && pcoin->GetDepthInMainChain() == 0 && pcoin->InMempool())
                 nTotal += pcoin->GetAvailableCredit();
+            else if (pcoin->HasZerocoinMint()) {
+                for (const CTxOut& out: pcoin->vout) {
+                    if (!out.IsZerocoinMint())
+                        continue;
+                    CBlockIndex* pindex = mapBlockIndex[pcoin->hashBlock];
+                    if (!pindex)
+                        continue;
+                    std::vector<unsigned char> c; CPubKey p;
+                    if(!out.scriptPubKey.ExtractZerocoinMintData(p, c))
+                        continue;
+                    uint256 blockhash;
+                    if (!pblocktree->ReadAccMint(CBigNum(c), blockhash) || blockhash == uint256())
+                        nTotal += out.nValue;
+                }
+            }
         }
     }
     return nTotal;
@@ -2594,7 +2626,15 @@ void CWallet::AvailablePrivateCoins(vector<COutput>& vCoins, bool fOnlyConfirmed
                 unsigned int nCount = 0;
                 if (!pcoin->vout[i].IsZerocoinMint())
                     continue;
-                if (!CountMintsFromHeight(pindex->nHeight, libzerocoin::AmountToZerocoinDenomination(pcoin->vout[i].nValue), nCount))
+                std::vector<unsigned char> c; CPubKey p;
+                if(!pcoin->vout[i].scriptPubKey.ExtractZerocoinMintData(p, c))
+                    continue;
+                uint256 blockhash;
+                if (!pblocktree->ReadAccMint(CBigNum(c), blockhash) || blockhash == uint256())
+                    continue;
+                if (!mapBlockIndex.count(blockhash))
+                    continue;
+                if (!CountMintsFromHeight(mapBlockIndex[blockhash]->nHeight+1, libzerocoin::AmountToZerocoinDenomination(pcoin->vout[i].nValue), nCount))
                     continue;
                 if (!(IsSpent(wtxid, i)) && mine != ISMINE_NO &&
                     !IsLockedCoin((*it).first, i) && (pcoin->vout[i].nValue > 0 || fIncludeZeroValue) &&
@@ -3167,6 +3207,17 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     else
                         signSuccess = ProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata);
 
+                    libzerocoin::AccumulatorWitness aw(&Params().GetConsensus().Zerocoin_Params, libzerocoin::Accumulator(&Params().GetConsensus().Zerocoin_Params, libzerocoin::AmountToZerocoinDenomination(coin.first->vout[coin.second].nValue)), libzerocoin::PublicCoin(&Params().GetConsensus().Zerocoin_Params));
+                    uint256 AccumulatorChecksum;
+                    std::string strError = "";
+
+                    if (fPrivate) {
+                        if (!CalculateWitnessForMint(coin.first->vout[coin.second], aw, AccumulatorChecksum, strError)) {
+                            strFailReason = strprintf("Error calculating witness for mint: %s", strError);
+                            return false;
+                        }
+                    }
+
                     if (!signSuccess)
                     {
                         strFailReason = _("Signing transaction failed");
@@ -3174,6 +3225,8 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     } else {
                         UpdateTransaction(txNew, nIn, sigdata);
                     }
+
+
 
                     nIn++;
                 }
@@ -3465,7 +3518,7 @@ bool CWallet::DelAddressBook(const CTxDestination& address)
     return CWalletDB(strWalletFile).EraseName(CNavCoinAddress(address).ToString());
 }
 
-bool CWallet::SetZeroCoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey)
+bool CWallet::SetZerocoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey)
 {
     if(!(this->SetObfuscationJ(obfuscationJ) &&
             this->SetObfuscationK(obfuscationK) &&
@@ -3475,7 +3528,7 @@ bool CWallet::SetZeroCoinValues(const CBigNum& obfuscationJ, const CBigNum& obfu
 
     if (fFileBacked)
     {
-        if (!CWalletDB(strWalletFile).WriteZeroCoinValues(this))
+        if (!CWalletDB(strWalletFile).WriteZerocoinValues(this))
             return false;
     }
     return true;
@@ -4196,7 +4249,7 @@ bool CWallet::InitLoadWallet()
     {
         CBigNum obfuscationj; CBigNum obfuscationk; CBigNum blindingcommitment; CKey zeroKey;
         libzerocoin::GenerateParameters(&Params().GetConsensus().Zerocoin_Params, obfuscationj, obfuscationk, blindingcommitment, zeroKey);
-        walletInstance->SetZeroCoinValues(obfuscationj, obfuscationk, blindingcommitment, zeroKey);
+        walletInstance->SetZerocoinValues(obfuscationj, obfuscationk, blindingcommitment, zeroKey);
         obfuscationj.Nullify();
         obfuscationk.Nullify();
         LogPrintf("Generated zerocoin parameters.\n");

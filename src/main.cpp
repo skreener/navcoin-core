@@ -1196,7 +1196,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
     // Check that zPIV mints are not already known
     if (tx.HasZerocoinMint()) {
         std::pair<int, uint256> firstZero = make_pair(0, uint256());
-        pblocktree->ReadFirstZeroCoinBlock(firstZero);
+        pblocktree->ReadFirstZerocoinBlock(firstZero);
         if(chainActive.Tip()->nHeight < firstZero.first || firstZero.first == 0)
             return state.Invalid(error("%s: too early zerocoin mint", __func__));
     }
@@ -2311,7 +2311,7 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
 
                 libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
 
-                if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, out, pubCoin, state))
+                if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, out, pubCoin, &state))
                     return error("%s: error disconnecting zerocoin mint from %s", __func__, hash.ToString());
                 vZeroMints.push_back(make_pair(pubCoin.getValue(), uint256()));
             }
@@ -2888,12 +2888,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     return state.Invalid(error("%s: zerocoin mint failed contextual check", __func__));
 
                 pindex->mapZerocoinSupply[libzerocoin::AmountToZerocoinDenomination(out.nValue)]++;
+
                 nZeroCreated += out.nValue;
 
                 vZeroMints.push_back(make_pair(pubCoin.getValue(), tx.GetHash()));
-                if(!pindex->mapMints.count(pubCoin.getDenomination()))
-                    pindex->mapMints[pubCoin.getDenomination()]=std::vector<CBigNum>();
-                pindex->mapMints.at(pubCoin.getDenomination()).push_back(pubCoin.getValue());
             }
         }
 
@@ -3652,19 +3650,57 @@ bool static DisconnectTip(CValidationState& state, const CChainParams& chainpara
     UpdateTip(pindexDelete->pprev, chainparams);
 
     std::pair<int, uint256> firstZero = make_pair(0, uint256());
-    pblocktree->ReadFirstZeroCoinBlock(firstZero);
+    pblocktree->ReadFirstZerocoinBlock(firstZero);
 
     if(firstZero.first == pindexDelete->nHeight)
-        if(!pblocktree->WriteFirstZeroCoinBlock(make_pair(0, uint256())))
+        if(!pblocktree->WriteFirstZerocoinBlock(make_pair(0, uint256())))
             return AbortNode(state, "Failed to write height of first Zerocoin block");
 
     CBlockIndex* prevChecksum = chainActive[pindexDelete->nHeight - Params().GetConsensus().nRecalculateAccumulatorChecksum];
 
     if((pindexDelete->nHeight % Params().GetConsensus().nRecalculateAccumulatorChecksum) == 0 &&
             pindexDelete->nAccumulatorChecksum != uint256() && prevChecksum &&
-            prevChecksum->nAccumulatorChecksum != pindexDelete->nAccumulatorChecksum)
-        if(!pblocktree->EraseZeroCoinAccumulator(pindexDelete->nAccumulatorChecksum))
+            prevChecksum->nAccumulatorChecksum != pindexDelete->nAccumulatorChecksum) {
+        if(!pblocktree->EraseZerocoinAccumulator(pindexDelete->nAccumulatorChecksum))
             return AbortNode(state, "Failed to remove zerocoin accumulator checksum");
+
+        std::vector<std::pair<CBigNum, uint256>> vAccumulatedMints;
+
+        CBlockIndex* pindexcursor = pindexDelete;
+
+        while (pindexcursor) {
+            CBlock block;
+
+            if (!ReadBlockFromDisk(block, pindexcursor, Params().GetConsensus()))
+                return AbortNode(state, "Failed to read block");
+
+            if ((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) != VERSIONBITS_TOP_BITS_ZEROCOIN)
+                break;
+
+            for (auto& tx : block.vtx) {
+                for (auto& out : tx.vout) {
+                    if (!out.IsZerocoinMint())
+                        continue;
+
+                    libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
+
+                    std::vector<unsigned char> c; CPubKey p;
+                    if(!out.scriptPubKey.ExtractZerocoinMintData(p, c))
+                        continue;
+
+                    vAccumulatedMints.push_back(make_pair(CBigNum(c), uint256()));
+                }
+            }
+
+            pindexcursor = pindexcursor->pprev;
+
+            if ((pindexcursor->nHeight % Params().GetConsensus().nRecalculateAccumulatorChecksum) == 0)
+                break;
+        }
+
+        if(!pblocktree->UpdateAccMintIndex(vAccumulatedMints))
+            return AbortNode(state, "Failed to remove accumulated mints from index");
+    }
 
     std::vector<CFund::CPaymentRequest> vecPaymentRequest;
     std::vector<CFund::CProposal> vecProposal;
@@ -3843,10 +3879,10 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
     // Update chainActive & related variables.
 
     std::pair<int, uint256> firstZero = make_pair(0, uint256());
-    pblocktree->ReadFirstZeroCoinBlock(firstZero);
+    pblocktree->ReadFirstZerocoinBlock(firstZero);
 
     if(firstZero.first == 0 && IsZerocoinEnabled(pindexNew->pprev, Params().GetConsensus()))
-        if(!pblocktree->WriteFirstZeroCoinBlock(make_pair(pindexNew->nHeight,pindexNew->GetBlockHash())))
+        if(!pblocktree->WriteFirstZerocoinBlock(make_pair(pindexNew->nHeight,pindexNew->GetBlockHash())))
             return AbortNode(state, "Failed to write height of first Zerocoin block");
 
     UpdateTip(pindexNew, chainparams);
@@ -5054,7 +5090,8 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
     if(IsZerocoinEnabled(pindexPrev, Params().GetConsensus()))
     {
         AccumulatorMap mapAccumulators(&Params().GetConsensus().Zerocoin_Params);
-        if(!CalculateAccumulatorChecksum(chainActive, pindexPrev->nHeight+1, mapAccumulators))
+        std::vector<std::pair<CBigNum, uint256>> vAccumulatedMints;
+        if(!CalculateAccumulatorChecksum(pindexPrev->nHeight+1, mapAccumulators, block.GetHash(), vAccumulatedMints))
             return state.DoS(10, error("ConnectBlock(): could not verify zerocoin accumulator checksum."),
                              REJECT_INVALID, "bad-zero-accumulator-checksum");
 
@@ -5067,6 +5104,10 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
         else if(!mapAccumulators.Save())
         {
             return AbortNode(state, "Failed to write zerocoin accumulator checksum");
+        }
+        if(!pblocktree->UpdateAccMintIndex(vAccumulatedMints))
+        {
+            return AbortNode(state, "Failed to write zerocoin accumulated mints history");
         }
     }
 

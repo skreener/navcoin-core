@@ -30,5 +30,5 @@ public:
     bool Save();
 };
 
-bool CalculateAccumulatorChecksum(CChain& chain, int nHeight, AccumulatorMap& mapAccumulators);
+bool CalculateAccumulatorChecksum(int nHeight, AccumulatorMap& mapAccumulators, uint256 blockHash, std::vector<std::pair<CBigNum, uint256>>& vPubCoins);
 #endif //NAV_ACCUMULATORMAP_H

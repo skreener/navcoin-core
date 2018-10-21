@@ -62,6 +62,7 @@ SendCoinsEntry::SendCoinsEntry(const PlatformStyle *platformStyle, QWidget *pare
     bool fDefaultPrivate = settings.value("defaultprivate", false).toBool();
 
     nSecurityLevel = settings.value("securitylevel", pwalletMain->GetSecurityLevel()).toInt() - 1;
+    pwalletMain->SetSecurityLevel(nSecurityLevel);
     ui->securityLevel->setValue(nSecurityLevel);
 
     ui->sendPublic->setChecked(!fDefaultPrivate);
