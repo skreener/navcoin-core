@@ -238,7 +238,6 @@ public:
     CAmount nMoneySupply;
 
     std::map<libzerocoin::CoinDenomination, int64_t> mapZerocoinSupply;
-    std::map<libzerocoin::CoinDenomination, std::vector<CBigNum>> mapMints;
 
     void SetNull()
     {
@@ -271,11 +270,6 @@ public:
         vPaymentRequestVotes.clear();
         nMoneySupply = 0;
         nAccumulatorChecksum = 0;
-        // Start supply of each denomination with 0s
-        for (auto& denom : libzerocoin::zerocoinDenomList) {
-            mapZerocoinSupply.insert(make_pair(denom, 0));
-        }
-        mapMints.clear();
     }
 
     CBlockIndex()
@@ -558,7 +552,6 @@ public:
         if((this->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN) {
             READWRITE(nAccumulatorChecksum);
             READWRITE(mapZerocoinSupply);
-            READWRITE(mapMints);
         }
     }
 
