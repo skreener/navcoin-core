@@ -105,7 +105,7 @@ bool CountMintsFromHeight(unsigned int nInitialHeight, CoinDenomination denom, u
     return true;
 }
 
-bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin& pubCoin, Accumulator accumulator, AccumulatorWitness& accumulatorWitness, uint256& accumulatorChecksum, std::string& strError)
+bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin& pubCoin, Accumulator& accumulator, AccumulatorWitness& accumulatorWitness, uint256& accumulatorChecksum, std::string& strError)
 {
     if (!txout.IsZerocoinMint()) {
         strError = "Transaction output script is not a zerocoin mint.";

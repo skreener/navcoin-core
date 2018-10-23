@@ -18,7 +18,7 @@
 
 namespace libzerocoin
 {
-CoinSpend::CoinSpend(const ZerocoinParams* paramsCoin, const ZerocoinParams* paramsAcc, const PrivateCoin& coin, Accumulator& a, const uint32_t& checksum,
+CoinSpend::CoinSpend(const ZerocoinParams* paramsCoin, const ZerocoinParams* paramsAcc, const PrivateCoin& coin, const Accumulator& a, const uint256& checksum,
                      const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType, const CBigNum obfuscationJ, const CBigNum obfuscationK) : accChecksum(checksum),
     ptxHash(ptxHash),
     accumulatorPoK(&paramsAcc->accumulatorParams),

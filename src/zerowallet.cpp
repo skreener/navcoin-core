@@ -144,8 +144,8 @@ bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript&
     if (!CalculateWitnessForMint(txout, pubCoin, a, aw, ac, strError))
         return error(strprintf("Error calculating witness for mint: %s", strError));
 
-    if (!creator.CreateCoinSpend(result, strError))
-        return error("");
+    if (!creator.CreateCoinSpend(&Params().GetConsensus().Zerocoin_Params, pubCoin, a, ac, aw, scriptPubKey, result, strError))
+        return error(strprintf("Error creating coin spend: %s", strError));
 
     sigdata.push_back(result);
 

@@ -20,7 +20,7 @@ AccumulatorProofOfKnowledge::AccumulatorProofOfKnowledge(const AccumulatorAndPro
 
 AccumulatorProofOfKnowledge::AccumulatorProofOfKnowledge(const AccumulatorAndProofParams* p,
                                                          const Commitment& commitmentToCoin, const AccumulatorWitness& witness,
-                                                         Accumulator& a): params(p) {
+                                                         const Accumulator& a): params(p) {
 
     CBigNum sg = params->accumulatorPoKCommitmentGroup.g;
     CBigNum sh = params->accumulatorPoKCommitmentGroup.h;
