@@ -19,6 +19,8 @@ using namespace std;
 
 typedef vector<unsigned char> valtype;
 
+std::vector<uint256> vMyMints;
+
 unsigned int HaveKeys(const vector<valtype>& pubkeys, const CKeyStore& keystore)
 {
     unsigned int nResult = 0;
