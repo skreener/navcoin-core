@@ -4,7 +4,7 @@
 
 #include "zerowallet.h"
 
-bool DestinationToVecRecipients(CAmount nValue, const std::string &strAddress, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate)
+bool DestinationToVecRecipients(CAmount nValue, const std::string &strAddress, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate, bool fReduceOutputs)
 {
     CNavCoinAddress a(strAddress);
 
@@ -13,17 +13,17 @@ bool DestinationToVecRecipients(CAmount nValue, const std::string &strAddress, v
 
     CTxDestination address = a.Get();
 
-    return DestinationToVecRecipients(nValue, address, vecSend, fSubtractFeeFromAmount, fDonate, fRetNeedsZeroMinting, fPrivate);
+    return DestinationToVecRecipients(nValue, address, vecSend, fSubtractFeeFromAmount, fDonate, fRetNeedsZeroMinting, fPrivate, fReduceOutputs);
 }
 
-bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate)
+bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate, bool fReduceOutputs)
 {
     vecSend.clear();
     CScript scriptPubKey = GetScriptForDestination(address);
 
     fRetNeedsZeroMinting = false;
     map <libzerocoin::CoinDenomination, unsigned int> mapDenominations;
-    CAmount minDenomination = MAX_MONEY / COIN;
+    CAmount minDenomination = libzerocoin::GetSmallerDenomination() * COIN;
     CAmount sumDenominations = 0;
 
     if(fDonate)
@@ -33,16 +33,15 @@ bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, v
         for (unsigned int i = 0; i < libzerocoin::zerocoinDenomList.size(); i++) {
             sumDenominations += libzerocoin::ZerocoinDenominationToInt(libzerocoin::zerocoinDenomList[i]) * COIN;
             mapDenominations[libzerocoin::zerocoinDenomList[i]] = 0; // Initalize map
-            minDenomination = min(minDenomination, libzerocoin::ZerocoinDenominationToInt(libzerocoin::zerocoinDenomList[i]));
         }
-        minDenomination *= COIN;
     }
     if (scriptPubKey.IsZerocoinMint()) {
         CAmount nRemainingValue = nValue;
         int nCount = 0;
+        unsigned int nIndex = libzerocoin::zerocoinDenomList.size() - 1;
         while (nRemainingValue >= minDenomination)
         {
-            if(nRemainingValue >= sumDenominations)
+            if(!fReduceOutputs && nRemainingValue >= sumDenominations)
             {
                 for (unsigned int i = 0; i < libzerocoin::zerocoinDenomList.size(); i++) {
                     mapDenominations[libzerocoin::zerocoinDenomList[i]]++;
@@ -51,16 +50,16 @@ bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, v
                 nRemainingValue -= sumDenominations;
                 continue;
             }
-            for (unsigned int i = 0; i < libzerocoin::zerocoinDenomList.size(); i++) {
-                unsigned int nIndex = libzerocoin::zerocoinDenomList.size() - i - 1;
-                CAmount value = libzerocoin::ZerocoinDenominationToInt(libzerocoin::zerocoinDenomList[nIndex]) * COIN;
-                if(nRemainingValue >= value) {
-                    mapDenominations[libzerocoin::zerocoinDenomList[nIndex]]++;
-                    nCount++;
-                    nRemainingValue -= value;
-                    continue;
-                }
+            CAmount value = libzerocoin::ZerocoinDenominationToInt(libzerocoin::zerocoinDenomList[nIndex]) * COIN;
+            if(nRemainingValue >= value) {
+                mapDenominations[libzerocoin::zerocoinDenomList[nIndex]]++;
+                nCount++;
+                nRemainingValue -= value;
+                continue;
             }
+            if (nIndex == 0)
+                break;
+            nIndex -= 1;
         }
 
         if (nCount > 0)
@@ -106,6 +105,8 @@ bool MintVecRecipients(const CTxDestination &address, vector<CRecipient> &vecSen
 
     for(auto& it: vecSend)
     {
+        boost::this_thread::interruption_point();
+
         unsigned int nProgress = (i++)*100/vecSend.size();
 
         if (nProgress > 0)
