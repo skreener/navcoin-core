@@ -460,7 +460,9 @@ bool DummySignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const 
     return true;
 }
 
-bool DummySignatureCreator::CreateCoinSpend(std::vector<unsigned char>& vchSig, std::string& strError) const
+bool DummySignatureCreator::CreateCoinSpend(const libzerocoin::ZerocoinParams* params, const libzerocoin::PublicCoin& pubCoin,
+                                            const libzerocoin::Accumulator a, const uint256 aChecksum, const libzerocoin::AccumulatorWitness aw,
+                                            const CScript& scriptPubKey, std::vector<unsigned char>& vchSig, std::string& strError) const
 {
     // Create a dummy signature that is a valid DER-encoding
     vchSig.assign(72, '\000');
@@ -476,8 +478,54 @@ bool DummySignatureCreator::CreateCoinSpend(std::vector<unsigned char>& vchSig, 
     return true;
 }
 
-bool TransactionSignatureCreator::CreateCoinSpend(std::vector<unsigned char>& vchSig, std::string& strError) const
+bool TransactionSignatureCreator::CreateCoinSpend(const libzerocoin::ZerocoinParams* params, const libzerocoin::PublicCoin& pubCoin,
+                                                  const libzerocoin::Accumulator a, const uint256 aChecksum, const libzerocoin::AccumulatorWitness aw,
+                                                  const CScript& scriptPubKey, std::vector<unsigned char>& vchSig, std::string& strError) const
 {
+    try {
+        CKey zk; CBigNum bc; CBigNum oj; CBigNum ok;
+
+        if (!keystore->GetZeroKey(zk)) {
+            strError = "Could not read zero key from wallet";
+            return false;
+        }
+
+        if (!keystore->GetBlindingCommitment(bc)) {
+            strError = "Could not read blinding commitment from wallet";
+            return false;
+        }
+
+        if (!keystore->GetObfuscationJ(oj)) {
+            strError = "Could not read obfuscation value j from wallet";
+            return false;
+        }
+
+        if (!keystore->GetObfuscationK(ok)) {
+            strError = "Could not read obfuscation value k from wallet";
+            return false;
+        }
+
+        libzerocoin::PrivateCoin privateCoin(params, pubCoin.getDenomination(), zk, pubCoin.getPubKey(), bc, pubCoin.getValue());
+
+        if (!privateCoin.isValid()) {
+            strError = "The private coin did not validate";
+            return false;
+        }
+
+        uint256 txhash = SignatureHash(scriptPubKey, *txTo, nIn, nHashType, amount, SIGVERSION_BASE);
+
+        libzerocoin::CoinSpend cs(params, params, privateCoin, a, aChecksum, aw, txhash, libzerocoin::SpendType::SPEND, oj, ok);
+
+        CDataStream serializedCoinSpend(SER_NETWORK, PROTOCOL_VERSION);
+        serializedCoinSpend << cs;
+        CScript prefixScript = CScript() << OP_ZEROCOINSPEND << serializedCoinSpend.size();
+        vchSig.insert(vchSig.end(), prefixScript.begin(), prefixScript.end());
+        vchSig.insert(vchSig.end(), serializedCoinSpend.begin(), serializedCoinSpend.end());
+    }
+    catch(std::runtime_error& e) {
+        strError = e.what();
+        return false;
+    }
 
     return true;
 

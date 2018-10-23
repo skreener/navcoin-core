@@ -3067,7 +3067,6 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 }
 
                 const CAmount nChange = nValueIn - nValueToSelect;
-                LogPrintf("%d %d %d\n", nChange, nValueIn, nValueToSelect);
                 if (nChange > 0)
                 {
                     // Fill a vout to ourself
@@ -3102,7 +3101,6 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                             CTxOut newTxOut(it.nAmount, it.scriptPubKey);
                             vector<CTxOut>::iterator position = txNew.vout.begin()+GetRandInt(txNew.vout.size()+1);
                             txNew.vout.insert(position, newTxOut);
-                            LogPrintf("%s\n", txNew.ToString());
                         }
                     }
                     else
@@ -3183,7 +3181,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 }
                 else
                     reservekey.ReturnKey();
-
+                
                 // Fill vin
                 //
                 // Note how the sequence number is set to max()-1 so that the
@@ -3223,8 +3221,6 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     } else {
                         UpdateTransaction(txNew, nIn, sigdata);
                     }
-
-
 
                     nIn++;
                 }
