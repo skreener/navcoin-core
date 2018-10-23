@@ -105,24 +105,10 @@ bool CountMintsFromHeight(unsigned int nInitialHeight, CoinDenomination denom, u
     return true;
 }
 
-bool CalculateWitnessForMint(const CTxOut& txout, AccumulatorWitness& accumulatorWitness, uint256& accumulatorChecksum, std::string& strError)
+bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin& pubCoin, Accumulator accumulator, AccumulatorWitness& accumulatorWitness, uint256& accumulatorChecksum, std::string& strError)
 {
     if (!txout.IsZerocoinMint()) {
         strError = "Transaction output script is not a zerocoin mint.";
-        return false;
-    }
-
-    CoinDenomination cd = AmountToZerocoinDenomination(txout.nValue);
-
-    if (cd == ZQ_ERROR) {
-        strError = strprintf("Transaction output has a wrong denomination (%d)", ZerocoinDenominationToAmount(cd));
-        return false;
-    }
-
-    libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
-
-    if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, txout, pubCoin, NULL)) {
-        strError = strprintf("Could not convert transaction otuput to public coin");
         return false;
     }
 
@@ -163,7 +149,7 @@ bool CalculateWitnessForMint(const CTxOut& txout, AccumulatorWitness& accumulato
         return false;
     }
 
-    Accumulator accumulator(&Params().GetConsensus().Zerocoin_Params, cd, accumulatorMap.GetValue(cd));
+    accumulator.setValue(accumulatorMap.GetValue(pubCoin.getDenomination()));
     accumulatorWitness.resetValue(accumulator, pubCoin);
 
     if (chainActive.Next(pindex)) {
@@ -222,7 +208,7 @@ bool CalculateWitnessForMint(const CTxOut& txout, AccumulatorWitness& accumulato
         return false;
     }
 
-    accumulator.setValue(accumulatorMap.GetValue(cd));
+    accumulator.setValue(accumulatorMap.GetValue(pubCoin.getDenomination()));
 
     if (!accumulatorWitness.VerifyWitness(accumulator, pubCoin)) {
         strError = "Witness did not verify";

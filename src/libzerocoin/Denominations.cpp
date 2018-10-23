@@ -115,9 +115,10 @@ int64_t get_amount(std::string denomAmount) {
 }
 
 CoinDenomination GetSmallerDenomination() {
-    CAmount minDenomination = MAX_MONEY / COIN;
+    CAmount minDenomination = MAX_MONEY;
     for (unsigned int i = 0; i < libzerocoin::zerocoinDenomList.size(); i++) {
-        minDenomination = std::min(minDenomination, libzerocoin::ZerocoinDenominationToInt(libzerocoin::zerocoinDenomList[i]));
+        CAmount a = libzerocoin::ZerocoinDenominationToAmount(libzerocoin::zerocoinDenomList[i]);
+        minDenomination = std::min(minDenomination, a);
     }
     return AmountToZerocoinDenomination(minDenomination);
 }

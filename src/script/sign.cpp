@@ -11,6 +11,7 @@
 #include "primitives/transaction.h"
 #include "script/standard.h"
 #include "uint256.h"
+#include "zerowallet.h"
 
 #include <boost/foreach.hpp>
 
@@ -18,7 +19,7 @@ using namespace std;
 
 typedef std::vector<unsigned char> valtype;
 
-TransactionSignatureCreator::TransactionSignatureCreator(const CKeyStore* keystoreIn, const CTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn, int nHashTypeIn) : BaseSignatureCreator(keystoreIn), txTo(txToIn), nIn(nInIn), nHashType(nHashTypeIn), amount(amountIn), checker(txTo, nIn, amountIn) {}
+TransactionSignatureCreator::TransactionSignatureCreator(const CKeyStore* keystoreIn, const CTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn, int nHashTypeIn) : BaseSignatureCreator(keystoreIn), txTo(txToIn), nIn(nInIn), nHashType(nHashTypeIn), checker(txTo, nIn, amountIn), amount(amountIn) {}
 
 bool TransactionSignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const CKeyID& address, const CScript& scriptCode, SigVersion sigversion) const
 {
@@ -203,6 +204,19 @@ bool ProduceSignature(const BaseSignatureCreator& creator, const CScript& fromPu
 
     // Test solution
     return solved && VerifyScript(sigdata.scriptSig, fromPubKey, &sigdata.scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, creator.Checker());
+}
+
+bool ProduceCoinSpend(const BaseSignatureCreator& creator, const CScript& fromPubKey, SignatureData& sigdata, bool fCoinStake, CAmount amount)
+{
+    CScript script = fromPubKey;
+    bool solved = true;
+    std::vector<valtype> result;
+    solved = PrepareAndSignCoinSpend(creator, script, amount, result);
+    sigdata.scriptWitness.stack.clear();
+    sigdata.scriptSig = PushAll(result);
+
+    // Test solution
+    return solved;
 }
 
 SignatureData DataFromTransaction(const CMutableTransaction& tx, unsigned int nIn)
@@ -444,4 +458,27 @@ bool DummySignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const 
     vchSig[6 + 33] = 0x01;
     vchSig[6 + 33 + 32] = SIGHASH_ALL;
     return true;
+}
+
+bool DummySignatureCreator::CreateCoinSpend(std::vector<unsigned char>& vchSig, std::string& strError) const
+{
+    // Create a dummy signature that is a valid DER-encoding
+    vchSig.assign(72, '\000');
+    vchSig[0] = 0x30;
+    vchSig[1] = 69;
+    vchSig[2] = 0x02;
+    vchSig[3] = 33;
+    vchSig[4] = 0x01;
+    vchSig[4 + 33] = 0x02;
+    vchSig[5 + 33] = 32;
+    vchSig[6 + 33] = 0x01;
+    vchSig[6 + 33 + 32] = SIGHASH_ALL;
+    return true;
+}
+
+bool TransactionSignatureCreator::CreateCoinSpend(std::vector<unsigned char>& vchSig, std::string& strError) const
+{
+
+    return true;
+
 }
