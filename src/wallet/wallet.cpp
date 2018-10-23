@@ -3067,6 +3067,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 }
 
                 const CAmount nChange = nValueIn - nValueToSelect;
+                LogPrintf("%d %d %d\n", nChange, nValueIn, nValueToSelect);
                 if (nChange > 0)
                 {
                     // Fill a vout to ourself
@@ -3098,8 +3099,10 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
                         for(auto& it: vecChange)
                         {
-                            CTxOut txout(it.nAmount, it.scriptPubKey);
-                            txNew.vout.push_back(txout);
+                            CTxOut newTxOut(it.nAmount, it.scriptPubKey);
+                            vector<CTxOut>::iterator position = txNew.vout.begin()+GetRandInt(txNew.vout.size()+1);
+                            txNew.vout.insert(position, newTxOut);
+                            LogPrintf("%s\n", txNew.ToString());
                         }
                     }
                     else
@@ -3203,20 +3206,15 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     SignatureData sigdata;
 
                     if (sign)
-                        signSuccess = ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn, coin.first->vout[coin.second].nValue, SIGHASH_ALL), scriptPubKey, sigdata);
+                        if (!fPrivate)
+                            signSuccess = ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn,
+                                                           coin.first->vout[coin.second].nValue, SIGHASH_ALL), scriptPubKey, sigdata);
+                        else
+                            signSuccess = ProduceCoinSpend(TransactionSignatureCreator(this, &txNewConst, nIn,
+                                                                         coin.first->vout[coin.second].nValue, SIGHASH_ALL), scriptPubKey, sigdata,
+                                                                         false, coin.first->vout[coin.second].nValue);
                     else
                         signSuccess = ProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata);
-
-                    libzerocoin::AccumulatorWitness aw(&Params().GetConsensus().Zerocoin_Params, libzerocoin::Accumulator(&Params().GetConsensus().Zerocoin_Params, libzerocoin::AmountToZerocoinDenomination(coin.first->vout[coin.second].nValue)), libzerocoin::PublicCoin(&Params().GetConsensus().Zerocoin_Params));
-                    uint256 AccumulatorChecksum;
-                    std::string strError = "";
-
-                    if (fPrivate) {
-                        if (!CalculateWitnessForMint(coin.first->vout[coin.second], aw, AccumulatorChecksum, strError)) {
-                            strFailReason = strprintf("Error calculating witness for mint: %s", strError);
-                            return false;
-                        }
-                    }
 
                     if (!signSuccess)
                     {

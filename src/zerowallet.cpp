@@ -120,3 +120,34 @@ bool MintVecRecipients(const CTxDestination &address, vector<CRecipient> &vecSen
 
     return true;
 }
+
+bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript& scriptPubKey, const CAmount& amount, std::vector<std::vector<unsigned char>>& sigdata)
+{
+    if (!scriptPubKey.IsZerocoinMint())
+        return error(strprintf("Transaction output script is not a zerocoin mint."));
+
+    string strError = "";
+    std::vector<unsigned char> result;
+    libzerocoin::CoinDenomination cd = libzerocoin::AmountToZerocoinDenomination(amount);
+    libzerocoin::Accumulator a(&Params().GetConsensus().Zerocoin_Params, cd);
+    libzerocoin::AccumulatorWitness aw(&Params().GetConsensus().Zerocoin_Params,
+                                       libzerocoin::Accumulator(&Params().GetConsensus().Zerocoin_Params, cd),
+                                       libzerocoin::PublicCoin(&Params().GetConsensus().Zerocoin_Params));
+    uint256 ac;
+    CTxOut txout(amount, scriptPubKey);
+
+    libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
+
+    if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, txout, pubCoin, NULL))
+        return error(strprintf("Could not convert transaction otuput to public coin"));
+
+    if (!CalculateWitnessForMint(txout, pubCoin, a, aw, ac, strError))
+        return error(strprintf("Error calculating witness for mint: %s", strError));
+
+    if (!creator.CreateCoinSpend(result, strError))
+        return error("");
+
+    sigdata.push_back(result);
+
+    return true;
+}
