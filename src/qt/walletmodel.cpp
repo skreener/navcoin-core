@@ -396,8 +396,6 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
             }
         }
 
-        CAmount nFeeRequired = 0;
-        int nChangePosRet = -1;
         std::string strFailReason;
         CReserveKey *keyChange = transaction.getPossibleKeyChange();
 

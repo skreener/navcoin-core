@@ -3190,7 +3190,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 {
                     if(coin.first->nTime > txNew.nTime)
                         txNew.nTime = coin.first->nTime;
-                    txNew.vin.push_back(CTxIn(coin.first->GetHash(),coin.second,CScript(),
+                    txNew.vin.push_back(CTxIn(fPrivate?uint256():coin.first->GetHash(),fPrivate?0:coin.second,CScript(),
                                               std::numeric_limits<unsigned int>::max()-1));
                 }
 

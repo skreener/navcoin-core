@@ -4,8 +4,11 @@
 
 #include "coins.h"
 
+#include "chainparams.h"
+#include "libzerocoin/CoinSpend.h"
 #include "memusage.h"
 #include "random.h"
+#include "zerochain.h"
 
 #include <assert.h>
 
@@ -232,6 +235,12 @@ unsigned int CCoinsViewCache::GetCacheSize() const {
 
 const CTxOut &CCoinsViewCache::GetOutputFor(const CTxIn& input) const
 {
+    if (input.scriptSig.IsZerocoinSpend()) {
+        libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
+        assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, input, zcs, NULL));
+        CTxOut outRet(libzerocoin::ZerocoinDenominationToAmount(zcs.getDenomination()), CScript());
+        return outRet;
+    }
     const CCoins* coins = AccessCoins(input.prevout.hash);
     assert(coins && coins->IsAvailable(input.prevout.n));
     return coins->vout[input.prevout.n];

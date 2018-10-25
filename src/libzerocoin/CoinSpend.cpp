@@ -18,20 +18,20 @@
 
 namespace libzerocoin
 {
-CoinSpend::CoinSpend(const ZerocoinParams* paramsCoin, const ZerocoinParams* paramsAcc, const PrivateCoin& coin, const Accumulator& a, const uint256& checksum,
+CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, const Accumulator& a, const uint256& checksum,
                      const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType, const CBigNum obfuscationJ, const CBigNum obfuscationK) : accChecksum(checksum),
     ptxHash(ptxHash),
-    accumulatorPoK(&paramsAcc->accumulatorParams),
-    serialNumberSoK(paramsCoin),
-    serialNumberPoK(paramsCoin),
-    commitmentPoK(&paramsCoin->serialNumberSoKCommitmentGroup,
-                  &paramsAcc->accumulatorParams.accumulatorPoKCommitmentGroup),
+    accumulatorPoK(&params->accumulatorParams),
+    serialNumberSoK(params),
+    serialNumberPoK(params),
+    commitmentPoK(&params->serialNumberSoKCommitmentGroup,
+                  &params->accumulatorParams.accumulatorPoKCommitmentGroup),
     spendType(spendType)
 {
     denomination = coin.getPublicCoin().getDenomination();
-    coinSerialNumber = paramsCoin->coinCommitmentGroup.g.pow_mod(
-                        (coin.getSerialNumber()+obfuscationJ) % paramsCoin->coinCommitmentGroup.groupOrder,
-                        paramsCoin->serialNumberSoKCommitmentGroup.groupOrder);
+    coinSerialNumber = params->coinCommitmentGroup.g.pow_mod(
+                        (coin.getSerialNumber()+obfuscationJ) % params->coinCommitmentGroup.groupOrder,
+                        params->serialNumberSoKCommitmentGroup.groupOrder);
     version = coin.getVersion();
 
     if (!static_cast<int>(version)) //todo: figure out why version does not make it here
@@ -50,26 +50,26 @@ CoinSpend::CoinSpend(const ZerocoinParams* paramsCoin, const ZerocoinParams* par
     // Specifically, our serial number proof requires the order of the commitment group
     // to be the same as the modulus of the upper group. The Accumulator proof requires a
     // group with a significantly larger order.
-    const Commitment fullCommitmentToCoinUnderSerialParams(&paramsCoin->serialNumberSoKCommitmentGroup, coin.getPublicCoin().getValue());
+    const Commitment fullCommitmentToCoinUnderSerialParams(&params->serialNumberSoKCommitmentGroup, coin.getPublicCoin().getValue());
     this->serialCommitmentToCoinValue = fullCommitmentToCoinUnderSerialParams.getCommitmentValue();
 
-    const Commitment fullCommitmentToCoinUnderAccParams(&paramsAcc->accumulatorParams.accumulatorPoKCommitmentGroup, coin.getPublicCoin().getValue());
+    const Commitment fullCommitmentToCoinUnderAccParams(&params->accumulatorParams.accumulatorPoKCommitmentGroup, coin.getPublicCoin().getValue());
     this->accCommitmentToCoinValue = fullCommitmentToCoinUnderAccParams.getCommitmentValue();
 
     // 2. Generate a ZK proof that the two commitments contain the same public coin.
-    this->commitmentPoK = CommitmentProofOfKnowledge(&paramsCoin->serialNumberSoKCommitmentGroup, &paramsAcc->accumulatorParams.accumulatorPoKCommitmentGroup, fullCommitmentToCoinUnderSerialParams, fullCommitmentToCoinUnderAccParams);
+    this->commitmentPoK = CommitmentProofOfKnowledge(&params->serialNumberSoKCommitmentGroup, &params->accumulatorParams.accumulatorPoKCommitmentGroup, fullCommitmentToCoinUnderSerialParams, fullCommitmentToCoinUnderAccParams);
 
     // Now generate the two core ZK proofs:
     // 3. Proves that the committed public coin is in the Accumulator (PoK of "witness")
-    this->accumulatorPoK = AccumulatorProofOfKnowledge(&paramsAcc->accumulatorParams, fullCommitmentToCoinUnderAccParams, witness, a);
+    this->accumulatorPoK = AccumulatorProofOfKnowledge(&params->accumulatorParams, fullCommitmentToCoinUnderAccParams, witness, a);
 
     // 4. Proves that the coin is correct w.r.t. serial number and hidden coin secret
     // (This proof is bound to the coin 'metadata', i.e., transaction hash)
     uint256 hashSig = signatureHash();
-    this->serialNumberSoK = SerialNumberSignatureOfKnowledge(paramsCoin, coin, fullCommitmentToCoinUnderSerialParams, hashSig, obfuscationJ, obfuscationK);
+    this->serialNumberSoK = SerialNumberSignatureOfKnowledge(params, coin, fullCommitmentToCoinUnderSerialParams, hashSig, obfuscationJ, obfuscationK);
 
     //5. Zero knowledge proof of the serial number
-    this->serialNumberPoK = SerialNumberProofOfKnowledge(paramsCoin, (coin.getSerialNumber()+obfuscationJ) % paramsCoin->coinCommitmentGroup.groupOrder, hashSig);
+    this->serialNumberPoK = SerialNumberProofOfKnowledge(params, (coin.getSerialNumber()+obfuscationJ) % params->coinCommitmentGroup.groupOrder, hashSig);
 }
 
 bool CoinSpend::Verify(const Accumulator& a) const

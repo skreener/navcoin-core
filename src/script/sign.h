@@ -33,7 +33,7 @@ public:
     virtual bool CreateSig(std::vector<unsigned char>& vchSig, const CKeyID& keyid, const CScript& scriptCode, SigVersion sigversion) const =0;
     virtual bool CreateCoinSpend(const libzerocoin::ZerocoinParams* params, const libzerocoin::PublicCoin& pubCoin,
                                  const libzerocoin::Accumulator a, const uint256 aChecksum, const libzerocoin::AccumulatorWitness aw,
-                                 const CScript& scriptPubKey, std::vector<unsigned char>& vchSig, std::string& strError) const=0;
+                                 const CScript& scriptPubKey, CScript& scriptSig, std::string& strError) const=0;
 };
 
 /** A signature creator for transactions. */
@@ -49,7 +49,7 @@ public:
     bool CreateSig(std::vector<unsigned char>& vchSig, const CKeyID& keyid, const CScript& scriptCode, SigVersion sigversion) const;
     bool CreateCoinSpend(const libzerocoin::ZerocoinParams* params, const libzerocoin::PublicCoin& pubCoin,
                          const libzerocoin::Accumulator a, const uint256 aChecksum, const libzerocoin::AccumulatorWitness aw,
-                         const CScript& scriptPubKey, std::vector<unsigned char>& vchSig, std::string& strError) const;
+                         const CScript& scriptPubKey, CScript& scriptSig, std::string& strError) const;
     CAmount amount;
 };
 
@@ -68,7 +68,7 @@ public:
     bool CreateSig(std::vector<unsigned char>& vchSig, const CKeyID& keyid, const CScript& scriptCode, SigVersion sigversion) const;
     bool CreateCoinSpend(const libzerocoin::ZerocoinParams* params, const libzerocoin::PublicCoin& pubCoin,
                          const libzerocoin::Accumulator a, const uint256 aChecksum, const libzerocoin::AccumulatorWitness aw,
-                         const CScript& scriptPubKey, std::vector<unsigned char>& vchSig, std::string& strError) const;
+                         const CScript& scriptPubKey, CScript& scriptSig, std::string& strError) const;
 };
 
 struct SignatureData {
