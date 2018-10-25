@@ -38,21 +38,24 @@ class CoinSpend
 {
 public:
 
-    //! \param paramsV1 - if this is a V1 zerocoin, then use params that existed with initial modulus, ignored otherwise
-    //! \param paramsV2 - params that begin when V2 zerocoins begin on the PIVX network
+    CoinSpend(const ZerocoinParams* params) :
+        accumulatorPoK(&params->accumulatorParams),
+        serialNumberSoK(params),
+        serialNumberPoK(params),
+        commitmentPoK(&params->serialNumberSoKCommitmentGroup, &params->accumulatorParams.accumulatorPoKCommitmentGroup) {}
+
+    //! \param param - params
     //! \param strm - a serialized CoinSpend
     template <typename Stream>
-    CoinSpend(const ZerocoinParams* paramsV1, const ZerocoinParams* paramsV2, Stream& strm) :
-        accumulatorPoK(&paramsV2->accumulatorParams),
-        serialNumberSoK(paramsV2),
-        serialNumberPoK(paramsV2),
-        commitmentPoK(&paramsV2->serialNumberSoKCommitmentGroup, &paramsV2->accumulatorParams.accumulatorPoKCommitmentGroup)
-
+    CoinSpend(const ZerocoinParams* params, Stream& strm) :
+        accumulatorPoK(&params->accumulatorParams),
+        serialNumberSoK(params),
+        serialNumberPoK(params),
+        commitmentPoK(&params->serialNumberSoKCommitmentGroup, &params->accumulatorParams.accumulatorPoKCommitmentGroup)
     {
         Stream strmCopy = strm;
         strm >> *this;
     }
-
     /**Generates a proof spending a zerocoin.
    *
    * To use this, provide an unspent PrivateCoin, the latest Accumulator
@@ -76,7 +79,7 @@ public:
    * @param a hash of the partial transaction that contains this coin spend
    * @throw ZerocoinException if the process fails
    */
-    CoinSpend(const ZerocoinParams* paramsCoin, const ZerocoinParams* paramsAcc, const PrivateCoin& coin, const Accumulator& a, const uint256& checksum,
+    CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, const Accumulator& a, const uint256& checksum,
               const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType, const CBigNum obfuscationJ, const CBigNum obfuscationK);
 
     /** Returns the serial number of the coin spend by this proof.

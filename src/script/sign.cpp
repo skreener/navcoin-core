@@ -210,10 +210,10 @@ bool ProduceCoinSpend(const BaseSignatureCreator& creator, const CScript& fromPu
 {
     CScript script = fromPubKey;
     bool solved = true;
-    std::vector<valtype> result;
+    CScript result;
     solved = PrepareAndSignCoinSpend(creator, script, amount, result);
     sigdata.scriptWitness.stack.clear();
-    sigdata.scriptSig = PushAll(result);
+    sigdata.scriptSig = result;
 
     // Test solution
     return solved;
@@ -462,25 +462,15 @@ bool DummySignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const 
 
 bool DummySignatureCreator::CreateCoinSpend(const libzerocoin::ZerocoinParams* params, const libzerocoin::PublicCoin& pubCoin,
                                             const libzerocoin::Accumulator a, const uint256 aChecksum, const libzerocoin::AccumulatorWitness aw,
-                                            const CScript& scriptPubKey, std::vector<unsigned char>& vchSig, std::string& strError) const
+                                            const CScript& scriptPubKey, CScript& scriptSig, std::string& strError) const
 {
-    // Create a dummy signature that is a valid DER-encoding
-    vchSig.assign(72, '\000');
-    vchSig[0] = 0x30;
-    vchSig[1] = 69;
-    vchSig[2] = 0x02;
-    vchSig[3] = 33;
-    vchSig[4] = 0x01;
-    vchSig[4 + 33] = 0x02;
-    vchSig[5 + 33] = 32;
-    vchSig[6 + 33] = 0x01;
-    vchSig[6 + 33 + 32] = SIGHASH_ALL;
+    scriptSig = CScript() << OP_ZEROCOINSPEND;
     return true;
 }
 
 bool TransactionSignatureCreator::CreateCoinSpend(const libzerocoin::ZerocoinParams* params, const libzerocoin::PublicCoin& pubCoin,
                                                   const libzerocoin::Accumulator a, const uint256 aChecksum, const libzerocoin::AccumulatorWitness aw,
-                                                  const CScript& scriptPubKey, std::vector<unsigned char>& vchSig, std::string& strError) const
+                                                  const CScript& scriptPubKey, CScript& scriptSig, std::string& strError) const
 {
     try {
         CKey zk; CBigNum bc; CBigNum oj; CBigNum ok;
@@ -514,13 +504,12 @@ bool TransactionSignatureCreator::CreateCoinSpend(const libzerocoin::ZerocoinPar
 
         uint256 txhash = SignatureHash(scriptPubKey, *txTo, nIn, nHashType, amount, SIGVERSION_BASE);
 
-        libzerocoin::CoinSpend cs(params, params, privateCoin, a, aChecksum, aw, txhash, libzerocoin::SpendType::SPEND, oj, ok);
+        libzerocoin::CoinSpend cs(params, privateCoin, a, aChecksum, aw, txhash, libzerocoin::SpendType::SPEND, oj, ok);
 
         CDataStream serializedCoinSpend(SER_NETWORK, PROTOCOL_VERSION);
         serializedCoinSpend << cs;
-        CScript prefixScript = CScript() << OP_ZEROCOINSPEND << serializedCoinSpend.size();
-        vchSig.insert(vchSig.end(), prefixScript.begin(), prefixScript.end());
-        vchSig.insert(vchSig.end(), serializedCoinSpend.begin(), serializedCoinSpend.end());
+        scriptSig = CScript() << OP_ZEROCOINSPEND << serializedCoinSpend.size();
+        scriptSig.insert(scriptSig.end(), serializedCoinSpend.begin(), serializedCoinSpend.end());
     }
     catch(std::runtime_error& e) {
         strError = e.what();

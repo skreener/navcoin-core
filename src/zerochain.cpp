@@ -78,6 +78,60 @@ bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, CValid
     return true;
 }
 
+bool TxInToCoinSpend(const ZerocoinParams *params, const CTxIn& txin, CoinSpend& coinSpend, CValidationState* state)
+{
+    if (!txin.scriptSig.IsZerocoinSpend())
+        return false;
+
+    std::vector<char, zero_after_free_allocator<char> > dataTxIn;
+    dataTxIn.insert(dataTxIn.end(), txin.scriptSig.begin() + BIGNUM_SIZE, txin.scriptSig.end());
+    CDataStream serializedCoinSpend(dataTxIn, SER_NETWORK, PROTOCOL_VERSION);
+
+    libzerocoin::CoinSpend spend(params, serializedCoinSpend);
+
+    coinSpend = spend;
+
+    return true;
+}
+
+bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen, CoinSpend* pCoinSpend)
+{
+    CoinSpend coinSpend(params);
+
+    if(!TxInToCoinSpend(params, txin, coinSpend, &state))
+        return state.DoS(100, error("CheckZerocoinSpend() : TxInToCoinSpend() failed"));
+
+    if (pCoinSpend)
+        *pCoinSpend = coinSpend;
+
+    uint256 accumulatorChecksum = coinSpend.getAccumulatorChecksum();
+    AccumulatorMap accumulatorMap(params);
+
+    if (!accumulatorMap.Load(accumulatorChecksum))
+        return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Wrong accumulator checksum %s", accumulatorChecksum.ToString())));
+
+    Accumulator accumulator(params, coinSpend.getDenomination());
+    accumulator.setValue(accumulatorMap.GetValue(coinSpend.getDenomination()));
+
+    if (!coinSpend.Verify(accumulator))
+        return state.DoS(100, error("CheckZerocoinSpend() : CoinSpend does not verify"));
+
+    uint256 txHash;
+
+    if (pblocktree->ReadCoinSpend(coinSpend.getCoinSerialNumber(), txHash))
+        return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Serial Number is already spent in tx %s", txHash.ToString())));
+
+    for(auto& it : vSeen)
+    {
+        if (it.first == coinSpend.getCoinSerialNumber())
+            return error("%s: serial number %s was already seen in this block", __func__,
+                         coinSpend.getCoinSerialNumber().GetHex().substr(0, 10));
+    }
+
+    return true;
+
+}
+
 bool CountMintsFromHeight(unsigned int nInitialHeight, CoinDenomination denom, unsigned int& nRet)
 {
     nRet = 0;
