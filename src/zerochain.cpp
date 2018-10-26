@@ -80,7 +80,12 @@ bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, CValid
 
 bool TxInToCoinSpend(const ZerocoinParams *params, const CTxIn& txin, CoinSpend& coinSpend, CValidationState* state)
 {
-    if (!txin.scriptSig.IsZerocoinSpend())
+    return ScriptToCoinSpend(params, txin.scriptSig, coinSpend, state);
+}
+
+bool ScriptToCoinSpend(const ZerocoinParams *params, const CScript& scriptSig, CoinSpend& coinSpend, CValidationState* state)
+{
+    if (!scriptSig.IsZerocoinSpend())
         return false;
 
     std::vector<char, zero_after_free_allocator<char> > dataTxIn;
