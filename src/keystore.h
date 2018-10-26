@@ -67,7 +67,6 @@ struct ZerocoinAddressParameters {
     CBigNum blindingCommitment;
     CKey zerokey;
     void SetToZero() {
-        obfuscationJ = CBigNum();
         obfuscationK = CBigNum();
     }
 };

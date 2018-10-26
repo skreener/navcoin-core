@@ -149,7 +149,7 @@ public:
 
     bool WriteDefaultKey(const CPubKey& vchPubKey);
     bool WriteZerocoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey);
-    bool WriteZerocoinValues(const std::vector<unsigned char>& obfuscationJ, const std::vector<unsigned char>& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey);
+    bool WriteZerocoinValues(const CBigNum& obfuscationJ, const std::vector<unsigned char>& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey);
     bool WriteZerocoinValues(const CWallet* pwallet);
 
     bool ReadPool(int64_t nPool, CKeyPool& keypool);
