@@ -156,6 +156,9 @@ public:
     bool WritePool(int64_t nPool, const CKeyPool& keypool);
     bool ErasePool(int64_t nPool);
 
+    bool WriteSerialNumber(const CBigNum& bnSerialNumber, const COutPoint& out);
+    bool EraseSerialNumber(const CBigNum& bnSerialNumber);
+
     bool WriteMinVersion(int nVersion);
 
     /// This writes directly to the database, and will not update the CWallet's cached accounting entries!

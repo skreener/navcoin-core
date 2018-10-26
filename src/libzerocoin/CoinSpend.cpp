@@ -132,11 +132,4 @@ CBigNum CoinSpend::CalculateValidPublicSerial(ZerocoinParams* params)
     return bnSerial;
 }
 
-CBigNum CalculatePublicSerial(const ZerocoinParams* params, CBigNum bnPreSerialNumber, CBigNum bnObfuscationJ)
-{
-    return params->coinCommitmentGroup.g.pow_mod(
-                        (bnPreSerialNumber+bnObfuscationJ) % params->coinCommitmentGroup.groupOrder,
-                        params->serialNumberSoKCommitmentGroup.groupOrder);
-}
-
 } /* namespace libzerocoin */

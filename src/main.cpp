@@ -1132,10 +1132,10 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state)
         if (tx.vin[0].scriptSig.size() < 2 || tx.vin[0].scriptSig.size() > 100)
             return state.DoS(100, false, REJECT_INVALID, "bad-cb-length");
     }
-    else if(!tx.IsZerocoinSpend())
+    else
     {
         BOOST_FOREACH(const CTxIn& txin, tx.vin)
-            if (txin.prevout.IsNull())
+            if (!txin.scriptSig.IsZerocoinSpend() && txin.prevout.IsNull())
                 return state.DoS(10, false, REJECT_INVALID, "bad-txns-prevout-null");
     }
 
@@ -1161,6 +1161,33 @@ std::string FormatStateMessage(const CValidationState &state)
         state.GetDebugMessage().empty() ? "" : ", "+state.GetDebugMessage(),
         state.GetRejectCode());
 }
+
+bool IsBlockHashInChain(const uint256& hashBlock)
+{
+    if (hashBlock == 0 || !mapBlockIndex.count(hashBlock))
+        return false;
+
+    return chainActive.Contains(mapBlockIndex[hashBlock]);
+}
+
+bool IsTransactionInChain(const uint256& txId, int& nHeightTx, const CCoinsViewCache& view, CTransaction& tx)
+{
+    uint256 hashBlock;
+    if (!GetTransaction(txId, tx, view, Params().GetConsensus(), hashBlock, true))
+        return false;
+    if (!IsBlockHashInChain(hashBlock))
+        return false;
+
+    nHeightTx = mapBlockIndex.at(hashBlock)->nHeight;
+    return true;
+}
+
+bool IsTransactionInChain(const uint256& txId, const CCoinsViewCache& view, int& nHeightTx)
+{
+    CTransaction tx;
+    return IsTransactionInChain(txId, nHeightTx, view, tx);
+}
+
 
 bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const CTransaction& tx, bool fLimitFree,
                               bool* pfMissingInputs, bool fOverrideMempoolLimit, const CAmount& nAbsurdFee,
@@ -1290,7 +1317,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
             BOOST_FOREACH(const CTxIn txin, tx.vin) {
                 if (!txin.scriptSig.IsZerocoinSpend())
                     return state.DoS(100, false, REJECT_INVALID, "bad-mix-zerocoin-and-transparent-inputs");
-                if (!CheckZerocoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, state))
+                if (!CheckZerocoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, view, state))
                     return state.DoS(100, false, REJECT_INVALID, "bad-zerocoin-spend");
             }
         } else {
@@ -1361,7 +1388,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
         BOOST_FOREACH(const CTxOut &txout, tx.vout) {
             if (!txout.IsZerocoinMint())
                 continue;
-            if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, txout, state))
+            if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, txout, view, state))
                 return state.DoS(100, false, REJECT_INVALID, "bad-zerocoin-mint");
         }
         CTxMemPoolEntry entry(tx, nFees, GetTime(), dPriority, chainActive.Height(), pool.HasNoInputsOf(tx), inChainInputValue, fSpendsCoinbase, nSigOpsCost, lp);
@@ -2012,8 +2039,16 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
     if (!tx.IsCoinBase() && !tx.IsZerocoinSpend()) {
         txundo.vprevout.reserve(tx.vin.size());
         BOOST_FOREACH(const CTxIn &txin, tx.vin) {
-            CCoinsModifier coins = inputs.ModifyCoins(txin.prevout.hash);
-            unsigned nPos = txin.prevout.n;
+            COutPoint prevout = txin.prevout;
+            if (txin.scriptSig.IsZerocoinSpend()) {
+                libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
+                assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
+                if(!pwalletMain->ReadSerial(zcs.getCoinSerialNumber(), prevout))
+                    continue;
+            }
+
+            unsigned nPos = prevout.n;
+            CCoinsModifier coins = inputs.ModifyCoins(prevout.hash);
 
             if (nPos >= coins->vout.size() || coins->vout[nPos].IsNull())
                 assert(false);
@@ -2926,7 +2961,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
                 libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
 
-                if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, out, state, vZeroMints, &pubCoin))
+                if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, out, view, state, vZeroMints, &pubCoin))
                     return state.Invalid(error("%s: zerocoin mint failed contextual check", __func__));
 
                 pindex->mapZerocoinSupply[libzerocoin::AmountToZerocoinDenomination(out.nValue)]++;
@@ -2945,7 +2980,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
                 libzerocoin::CoinSpend coinSpend(&Params().GetConsensus().Zerocoin_Params);
 
-                if (!CheckZerocoinSpend(&Params().GetConsensus().Zerocoin_Params, in, state, vZeroSpents, &coinSpend))
+                if (!CheckZerocoinSpend(&Params().GetConsensus().Zerocoin_Params, in, view, state, vZeroSpents, &coinSpend))
                     return state.DoS(100, false, REJECT_INVALID, "bad-zerocoin-spend");
 
                 pindex->mapZerocoinSupply[coinSpend.getDenomination()]--;

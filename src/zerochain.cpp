@@ -50,7 +50,7 @@ bool BlockToZerocoinMints(const ZerocoinParams *params, const CBlock* block, std
     return true;
 }
 
-bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen, PublicCoin* pPubCoin)
+bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen, PublicCoin* pPubCoin)
 {
     PublicCoin pubCoin(params);
     if(!TxOutToPublicCoin(params, txout, pubCoin, &state))
@@ -70,10 +70,12 @@ bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, CValid
     }
 
     uint256 txid;
-    if (pblocktree->ReadCoinMint(pubCoin.getValue(), txid))
-        return error("%s: pubcoin %s was already accumulated in tx %s", __func__,
+    int nHeight;
+
+    if (pblocktree->ReadCoinMint(pubCoin.getValue(), txid) && IsTransactionInChain(txid, view, nHeight))
+        return error("%s: pubcoin %s was already accumulated in tx %s from block %d", __func__,
                      pubCoin.getValue().GetHex().substr(0, 10),
-                     txid.GetHex());
+                     txid.GetHex(), nHeight);
 
     return true;
 }
@@ -99,7 +101,7 @@ bool ScriptToCoinSpend(const ZerocoinParams *params, const CScript& scriptSig, C
     return true;
 }
 
-bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen, CoinSpend* pCoinSpend)
+bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen, CoinSpend* pCoinSpend)
 {
     CoinSpend coinSpend(params);
 
@@ -122,9 +124,10 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, CValida
         return state.DoS(100, error("CheckZerocoinSpend() : CoinSpend does not verify"));
 
     uint256 txHash;
+    int nHeight;
 
-    if (pblocktree->ReadCoinSpend(coinSpend.getCoinSerialNumber(), txHash))
-        return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Serial Number is already spent in tx %s", txHash.ToString())));
+    if (pblocktree->ReadCoinSpend(coinSpend.getCoinSerialNumber(), txHash) && IsTransactionInChain(txHash, view, nHeight))
+        return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Serial Number is already spent in tx %s in block %d", txHash.ToString(), nHeight)));
 
     for(auto& it : vSeen)
     {

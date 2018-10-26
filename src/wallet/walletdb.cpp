@@ -415,6 +415,14 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
             ssKey >> strAddress;
             ssValue >> pwallet->mapAddressBook[CNavCoinAddress(strAddress).Get()].purpose;
         }
+        else if (strType == "serial")
+        {
+            CBigNum bnSerial;
+            COutPoint out;
+            ssKey >> bnSerial;
+            ssValue >> out;
+            pwallet->mapSerial[bnSerial] = out;
+        }
         else if (strType == "tx")
         {
             uint256 hash;
@@ -753,7 +761,7 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
                 {
                     // Leave other errors alone, if we try to fix them we might make things worse.
                     fNoncriticalErrors = true; // ... but do warn the user there is something wrong.
-                    if (strType == "tx")
+                    if (strType == "tx" || strType == "serial")
                         // Rescan if there is a bad transaction record:
                         SoftSetBoolArg("-rescan", true);
                 }
@@ -807,6 +815,18 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
     }
 
     return result;
+}
+
+bool CWalletDB::WriteSerialNumber(const CBigNum& bnSerialNumber, const COutPoint& out)
+{
+    nWalletDBUpdated++;
+    return Write(std::make_pair(std::string("serial"), bnSerialNumber), out);
+}
+
+bool CWalletDB::EraseSerialNumber(const CBigNum& bnSerialNumber)
+{
+    nWalletDBUpdated++;
+    return Erase(std::make_pair(std::string("serial"), bnSerialNumber));
 }
 
 DBErrors CWalletDB::FindWalletTx(CWallet* pwallet, vector<uint256>& vTxHash, vector<CWalletTx>& vWtx)

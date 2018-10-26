@@ -138,6 +138,11 @@ public:
 
     const PublicCoin& getPublicCoin() const { return this->publicCoin; }
     const CBigNum& getSerialNumber() const { return this->serialNumber; }
+    const CBigNum getPublicSerialNumber(const CBigNum& bnObfuscationJ) const {
+        return params->coinCommitmentGroup.g.pow_mod(
+                    (this->serialNumber+bnObfuscationJ) % params->coinCommitmentGroup.groupOrder,
+                    params->serialNumberSoKCommitmentGroup.groupOrder);
+    }
     const CBigNum& getRandomness() const { return this->randomness; }
     const uint8_t& getVersion() const { return this->version; }
 

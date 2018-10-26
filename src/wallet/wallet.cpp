@@ -1010,8 +1010,16 @@ void CWallet::AddToSpends(const uint256& wtxid)
     if (thisTx.IsCoinBase()) // Coinbases don't spend anything!
         return;
 
-    BOOST_FOREACH(const CTxIn& txin, thisTx.vin)
-        AddToSpends(txin.prevout, wtxid);
+    BOOST_FOREACH(const CTxIn& txin, thisTx.vin) {
+        COutPoint prevout = txin.prevout;
+        if (txin.scriptSig.IsZerocoinSpend()) {
+            libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
+            assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
+            if(!pwalletMain->ReadSerial(zcs.getCoinSerialNumber(), prevout))
+                continue;
+        }
+        AddToSpends(prevout, wtxid);
+    }
 }
 
 bool CWallet::EncryptWallet(const SecureString& strWalletPassphrase)
@@ -1212,6 +1220,29 @@ void CWallet::MarkDirty()
     }
 }
 
+bool CWallet::WriteSerial(const CBigNum& bnSerialNumber, COutPoint& out)
+{
+    AssertLockHeld(cs_wallet);
+
+    mapSerial[bnSerialNumber] = out;
+
+    CWalletDB walletdb(strWalletFile);
+
+    return walletdb.WriteSerialNumber(bnSerialNumber, out);
+}
+
+bool CWallet::ReadSerial(const CBigNum& bnSerialNumber, COutPoint& out)
+{
+    AssertLockHeld(cs_wallet);
+
+    if(!mapSerial.count(bnSerialNumber))
+        return false;
+
+    out = mapSerial[bnSerialNumber];
+
+    return true;
+}
+
 bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletDB* pwalletdb)
 {
     uint256 hash = wtxIn.GetHash();
@@ -1224,6 +1255,8 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletD
         wtxOrdered.insert(make_pair(wtx.nOrderPos, TxPair(&wtx, (CAccountingEntry*)0)));
         AddToSpends(hash);
         BOOST_FOREACH(const CTxIn& txin, wtx.vin) {
+            if (txin.scriptSig.IsZerocoinSpend())
+                continue;
             if (mapWallet.count(txin.prevout.hash)) {
                 CWalletTx& prevtx = mapWallet[txin.prevout.hash];
                 if (prevtx.nIndex == -1 && !prevtx.hashUnset()) {
@@ -1320,6 +1353,40 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletD
             }
         }
 
+        for(unsigned int i = 0; i < wtx.vout.size(); i++)
+        {
+            CTxOut out = wtx.vout[i];
+            if (IsMine(out) == ISMINE_SPENDABLE_PRIVATE)
+            {
+                if (!out.IsZerocoinMint())
+                    continue;
+
+                libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
+
+                if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, out, pubCoin, NULL))
+                    continue;
+
+                CKey zk; CBigNum bc; CBigNum oj;
+
+                if (!GetZeroKey(zk))
+                    break;
+
+                if (!GetBlindingCommitment(bc))
+                    break;
+
+                libzerocoin::PrivateCoin privateCoin(&Params().GetConsensus().Zerocoin_Params, pubCoin.getDenomination(), zk, pubCoin.getPubKey(), bc, pubCoin.getValue());
+
+                if (!privateCoin.isValid())
+                    continue;
+
+                if (!GetObfuscationJ(oj))
+                    break;
+
+                COutPoint outWrite(wtx.GetHash(),i);
+                WriteSerial(privateCoin.getPublicSerialNumber(oj), outWrite);
+            }
+        }
+
         //// debug print
         LogPrintf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
 
@@ -1359,7 +1426,14 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pbl
 
         if (pblock) {
             BOOST_FOREACH(const CTxIn& txin, tx.vin) {
-                std::pair<TxSpends::const_iterator, TxSpends::const_iterator> range = mapTxSpends.equal_range(txin.prevout);
+                COutPoint prevout = txin.prevout;
+                if (txin.scriptSig.IsZerocoinSpend()) {
+                    libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
+                    assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
+                    if(!pwalletMain->ReadSerial(zcs.getCoinSerialNumber(), prevout))
+                        continue;
+                }
+                std::pair<TxSpends::const_iterator, TxSpends::const_iterator> range = mapTxSpends.equal_range(prevout);
                 while (range.first != range.second) {
                     if (range.first->second != tx.GetHash()) {
                         LogPrintf("Transaction %s (in block %s) conflicts with wallet transaction %s (both spend %s:%i)\n", tx.GetHash().ToString(), pblock->GetHash().ToString(), range.first->second.ToString(), range.first->first.hash.ToString(), range.first->first.n);
@@ -1595,18 +1669,22 @@ CAmount CWallet::GetDebit(const CTxIn &txin, const isminefilter& filter) const
 {
     {
         LOCK(cs_wallet);
-        if(txin.scriptSig.IsZerocoinSpend()) {
-            // If serial number public key is ours... return the value of the input
-        } else {
-            map<uint256, CWalletTx>::const_iterator mi = mapWallet.find(txin.prevout.hash);
-            if (mi != mapWallet.end())
-            {
-                const CWalletTx& prev = (*mi).second;
-                if (txin.prevout.n < prev.vout.size())
-                    if (IsMine(prev.vout[txin.prevout.n]) & filter)
-                        return prev.vout[txin.prevout.n].nValue;
-            }
+        COutPoint prevout = txin.prevout;
+        if (txin.scriptSig.IsZerocoinSpend()) {
+            libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
+            assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
+            if(!pwalletMain->ReadSerial(zcs.getCoinSerialNumber(), prevout))
+                return 0;
         }
+        map<uint256, CWalletTx>::const_iterator mi = mapWallet.find(prevout.hash);
+        if (mi != mapWallet.end())
+        {
+            const CWalletTx& prev = (*mi).second;
+            if (prevout.n < prev.vout.size())
+                if (IsMine(prev.vout[prevout.n]) & filter)
+                    return prev.vout[prevout.n].nValue;
+        }
+
     }
     return 0;
 }
@@ -2326,11 +2404,18 @@ bool CWalletTx::IsTrusted() const
     // Trusted if all inputs are from us and are in the mempool:
     BOOST_FOREACH(const CTxIn& txin, vin)
     {
+        COutPoint prevout = txin.prevout;
+        if (txin.scriptSig.IsZerocoinSpend()) {
+            libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
+            assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
+            if(!pwalletMain->ReadSerial(zcs.getCoinSerialNumber(), prevout))
+                continue;
+        }
         // Transactions not sent by us: not trusted
-        const CWalletTx* parent = pwallet->GetWalletTx(txin.prevout.hash);
+        const CWalletTx* parent = pwallet->GetWalletTx(prevout.hash);
         if (parent == NULL)
             return false;
-        const CTxOut& parentOut = parent->vout[txin.prevout.n];
+        const CTxOut& parentOut = parent->vout[prevout.n];
         if (pwallet->IsMine(parentOut) != ISMINE_SPENDABLE && pwallet->IsMine(parentOut) != ISMINE_SPENDABLE_PRIVATE)
             return false;
     }
