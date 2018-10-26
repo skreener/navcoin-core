@@ -158,12 +158,11 @@ bool CWalletDB::WriteZerocoinValues(const CBigNum& obfuscationJ, const CBigNum& 
            Write(std::string("zerokey"), std::vector<unsigned char>(zerokey.begin(), zerokey.end()));
 }
 
-bool CWalletDB::WriteZerocoinValues(const std::vector<unsigned char>& obfuscationJ, const std::vector<unsigned char>& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey)
+bool CWalletDB::WriteZerocoinValues(const CBigNum& obfuscationJ, const std::vector<unsigned char>& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey)
 {
     nWalletDBUpdated++;
-    return Write(std::string("cobfuscationj"), obfuscationJ) &&
+    return Write(std::string("obfuscationj"), obfuscationJ) &&
            Write(std::string("cobfuscationk"), obfuscationK) &&
-           Erase(std::string("obfuscationj")) &&
            Erase(std::string("obfuscationk")) &&
            Write(std::string("blindingcommitment"), blindingCommitment) &&
            Write(std::string("zerokey"), std::vector<unsigned char>(zerokey.begin(), zerokey.end()));
@@ -174,9 +173,8 @@ bool CWalletDB::WriteZerocoinValues(const CWallet* pwallet)
     std::vector<unsigned char> vchCOj; std::vector<unsigned char> vchCOk;
     CBigNum oj; CBigNum ok; CBigNum bc; CKey zk;
 
-    if (!pwallet->GetCryptedObfuscationJ(vchCOj))
-        if (!pwallet->GetObfuscationJ(oj))
-            return false;
+    if (!pwallet->GetObfuscationJ(oj))
+        return false;
 
     if (!pwallet->GetCryptedObfuscationK(vchCOk))
         if (!pwallet->GetObfuscationK(ok))
@@ -188,10 +186,10 @@ bool CWalletDB::WriteZerocoinValues(const CWallet* pwallet)
     if (!pwallet->GetBlindingCommitment(bc))
         return false;
 
-    if (vchCOj.empty() || vchCOk.empty()) {
+    if (vchCOk.empty()) {
         if (!WriteZerocoinValues(oj, ok, bc, zk))
             return false;
-    } else if (!WriteZerocoinValues(vchCOj, vchCOk, bc, zk))
+    } else if (!WriteZerocoinValues(oj, vchCOk, bc, zk))
         return false;
 
     return true;
@@ -611,12 +609,6 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
             CBigNum ok;
             ssValue >> ok;
             pwallet->SetObfuscationK(ok);
-        }
-        else if (strType == "cobfuscationj")
-        {
-            std::vector<unsigned char> oj;
-            ssValue >> oj;
-            pwallet->SetCryptedObfuscationJ(oj);
         }
         else if (strType == "cobfuscationk")
         {
