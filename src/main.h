@@ -634,4 +634,8 @@ void CountVotes(CValidationState& state, CBlockIndex *pindexNew, bool fUndo);
 
 bool IsSigHFEnabled(const Consensus::Params &consensus, const CBlockIndex *pindexPrev);
 
+bool IsBlockHashInChain(const uint256& hashBlock);
+bool IsTransactionInChain(const uint256& txId, int& nHeightTx, const CCoinsViewCache& view, CTransaction& tx);
+bool IsTransactionInChain(const uint256& txId, const CCoinsViewCache& view, int& nHeightTx);
+
 #endif // NAVCOIN_MAIN_H

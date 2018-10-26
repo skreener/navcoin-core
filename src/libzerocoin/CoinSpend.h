@@ -150,7 +150,5 @@ private:
     SpendType spendType;
 };
 
-CBigNum CalculatePublicSerial(const ZerocoinParams* params, CBigNum bnPreSerialNumber, CBigNum bnObfuscationJ);
-
 } /* namespace libzerocoin */
 #endif /* COINSPEND_H_ */

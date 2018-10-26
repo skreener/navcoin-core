@@ -742,6 +742,7 @@ public:
 
 
     std::map<uint256, CWalletTx> mapWallet;
+    std::map<CBigNum, COutPoint> mapSerial;
     std::list<CAccountingEntry> laccentries;
 
     typedef std::pair<CWalletTx*, CAccountingEntry*> TxPair;
@@ -758,6 +759,9 @@ public:
     std::set<COutPoint> setLockedCoins;
 
     int64_t nTimeFirstKey;
+
+    bool ReadSerial(const CBigNum& bnSerialNumber, COutPoint& out);
+    bool WriteSerial(const CBigNum& bnSerialNumber, COutPoint& out);
 
     const CWalletTx* GetWalletTx(const uint256& hash) const;
 
