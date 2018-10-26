@@ -2043,8 +2043,9 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
             if (txin.scriptSig.IsZerocoinSpend()) {
                 libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
                 assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
-                if(!pwalletMain->ReadSerial(zcs.getCoinSerialNumber(), prevout))
+                if(!pwalletMain->mapSerial.count(zcs.getCoinSerialNumber()))
                     continue;
+                prevout = pwalletMain->mapSerial[zcs.getCoinSerialNumber()];
             }
 
             unsigned nPos = prevout.n;
@@ -2487,12 +2488,32 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
         // restore inputs
         if (i > 0) { // not coinbases
             const CTxUndo &txundo = blockUndo.vtxundo[i-1];
-            if (txundo.vprevout.size() != tx.vin.size())
+            int nCountForeignZerocoinSpends = 0;
+            for (unsigned int j = tx.vin.size(); j-- > 0;) {
+                COutPoint prevzeroout;
+                if (tx.vin[j].scriptSig.IsZerocoinSpend()) {
+                    libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
+                    assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, tx.vin[j], zcs, NULL));
+                    if(!pwalletMain || (pwalletMain && !pwalletMain->mapSerial.count(zcs.getCoinSerialNumber())))
+                        nCountForeignZerocoinSpends++;
+                }
+            }
+            if (txundo.vprevout.size() != tx.vin.size() - nCountForeignZerocoinSpends)
                 return error("DisconnectBlock(): transaction and undo data inconsistent");
             for (unsigned int j = tx.vin.size(); j-- > 0;) {
                 const COutPoint &out = tx.vin[j].prevout;
+                COutPoint prevzeroout;
+                bool fZero = false;
+                if (tx.vin[j].scriptSig.IsZerocoinSpend()) {
+                    libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
+                    assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, tx.vin[j], zcs, NULL));
+                    if(!pwalletMain || (pwalletMain && !pwalletMain->mapSerial.count(zcs.getCoinSerialNumber())))
+                        continue;
+                    prevzeroout = pwalletMain->mapSerial[zcs.getCoinSerialNumber()];
+                    fZero = true;
+                }
                 const CTxInUndo &undo = txundo.vprevout[j];
-                if (!ApplyTxInUndo(undo, view, out))
+                if (!ApplyTxInUndo(undo, view, fZero ? prevzeroout : out))
                     fClean = false;
 
                 const CTxIn input = tx.vin[j];
