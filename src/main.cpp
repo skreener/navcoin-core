@@ -1053,6 +1053,8 @@ unsigned int GetP2SHSigOpCount(const CTransaction& tx, const CCoinsViewCache& in
     unsigned int nSigOps = 0;
     for (unsigned int i = 0; i < tx.vin.size(); i++)
     {
+        if (tx.vin[i].scriptSig.IsZerocoinSpend())
+            continue;
         const CTxOut &prevout = inputs.GetOutputFor(tx.vin[i]);
         if (prevout.scriptPubKey.IsPayToScriptHash())
             nSigOps += prevout.scriptPubKey.GetSigOpCount(tx.vin[i].scriptSig);
@@ -1073,6 +1075,8 @@ int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& i
 
     for (unsigned int i = 0; i < tx.vin.size(); i++)
     {
+        if (tx.vin[i].scriptSig.IsZerocoinSpend())
+            continue;
         const CTxOut &prevout = inputs.GetOutputFor(tx.vin[i]);
         nSigOps += CountWitnessSigOps(tx.vin[i].scriptSig, prevout.scriptPubKey, i < tx.wit.vtxinwit.size() ? &tx.wit.vtxinwit[i].scriptWitness : NULL, flags);
     }
@@ -2464,6 +2468,8 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                 }
 
                 if (fAddressIndex) {
+                    if (tx.vin[j].scriptSig.IsZerocoinSpend())
+                        continue;
                     const CTxOut &prevout = view.GetOutputFor(tx.vin[j]);
                     if (prevout.scriptPubKey.IsPayToScriptHash()) {
                         vector<unsigned char> hashBytes(prevout.scriptPubKey.begin()+2, prevout.scriptPubKey.begin()+22);
@@ -2983,8 +2989,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             if (fAddressIndex || fSpentIndex)
             {
                 for (size_t j = 0; j < tx.vin.size(); j++) {
-
                     const CTxIn input = tx.vin[j];
+                    if (input.scriptSig.IsZerocoinSpend())
+                        continue;
                     const CTxOut &prevout = view.GetOutputFor(tx.vin[j]);
                     uint160 hashBytes;
                     int addressType;
