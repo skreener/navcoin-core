@@ -89,7 +89,7 @@ bool ScriptToCoinSpend(const ZerocoinParams *params, const CScript& scriptSig, C
         return false;
 
     std::vector<char, zero_after_free_allocator<char> > dataTxIn;
-    dataTxIn.insert(dataTxIn.end(), txin.scriptSig.begin() + BIGNUM_SIZE, txin.scriptSig.end());
+    dataTxIn.insert(dataTxIn.end(), scriptSig.begin() + BIGNUM_SIZE, scriptSig.end());
     CDataStream serializedCoinSpend(dataTxIn, SER_NETWORK, PROTOCOL_VERSION);
 
     libzerocoin::CoinSpend spend(params, serializedCoinSpend);
