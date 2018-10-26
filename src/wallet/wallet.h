@@ -760,7 +760,6 @@ public:
 
     int64_t nTimeFirstKey;
 
-    bool ReadSerial(const CBigNum& bnSerialNumber, COutPoint& out);
     bool WriteSerial(const CBigNum& bnSerialNumber, COutPoint& out);
 
     const CWalletTx* GetWalletTx(const uint256& hash) const;

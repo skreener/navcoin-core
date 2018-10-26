@@ -1015,8 +1015,9 @@ void CWallet::AddToSpends(const uint256& wtxid)
         if (txin.scriptSig.IsZerocoinSpend()) {
             libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
             assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
-            if(!pwalletMain->ReadSerial(zcs.getCoinSerialNumber(), prevout))
+            if(!mapSerial.count(zcs.getCoinSerialNumber()))
                 continue;
+            prevout = mapSerial[zcs.getCoinSerialNumber()];
         }
         AddToSpends(prevout, wtxid);
     }
@@ -1231,18 +1232,6 @@ bool CWallet::WriteSerial(const CBigNum& bnSerialNumber, COutPoint& out)
     return walletdb.WriteSerialNumber(bnSerialNumber, out);
 }
 
-bool CWallet::ReadSerial(const CBigNum& bnSerialNumber, COutPoint& out)
-{
-    AssertLockHeld(cs_wallet);
-
-    if(!mapSerial.count(bnSerialNumber))
-        return false;
-
-    out = mapSerial[bnSerialNumber];
-
-    return true;
-}
-
 bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletDB* pwalletdb)
 {
     uint256 hash = wtxIn.GetHash();
@@ -1430,8 +1419,9 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pbl
                 if (txin.scriptSig.IsZerocoinSpend()) {
                     libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
                     assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
-                    if(!pwalletMain->ReadSerial(zcs.getCoinSerialNumber(), prevout))
+                    if(!mapSerial.count(zcs.getCoinSerialNumber()))
                         continue;
+                    prevout = mapSerial[zcs.getCoinSerialNumber()];
                 }
                 std::pair<TxSpends::const_iterator, TxSpends::const_iterator> range = mapTxSpends.equal_range(prevout);
                 while (range.first != range.second) {
@@ -1673,8 +1663,9 @@ CAmount CWallet::GetDebit(const CTxIn &txin, const isminefilter& filter) const
         if (txin.scriptSig.IsZerocoinSpend()) {
             libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
             assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
-            if(!pwalletMain->ReadSerial(zcs.getCoinSerialNumber(), prevout))
+            if(!mapSerial.count(zcs.getCoinSerialNumber()))
                 return 0;
+            prevout = mapSerial.at(zcs.getCoinSerialNumber());
         }
         map<uint256, CWalletTx>::const_iterator mi = mapWallet.find(prevout.hash);
         if (mi != mapWallet.end())
@@ -2408,8 +2399,9 @@ bool CWalletTx::IsTrusted() const
         if (txin.scriptSig.IsZerocoinSpend()) {
             libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
             assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
-            if(!pwalletMain->ReadSerial(zcs.getCoinSerialNumber(), prevout))
+            if(!pwallet->mapSerial.count(zcs.getCoinSerialNumber()))
                 continue;
+            prevout = pwallet->mapSerial.at(zcs.getCoinSerialNumber());
         }
         // Transactions not sent by us: not trusted
         const CWalletTx* parent = pwallet->GetWalletTx(prevout.hash);
@@ -3282,11 +3274,19 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 // Sign
                 int nIn = 0;
                 CTransaction txNewConst(txNew);
+                if (fPrivate)
+                    uiInterface.ShowProgress(_("Selecting coins..."), 0);
+                unsigned int i = 0;
                 BOOST_FOREACH(const PAIRTYPE(const CWalletTx*,unsigned int)& coin, setCoins)
                 {
                     bool signSuccess = false;
                     const CScript& scriptPubKey = coin.first->vout[coin.second].scriptPubKey;
                     SignatureData sigdata;
+
+                    unsigned int nProgress = (i++)*100/setCoins.size();
+
+                    if (nProgress > 0)
+                        uiInterface.ShowProgress(_("Selecting coins..."), nProgress);
 
                     if (sign)
                         if (!fPrivate)
@@ -3302,6 +3302,8 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     if (!signSuccess)
                     {
                         strFailReason = _("Signing transaction failed");
+                        if (fPrivate)
+                            uiInterface.ShowProgress(_("Selecting coins..."), 100);
                         return false;
                     } else {
                         UpdateTransaction(txNew, nIn, sigdata);
@@ -3309,6 +3311,8 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
                     nIn++;
                 }
+                if (fPrivate)
+                    uiInterface.ShowProgress(_("Selecting coins..."), 100);
 
                 unsigned int nBytes = GetVirtualTransactionSize(txNew);
 
