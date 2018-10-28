@@ -2191,6 +2191,8 @@ CAmount CWalletTx::GetImmatureCredit(bool fUseCache) const
     for (unsigned int i = 0; i < vout.size(); i++) {
         if (!vout[i].IsZerocoinMint())
             continue;
+        if (!mapBlockIndex.count(hashBlock))
+            continue;
         CBlockIndex* pindex = mapBlockIndex[hashBlock];
         if (!pindex)
             continue;
@@ -2201,6 +2203,8 @@ CAmount CWalletTx::GetImmatureCredit(bool fUseCache) const
         if(!pblocktree->ReadAccMint(CBigNum(c), blockhash))
             continue;
         if(blockhash == uint256())
+            continue;
+        if (!mapBlockIndex.count(hashBlock))
             continue;
         unsigned int nCount = 0;
         if (mapBlockIndex.count(blockhash) && !CountMintsFromHeight(mapBlockIndex[blockhash]->nHeight+1,
@@ -2287,6 +2291,8 @@ CAmount CWalletTx::GetAvailablePrivateCredit() const
     for (unsigned int i = 0; i < vout.size(); i++)
     {
         if (!vout[i].IsZerocoinMint())
+            continue;
+        if (!mapBlockIndex.count(hashBlock))
             continue;
         CBlockIndex* pindex = mapBlockIndex[hashBlock];
         if (!pindex)
@@ -2544,6 +2550,8 @@ CAmount CWallet::GetUnconfirmedBalance() const
                 for (const CTxOut& out: pcoin->vout) {
                     if (!out.IsZerocoinMint())
                         continue;
+                    if (!mapBlockIndex.count(pcoin->hashBlock))
+                        continue;
                     CBlockIndex* pindex = mapBlockIndex[pcoin->hashBlock];
                     if (!pindex)
                         continue;
@@ -2692,6 +2700,9 @@ void CWallet::AvailablePrivateCoins(vector<COutput>& vCoins, bool fOnlyConfirmed
             // We should not consider coins which aren't at least in our mempool
             // It's possible for these to be conflicted via ancestors which we may never be able to detect
             if (nDepth == 0 && !pcoin->InMempool())
+                continue;
+
+            if (!mapBlockIndex.count(pcoin->hashBlock))
                 continue;
 
             CBlockIndex* pindex = mapBlockIndex[pcoin->hashBlock];
@@ -3283,10 +3294,13 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     const CScript& scriptPubKey = coin.first->vout[coin.second].scriptPubKey;
                     SignatureData sigdata;
 
-                    unsigned int nProgress = (i++)*100/setCoins.size();
 
-                    if (nProgress > 0)
-                        uiInterface.ShowProgress(_("Selecting coins..."), nProgress);
+                    if (fPrivate) {
+                        unsigned int nProgress = (i++)*100/setCoins.size();
+
+                        if (nProgress > 0)
+                            uiInterface.ShowProgress(_("Selecting coins..."), nProgress);
+                    }
 
                     if (sign)
                         if (!fPrivate)
