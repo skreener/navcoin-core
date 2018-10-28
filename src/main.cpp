@@ -1704,6 +1704,9 @@ bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value)
 
 bool HashOnchainActive(const uint256 &hash)
 {
+    if (!mapBlockIndex.count(hash))
+        return false;
+
     CBlockIndex* pblockindex = mapBlockIndex[hash];
 
     if (!chainActive.Contains(pblockindex)) {

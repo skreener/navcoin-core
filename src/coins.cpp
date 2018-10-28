@@ -246,13 +246,20 @@ CAmount CCoinsViewCache::GetValueIn(const CTransaction& tx) const
         return 0;
 
     CAmount nResult = 0;
-    for (unsigned int i = 0; i < tx.vin.size(); i++)
-        if (tx.vin[i].scriptSig.IsZerocoinSpend()) {
-            libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
-            assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, tx.vin[i], zcs, NULL));
-            nResult += libzerocoin::ZerocoinDenominationToAmount(zcs.getDenomination());
-        } else
+
+    if (tx.IsZerocoinSpend()) {
+        for (unsigned int i = 0; i < tx.vin.size(); i++) {
+            if (tx.vin[i].scriptSig.IsZerocoinSpend()) {
+                libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
+                if (TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, tx.vin[i], zcs, NULL))
+                    nResult += libzerocoin::ZerocoinDenominationToAmount(zcs.getDenomination());
+            }
+        }
+    } else {
+        for (unsigned int i = 0; i < tx.vin.size(); i++) {
             nResult += GetOutputFor(tx.vin[i]).nValue;
+        }
+    }
 
     return nResult;
 }

@@ -132,7 +132,7 @@ public:
                                     "8441436038339044149526344321901146575444541784240209246165157233507787077498171257724679629263863563732899121548"
                                     "31438167899885040445364023527381951378636564391212010397122822120720357";
         consensus.nRecalculateAccumulatorChecksum = 1;
-        consensus.nAccumulatorChecksumBlockDelay = 0;
+        consensus.nAccumulatorChecksumBlockDelay = 1;
 
         CBigNum bnModulus;
         bnModulus.SetDec(consensus.zerocoinModulus);
@@ -332,7 +332,7 @@ public:
                                     "8441436038339044149526344321901146575444541784240209246165157233507787077498171257724679629263863563732899121548"
                                     "31438167899885040445364023527381951378636564391212010397122822120720357";
         consensus.nRecalculateAccumulatorChecksum = 1;
-        consensus.nAccumulatorChecksumBlockDelay = 0;
+        consensus.nAccumulatorChecksumBlockDelay = 1;
 
         CBigNum bnModulus;
         bnModulus.SetDec(consensus.zerocoinModulus);
@@ -512,7 +512,7 @@ public:
                                     "8441436038339044149526344321901146575444541784240209246165157233507787077498171257724679629263863563732899121548"
                                     "31438167899885040445364023527381951378636564391212010397122822120720357";
         consensus.nRecalculateAccumulatorChecksum = 1;
-        consensus.nAccumulatorChecksumBlockDelay = 0;
+        consensus.nAccumulatorChecksumBlockDelay = 1;
 
         CBigNum bnModulus;
         bnModulus.SetDec(consensus.zerocoinModulus);
@@ -702,7 +702,7 @@ public:
                                     "8441436038339044149526344321901146575444541784240209246165157233507787077498171257724679629263863563732899121548"
                                     "31438167899885040445364023527381951378636564391212010397122822120720357";
         consensus.nRecalculateAccumulatorChecksum = 1;
-        consensus.nAccumulatorChecksumBlockDelay = 0;
+        consensus.nAccumulatorChecksumBlockDelay = 1;
 
         CBigNum bnModulus;
         bnModulus.SetDec(consensus.zerocoinModulus);
