@@ -174,18 +174,10 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
         return false;
     }
 
-    uint256 txHash;
-
-    if (!pblocktree->ReadCoinMint(pubCoin.getValue(), txHash)) {
-        strError = strprintf("Could not read mint with value %s from the db", pubCoin.getValue().GetHex());
-        return false;
-    }
-
-    CTransaction tx;
     uint256 blockHash;
 
-    if (!GetTransaction(txHash, tx, pcoinsTip, Params().GetConsensus(), blockHash, true)) {
-        strError = strprintf("Could not get transaction %s", txHash.ToString());
+    if (!pblocktree->ReadAccMint(pubCoin.getValue(), blockHash)) {
+        strError = strprintf("Could not read mint with value %s from the db", pubCoin.getValue().GetHex());
         return false;
     }
 
@@ -196,10 +188,13 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
 
     CBlockIndex* pindex = mapBlockIndex[blockHash];
 
-    pindex = chainActive[pindex->nHeight - (pindex->nHeight % Params().GetConsensus().nRecalculateAccumulatorChecksum)];
+    pindex = chainActive[pindex->nHeight -
+            (pindex->nHeight % Params().GetConsensus().nRecalculateAccumulatorChecksum) -
+            Params().GetConsensus().nAccumulatorChecksumBlockDelay -
+            1];
 
     if(!pindex) {
-        strError = strprintf("Could not move back to a block index containing the previous checksum");
+        strError = strprintf("Could not move back to a block index previous to the coin mint");
         return false;
     }
 
@@ -232,19 +227,21 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
 
             for (auto& tx : block.vtx) {
                 for (auto& out : tx.vout) {
-                    if (!out.IsZerocoinMint() || out.nValue != txout.nValue || txout == out)
+                    if (!out.IsZerocoinMint())
                         continue;
 
-                    PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
+                    PublicCoin pubCoinOut(&Params().GetConsensus().Zerocoin_Params);
 
-                    std::vector<unsigned char> c; CPubKey p;
-                    if(!out.scriptPubKey.ExtractZerocoinMintData(p, c)) {
+                    if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, out, pubCoinOut)) {
                         strError = strprintf("Could not extract Zerocoin mint data");
                         return false;
                     }
 
-                    accumulatorWitness.addRawValue(CBigNum(c));
-                    accumulator.increment(CBigNum(c));
+                    if (pubCoinOut.getDenomination() != pubCoin.getDenomination())
+                        continue;
+
+                    accumulatorWitness.AddElement(pubCoinOut);
+                    accumulator.accumulate(pubCoinOut);
                 }
             }
 
