@@ -1114,9 +1114,11 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state)
 
     // Check for duplicate/invalid inputs
     set<COutPoint> vInOutPoints;
+    set<CScript> vZeroInOutPoints;
     BOOST_FOREACH(const CTxIn& txin, tx.vin)
     {
-        if (vInOutPoints.count(txin.prevout))
+        if ((!txin.scriptSig.IsZerocoinSpend() && vInOutPoints.count(txin.prevout)) ||
+                (txin.scriptSig.IsZerocoinSpend() && vZeroInOutPoints.count(txin.scriptSig)))
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputs-duplicate");
 
         if ((tx.IsZerocoinSpend() && !txin.scriptSig.IsZerocoinSpend())
@@ -1124,7 +1126,10 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state)
             return state.DoS(100, false, REJECT_INVALID, "bad-mix-zerocoin-and-transparent-inputs");
         }
 
-        vInOutPoints.insert(txin.prevout);
+        if (txin.scriptSig.IsZerocoinSpend())
+            vZeroInOutPoints.insert(txin.scriptSig);
+        else
+            vInOutPoints.insert(txin.prevout);
     }
 
     if (tx.IsCoinBase())
@@ -1198,7 +1203,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
     if (pfMissingInputs)
         *pfMissingInputs = false;
     if (!CheckTransaction(tx, state))
-        return false; // state filled in by CheckTransaction
+        return error("%s: CheckTransaction(): %s", __func__, state.GetRejectReason().c_str());
     if (IsCommunityFundEnabled(pindexBestHeader, Params().GetConsensus()) && tx.nVersion < CTransaction::TXDZEEL_VERSION_V2)
       return state.DoS(100, false, REJECT_INVALID, "old-version");
 
@@ -1376,7 +1381,6 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
         bool fSpendsCoinbase = false;
         if (!tx.IsZerocoinSpend()) {
             BOOST_FOREACH(const CTxIn &txin, tx.vin) {
-                    continue;
                 const CCoins *coins = view.AccessCoins(txin.prevout.hash);
                 if (coins->IsCoinBase() || coins->IsCoinStake()) {
                     fSpendsCoinbase = true;
@@ -2039,18 +2043,16 @@ void static InvalidBlockFound(CBlockIndex *pindex, const CValidationState &state
 void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txundo, int nHeight)
 {
     // mark inputs spent
-    if (!tx.IsCoinBase() && !tx.IsZerocoinSpend()) {
+    if (!tx.IsCoinBase()) {
         txundo.vprevout.reserve(tx.vin.size());
         BOOST_FOREACH(const CTxIn &txin, tx.vin) {
-            COutPoint prevout = txin.prevout;
             if (txin.scriptSig.IsZerocoinSpend()) {
-                libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
-                assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
-                if(!pwalletMain->mapSerial.count(zcs.getCoinSerialNumber()))
-                    continue;
-                prevout = pwalletMain->mapSerial[zcs.getCoinSerialNumber()];
+                CTxOut dummyOut(1, CScript());
+                CTxInUndo dummyTxInUndo(dummyOut, false, 0, 0);
+                txundo.vprevout.push_back(dummyTxInUndo); //Dummy
+                continue;
             }
-
+            COutPoint prevout = txin.prevout;
             unsigned nPos = prevout.n;
             CCoinsModifier coins = inputs.ModifyCoins(prevout.hash);
 
@@ -2271,8 +2273,10 @@ bool UndoReadFromDisk(CBlockUndo& blockundo, const CDiskBlockPos& pos, const uin
     CHashWriter hasher(SER_GETHASH, PROTOCOL_VERSION);
     hasher << hashBlock;
     hasher << blockundo;
-    if (hashChecksum != hasher.GetHash())
-        return error("%s: Checksum mismatch", __func__);
+    uint256 verifyChecksum = hasher.GetHash();
+
+    if (hashChecksum != verifyChecksum)
+        return error("%s: Checksum mismatch (%s vs %s)", __func__, hashChecksum.ToString(), verifyChecksum.ToString());
 
     return true;
 }
@@ -2345,7 +2349,6 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
         return error("DisconnectBlock(): no undo data available");
     if (!UndoReadFromDisk(blockUndo, pos, pindex->pprev->GetBlockHash()))
         return error("DisconnectBlock(): failure reading undo data");
-
     if (blockUndo.vtxundo.size() + 1 != block.vtx.size())
         return error("DisconnectBlock(): block and undo data inconsistent");
 
@@ -2481,6 +2484,16 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
         if (outsBlock.nVersion < 0)
             outs->nVersion = outsBlock.nVersion;
 
+        if (outs->vout.size() != outsBlock.vout.size())
+            fClean = fClean && error("DisconnectBlock(): added transaction mismatch? different output vector size");
+
+        for (unsigned int i = 0; i < outs->vout.size(); i++)
+        {
+            CTxOut out = outsBlock.vout[i];
+            if (out.IsZerocoinMint() && outs->vout[i].IsNull())
+                outs->vout[i] = outsBlock.vout[i];
+        }
+
         if (*outs != outsBlock)
             fClean = fClean && error("DisconnectBlock(): added transaction mismatch? database corrupted");
 
@@ -2489,34 +2502,14 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
         }
 
         // restore inputs
-        if (i > 0) { // not coinbases
+        if (i > 0 && !tx.IsZerocoinSpend()) { // not coinbases
             const CTxUndo &txundo = blockUndo.vtxundo[i-1];
-            int nCountForeignZerocoinSpends = 0;
-            for (unsigned int j = tx.vin.size(); j-- > 0;) {
-                COutPoint prevzeroout;
-                if (tx.vin[j].scriptSig.IsZerocoinSpend()) {
-                    libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
-                    assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, tx.vin[j], zcs, NULL));
-                    if(!pwalletMain || (pwalletMain && !pwalletMain->mapSerial.count(zcs.getCoinSerialNumber())))
-                        nCountForeignZerocoinSpends++;
-                }
-            }
-            if (txundo.vprevout.size() != tx.vin.size() - nCountForeignZerocoinSpends)
+            if (txundo.vprevout.size() != tx.vin.size())
                 return error("DisconnectBlock(): transaction and undo data inconsistent");
             for (unsigned int j = tx.vin.size(); j-- > 0;) {
                 const COutPoint &out = tx.vin[j].prevout;
-                COutPoint prevzeroout;
-                bool fZero = false;
-                if (tx.vin[j].scriptSig.IsZerocoinSpend()) {
-                    libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
-                    assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, tx.vin[j], zcs, NULL));
-                    if(!pwalletMain || (pwalletMain && !pwalletMain->mapSerial.count(zcs.getCoinSerialNumber())))
-                        continue;
-                    prevzeroout = pwalletMain->mapSerial[zcs.getCoinSerialNumber()];
-                    fZero = true;
-                }
                 const CTxInUndo &undo = txundo.vprevout[j];
-                if (!ApplyTxInUndo(undo, view, fZero ? prevzeroout : out))
+                if (!ApplyTxInUndo(undo, view, out))
                     fClean = false;
 
                 const CTxIn input = tx.vin[j];
@@ -3781,8 +3774,8 @@ bool static DisconnectTip(CValidationState& state, const CChainParams& chainpara
             return AbortNode(state, "Failed to remove zerocoin accumulator checksum");
 
         std::vector<std::pair<CBigNum, uint256>> vAccumulatedMints;
-
-        CBlockIndex* pindexcursor = pindexDelete;
+        CBlockIndex* pindexcursor = chainActive[max((unsigned int)firstZero.first,
+                                                  pindexDelete->nHeight - Params().GetConsensus().nAccumulatorChecksumBlockDelay)];
 
         while (pindexcursor) {
             CBlock block;

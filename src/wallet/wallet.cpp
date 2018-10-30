@@ -1017,7 +1017,7 @@ void CWallet::AddToSpends(const uint256& wtxid)
             assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
             if(!mapSerial.count(zcs.getCoinSerialNumber()))
                 continue;
-            prevout = mapSerial[zcs.getCoinSerialNumber()];
+            prevout = mapSerial.at(zcs.getCoinSerialNumber());
         }
         AddToSpends(prevout, wtxid);
     }
@@ -1421,7 +1421,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pbl
                     assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
                     if(!mapSerial.count(zcs.getCoinSerialNumber()))
                         continue;
-                    prevout = mapSerial[zcs.getCoinSerialNumber()];
+                    prevout = mapSerial.at(zcs.getCoinSerialNumber());
                 }
                 std::pair<TxSpends::const_iterator, TxSpends::const_iterator> range = mapTxSpends.equal_range(prevout);
                 while (range.first != range.second) {
@@ -1468,7 +1468,7 @@ bool CWallet::AbandonTransaction(const uint256& hashTx)
     assert(mapWallet.count(hashTx));
     CWalletTx& origtx = mapWallet[hashTx];
     if (origtx.GetDepthInMainChain() > 0 || origtx.InMempool()) {
-        LogPrintf("AbandonTransaction : Could not abandon transaction.%s%s",origtx.InMempool()?" Tx in Mempool":"",origtx.GetDepthInMainChain() > 0?" Tx already confirmed":"");
+        LogPrintf("AbandonTransaction : Could not abandon transaction.%s%s\n",origtx.InMempool()?" Tx in Mempool":"",origtx.GetDepthInMainChain() > 0?" Tx already confirmed":"");
         return false;
     }
 
@@ -1597,14 +1597,21 @@ void CWallet::SyncTransaction(const CTransaction& tx, const CBlockIndex *pindex,
                     LogPrintf("SyncTransaction : Warning: Could not find %s in wallet. Trying to refund someone else's tx?", tx.hash.ToString());
                 }
 
-                if(!tx.IsZerocoinSpend()) {
-                    LogPrintf("SyncTransaction : Refunding inputs of orphan tx %s\n",tx.hash.ToString());
+                LogPrintf("SyncTransaction : Refunding inputs of orphan tx %s\n",tx.hash.ToString());
 
-                    BOOST_FOREACH(const CTxIn& txin, tx.vin)
-                    {
-                        if (mapWallet.count(txin.prevout.hash))
-                            mapWallet[txin.prevout.hash].MarkDirty();
+                BOOST_FOREACH(const CTxIn& txin, tx.vin)
+                {
+                    COutPoint prevout = txin.prevout;
+                    if (txin.scriptSig.IsZerocoinSpend()) {
+                        libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
+                        assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
+                        if(!mapSerial.count(zcs.getCoinSerialNumber()))
+                            continue;
+                        prevout = mapSerial.at(zcs.getCoinSerialNumber());
                     }
+
+                    if (mapWallet.count(prevout.hash))
+                        mapWallet[prevout.hash].MarkDirty();
                 }
             }
         }
@@ -1619,22 +1626,38 @@ void CWallet::SyncTransaction(const CTransaction& tx, const CBlockIndex *pindex,
     // available of the outputs it spends. So force those to be
     // recomputed, also:
 
-    if(isMine == true && !tx.IsZerocoinSpend())
+    if(isMine == true)
     {
         BOOST_FOREACH(const CTxIn& txin, tx.vin)
         {
-            if (mapWallet.count(txin.prevout.hash))
+            COutPoint prevout = txin.prevout;
+            if (txin.scriptSig.IsZerocoinSpend()) {
+                libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
+                assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
+                if(!mapSerial.count(zcs.getCoinSerialNumber()))
+                    continue;
+                prevout = mapSerial.at(zcs.getCoinSerialNumber());
+            }
+            if (mapWallet.count(prevout.hash))
                 mapWallet[txin.prevout.hash].MarkDirty();
         }
     }
 
-    if (!fConnect && tx.IsCoinStake() && IsFromMe(tx) && !tx.IsZerocoinSpend())
+    if (!fConnect && tx.IsCoinStake() && IsFromMe(tx))
     {
         AbandonTransaction(tx.hash);
         LogPrintf("SyncTransaction : Removing tx %s from mapTxSpends\n",tx.hash.ToString());
         BOOST_FOREACH(const CTxIn& txin, tx.vin)
         {
-            mapTxSpends.erase(txin.prevout);
+            COutPoint prevout = txin.prevout;
+            if (txin.scriptSig.IsZerocoinSpend()) {
+                libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
+                assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
+                if(!mapSerial.count(zcs.getCoinSerialNumber()))
+                    continue;
+                prevout = mapSerial.at(zcs.getCoinSerialNumber());
+            }
+            mapTxSpends.erase(prevout);
         }
     }
 }
@@ -1917,7 +1940,7 @@ void CWalletTx::GetAmounts(list<COutputEntry>& listReceived,
 
         if (!ExtractDestination(txout.scriptPubKey, address))
         {
-            if(!txout.scriptPubKey.IsCommunityFundContribution())
+            if(!txout.scriptPubKey.IsCommunityFundContribution() && !txout.scriptPubKey.IsZerocoinMint())
                 LogPrintf("CWalletTx::GetAmounts: Unknown transaction type found, txid %s n: %d\n",
                          this->GetHash().ToString(),i);
             address = CNoDestination();
@@ -2187,30 +2210,26 @@ CAmount CWalletTx::GetImmatureCredit(bool fUseCache) const
 {
     CAmount nRet = 0;
 
+    if (!IsTrusted())
+        return nRet;
+
     uint256 hashTx = GetHash();
+
     for (unsigned int i = 0; i < vout.size(); i++) {
         if (!vout[i].IsZerocoinMint())
             continue;
-        if (!mapBlockIndex.count(hashBlock))
-            continue;
-        CBlockIndex* pindex = mapBlockIndex[hashBlock];
-        if (!pindex)
-            continue;
         std::vector<unsigned char> c; CPubKey p;
-        if(!vout[i].scriptPubKey.ExtractZerocoinMintData(p, c))
+        if (!vout[i].scriptPubKey.ExtractZerocoinMintData(p, c))
             continue;
         uint256 blockhash;
-        if(!pblocktree->ReadAccMint(CBigNum(c), blockhash))
-            continue;
-        if(blockhash == uint256())
-            continue;
-        if (!mapBlockIndex.count(hashBlock))
-            continue;
+        bool fAccumulated = true;
+        if (!pblocktree->ReadAccMint(CBigNum(c), blockhash) || blockhash == uint256())
+            fAccumulated = false;
         unsigned int nCount = 0;
-        if (mapBlockIndex.count(blockhash) && !CountMintsFromHeight(mapBlockIndex[blockhash]->nHeight+1,
+        if (blockhash != uint256() && mapBlockIndex.count(blockhash) && !CountMintsFromHeight(mapBlockIndex[blockhash]->nHeight+1,
             libzerocoin::AmountToZerocoinDenomination(vout[i].nValue), nCount))
-            continue;
-        if (!pwallet->IsSpent(hashTx, i) && pindex && nCount < pwalletMain->GetSecurityLevel())
+            fAccumulated = false;
+        if (!fAccumulated || (!pwallet->IsSpent(hashTx, i) && nCount < pwalletMain->GetSecurityLevel()))
         {
             const CTxOut &txout = vout[i];
             nRet += pwallet->GetCredit(txout, ISMINE_SPENDABLE_PRIVATE);
@@ -2240,10 +2259,23 @@ CAmount CWalletTx::GetAvailableCredit(bool fUseCache) const
     {
         if (!pwallet->IsSpent(hashTx, i))
         {
-            const CTxOut &txout = vout[i];
-            nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE);
-            if (!MoneyRange(nCredit))
-                throw std::runtime_error("CWalletTx::GetAvailableCredit() : value out of range");
+            CTxOut out = vout[i];
+            if (vout[i].scriptPubKey.IsZerocoinMint()) {
+                if (!out.IsZerocoinMint())
+                    continue;
+                std::vector<unsigned char> c; CPubKey p;
+                if(!out.scriptPubKey.ExtractZerocoinMintData(p, c))
+                    continue;
+                uint256 blockhash;
+                if (!pblocktree->ReadAccMint(CBigNum(c), blockhash) || blockhash == uint256())
+                    nCredit += pwallet->GetCredit(out, ISMINE_SPENDABLE_PRIVATE);
+                if (!MoneyRange(nCredit))
+                    throw std::runtime_error("CWalletTx::GetAvailableCredit() : value out of range");
+            } else {
+                nCredit += pwallet->GetCredit(out, ISMINE_SPENDABLE);
+                if (!MoneyRange(nCredit))
+                    throw std::runtime_error("CWalletTx::GetAvailableCredit() : value out of range");
+            }
         }
     }
 
@@ -2292,11 +2324,6 @@ CAmount CWalletTx::GetAvailablePrivateCredit() const
     {
         if (!vout[i].IsZerocoinMint())
             continue;
-        if (!mapBlockIndex.count(hashBlock))
-            continue;
-        CBlockIndex* pindex = mapBlockIndex[hashBlock];
-        if (!pindex)
-            continue;
         std::vector<unsigned char> c; CPubKey p;
         if(!vout[i].scriptPubKey.ExtractZerocoinMintData(p, c))
             continue;
@@ -2308,7 +2335,7 @@ CAmount CWalletTx::GetAvailablePrivateCredit() const
         unsigned int nCount = 0;
         if (!CountMintsFromHeight(mapBlockIndex[blockhash]->nHeight+1, libzerocoin::AmountToZerocoinDenomination(vout[i].nValue), nCount))
             continue;
-        if (!pwallet->IsSpent(hashTx, i) && pindex && nCount >= pwalletMain->GetSecurityLevel())
+        if (!pwallet->IsSpent(hashTx, i) && nCount >= pwalletMain->GetSecurityLevel())
         {
             const CTxOut &txout = vout[i];
             nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE_PRIVATE);
@@ -2417,6 +2444,20 @@ bool CWalletTx::IsTrusted() const
         if (pwallet->IsMine(parentOut) != ISMINE_SPENDABLE && pwallet->IsMine(parentOut) != ISMINE_SPENDABLE_PRIVATE)
             return false;
     }
+
+    if (HasZerocoinMint()) {
+        for (const CTxOut& out: vout) {
+            if (!out.IsZerocoinMint())
+                continue;
+            std::vector<unsigned char> c; CPubKey p;
+            if(!out.scriptPubKey.ExtractZerocoinMintData(p, c))
+                continue;
+            uint256 blockhash;
+            if (!pblocktree->ReadAccMint(CBigNum(c), blockhash) || blockhash == uint256())
+                return false;
+        }
+    }
+
     return true;
 }
 
@@ -2544,24 +2585,8 @@ CAmount CWallet::GetUnconfirmedBalance() const
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
         {
             const CWalletTx* pcoin = &(*it).second;
-            if (!pcoin->IsTrusted() && pcoin->GetDepthInMainChain() == 0 && pcoin->InMempool())
-                nTotal += pcoin->GetAvailableCredit();
-            else if (pcoin->HasZerocoinMint()) {
-                for (const CTxOut& out: pcoin->vout) {
-                    if (!out.IsZerocoinMint())
-                        continue;
-                    if (!mapBlockIndex.count(pcoin->hashBlock))
-                        continue;
-                    CBlockIndex* pindex = mapBlockIndex[pcoin->hashBlock];
-                    if (!pindex)
-                        continue;
-                    std::vector<unsigned char> c; CPubKey p;
-                    if(!out.scriptPubKey.ExtractZerocoinMintData(p, c))
-                        continue;
-                    uint256 blockhash;
-                    if (!pblocktree->ReadAccMint(CBigNum(c), blockhash) || blockhash == uint256())
-                        nTotal += out.nValue;
-                }
+            if (!pcoin->IsTrusted() && pcoin->GetDepthInMainChain() == 0 && pcoin->InMempool()) {
+                    nTotal += pcoin->GetAvailableCredit();
             }
         }
     }
