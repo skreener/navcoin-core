@@ -319,7 +319,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
         return DuplicateAddress;
     }
 
-    CAmount nBalance = getBalance(coinControl);
+    CAmount nBalance = fPrivate ? getPrivateBalance() : getBalance(coinControl);
 
     if(total > nBalance)
     {
