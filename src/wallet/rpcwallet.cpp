@@ -519,6 +519,93 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
     return wtx.GetHash().GetHex();
 }
 
+UniValue privatesendtoaddress(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() < 2 || params.size() > 6)
+        throw runtime_error(
+            "privatesendtoaddress \"navcoinaddress\" amount ( \"comment\" \"comment-to\" \"strdzeel\" subtractfeefromamount )\n"
+            "\nSend an amount to a given address using the private balance of coins.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"navcoinaddress\"  (string, required) The navcoin address to send to.\n"
+            "2. \"amount\"      (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
+            "3. \"comment\"     (string, optional) A comment used to store what the transaction is for. \n"
+            "                             This is not part of the transaction, just kept in your wallet.\n"
+            "4. \"comment-to\"  (string, optional) A comment to store the name of the person or organization \n"
+            "                             to which you're sending the transaction. This is not part of the \n"
+            "                             transaction, just kept in your wallet.\n"
+            "5. \"strdzeel\"            (string, optional) Attached string metadata \n"
+            "6. subtractfeefromamount  (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
+            "                             The recipient will receive less navcoins than you enter in the amount field.\n"
+            "\nResult:\n"
+            "\"transactionid\"  (string) The transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("privatesendtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1")
+            + HelpExampleCli("privatesendtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1 \"donation\" \"seans outpost\"")
+            + HelpExampleCli("privatesendtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1 \"\" \"\" true")
+            + HelpExampleRpc("privatesendtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", 0.1, \"donation\", \"seans outpost\"")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    string address_str = params[0].get_str();
+    utils::DNSResolver *DNS = nullptr;
+
+    if(DNS->check_address_syntax(params[0].get_str().c_str()))
+    {
+        bool dnssec_valid; bool dnssec_available;
+        std::vector<std::string> addresses = utils::dns_utils::addresses_from_url(params[0].get_str().c_str(), dnssec_available, dnssec_valid);
+
+        if(addresses.empty())
+          throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid OpenAlias address");
+        else if (!dnssec_valid && GetBoolArg("-requirednssec",true))
+          throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "OpenAlias Address does not support DNS Sec");
+        else
+        {
+
+          address_str = addresses.front();
+
+        }
+
+    }
+
+    CNavCoinAddress address(address_str);
+    if (!address.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid NavCoin address");
+
+    // Amount
+    CAmount nAmount = AmountFromValue(params[1]);
+    if (nAmount <= 0)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
+
+    // Wallet comments
+    CWalletTx wtx;
+    if (params.size() > 2 && !params[2].isNull() && !params[2].get_str().empty())
+        wtx.mapValue["comment"] = params[2].get_str();
+    if (params.size() > 3 && !params[3].isNull() && !params[3].get_str().empty())
+        wtx.mapValue["to"] = params[3].get_str();
+
+    std::string strDZeel;
+
+    if (params.size() > 4 && !params[4].isNull() && !params[4].get_str().empty())
+        strDZeel = params[4].get_str();
+
+    bool fSubtractFeeFromAmount = false;
+    if (params.size() > 5)
+        fSubtractFeeFromAmount = params[5].get_bool();
+
+    EnsureWalletIsUnlocked();
+
+    wtx.strDZeel = strDZeel;
+
+    SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, strDZeel, true);
+
+    return wtx.GetHash().GetHex();
+}
+
 UniValue stakervote(const UniValue& params, bool fHelp)
 {
     if (!EnsureWalletIsAvailable(fHelp))
@@ -3386,6 +3473,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "sendfrom",                 &sendfrom,                 false },
     { "wallet",             "sendmany",                 &sendmany,                 false },
     { "wallet",             "sendtoaddress",            &sendtoaddress,            false },
+    { "wallet",             "privatesendtoaddress",     &privatesendtoaddress,     false },
     { "wallet",             "donatefund",               &donatefund,               false },
     { "wallet",             "createpaymentrequest",     &createpaymentrequest,     false },
     { "wallet",             "createproposal",           &createproposal,           false },
