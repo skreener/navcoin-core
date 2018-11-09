@@ -28,10 +28,12 @@ CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, cons
                   &params->accumulatorParams.accumulatorPoKCommitmentGroup),
     spendType(spendType)
 {
-    denomination = coin.getPublicCoin().getDenomination();
+    CBigNum mul_obfuscationJ = (obfuscationJ * coin.getRandomnessBc()) % params->coinCommitmentGroup.groupOrder;
+    CBigNum mul_obfuscationK = (obfuscationK * coin.getRandomnessBc()) % params->coinCommitmentGroup.groupOrder;
     coinSerialNumber = params->coinCommitmentGroup.g.pow_mod(
-                        (coin.getSerialNumber()+obfuscationJ) % params->coinCommitmentGroup.groupOrder,
+                        (coin.getSerialNumber()+mul_obfuscationJ) % params->coinCommitmentGroup.groupOrder,
                         params->serialNumberSoKCommitmentGroup.groupOrder);
+    denomination = coin.getPublicCoin().getDenomination();
     version = coin.getVersion();
 
     if (!static_cast<int>(version)) //todo: figure out why version does not make it here
@@ -66,10 +68,10 @@ CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, cons
     // 4. Proves that the coin is correct w.r.t. serial number and hidden coin secret
     // (This proof is bound to the coin 'metadata', i.e., transaction hash)
     uint256 hashSig = signatureHash();
-    this->serialNumberSoK = SerialNumberSignatureOfKnowledge(params, coin, fullCommitmentToCoinUnderSerialParams, hashSig, obfuscationJ, obfuscationK);
+    this->serialNumberSoK = SerialNumberSignatureOfKnowledge(params, coin, fullCommitmentToCoinUnderSerialParams, hashSig, mul_obfuscationJ, mul_obfuscationK);
 
     //5. Zero knowledge proof of the serial number
-    this->serialNumberPoK = SerialNumberProofOfKnowledge(params, (coin.getSerialNumber()+obfuscationJ) % params->coinCommitmentGroup.groupOrder, hashSig);
+    this->serialNumberPoK = SerialNumberProofOfKnowledge(params, (coin.getSerialNumber()+mul_obfuscationJ) % params->coinCommitmentGroup.groupOrder, hashSig);
 }
 
 bool CoinSpend::Verify(const Accumulator& a) const

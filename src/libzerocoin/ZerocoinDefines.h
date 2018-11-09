@@ -20,6 +20,7 @@
 #define ZEROCOIN_DEFAULT_SECURITYLEVEL      80
 #define ZEROCOIN_MIN_SECURITY_LEVEL         80
 #define ZEROCOIN_MAX_SECURITY_LEVEL         80
+#define ZEROCOIN_OBFUSCATION_SECURITY       40
 #define ACCPROOF_KPRIME                     160
 #define ACCPROOF_KDPRIME                    128
 #define MAX_COINMINT_ATTEMPTS               10000
