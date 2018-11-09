@@ -71,13 +71,15 @@ PublicCoin::PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const 
 
         uint256 pre_s(Hash(shared_secret.begin(), shared_secret.end()));
         uint256 pre_r(Hash(pre_s.begin(), pre_s.end()));
+        uint256 pre_t(Hash(pre_r.begin(), pre_r.end()));
 
         CBigNum s = CBigNum(pre_s) % (this->params->coinCommitmentGroup.groupOrder);
         CBigNum r = CBigNum(pre_r) % (this->params->coinCommitmentGroup.groupOrder);
+        CBigNum t = CBigNum(pre_t) % (CBigNum(2).pow(ZEROCOIN_OBFUSCATION_SECURITY));
 
         // Manually compute a Pedersen commitment to the serial number "s" under randomness "r" and obfuscate it with blinding commitment "b"
-        // C = g^s * h^r * b mod p
-        CBigNum commitmentValue = (this->params->coinCommitmentGroup.g.pow_mod(s, this->params->coinCommitmentGroup.modulus) * blindingCommitment).mul_mod(this->params->coinCommitmentGroup.h.pow_mod(r, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus);
+        // C = g^s * h^r * bc^t = g^(s+j*t) * h^(r+k*t) mod p
+        CBigNum commitmentValue = (this->params->coinCommitmentGroup.g.pow_mod(s, this->params->coinCommitmentGroup.modulus) * blindingCommitment.pow_mod(t, this->params->coinCommitmentGroup.modulus)).mul_mod(this->params->coinCommitmentGroup.h.pow_mod(r, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus);
 
         // First verify that the commitment is a prime number
         // in the appropriate range. If not, we repeat the process.
@@ -147,19 +149,22 @@ PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomin
 
     uint256 pre_s(Hash(shared_secret.begin(), shared_secret.end()));
     uint256 pre_r(Hash(pre_s.begin(), pre_s.end()));
+    uint256 pre_t(Hash(pre_r.begin(), pre_r.end()));
 
     CBigNum s = CBigNum(pre_s) % (this->params->coinCommitmentGroup.groupOrder);
     CBigNum r = CBigNum(pre_r) % (this->params->coinCommitmentGroup.groupOrder);
+    CBigNum t = CBigNum(pre_t) % (CBigNum(2).pow(ZEROCOIN_OBFUSCATION_SECURITY));
 
     // Manually compute a Pedersen commitment to the serial number "s" under randomness "r" after obfuscating them with the blinding commitment "blindingCommitment"
-    // C = g^(s+j) * h^(r+k) mod p
-    CBigNum commitmentValue = (this->params->coinCommitmentGroup.g.pow_mod(s, this->params->coinCommitmentGroup.modulus) * blindingCommitment).mul_mod(this->params->coinCommitmentGroup.h.pow_mod(r, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus);
+    // C = g^s * h^r * bc^t = g^(s+j*t) * h^(r+k*t) mod p
+    CBigNum commitmentValue = (this->params->coinCommitmentGroup.g.pow_mod(s, this->params->coinCommitmentGroup.modulus) * blindingCommitment.pow_mod(t, this->params->coinCommitmentGroup.modulus)).mul_mod(this->params->coinCommitmentGroup.h.pow_mod(r, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus);
 
     if (commitmentValue.isPrime(ZEROCOIN_MINT_PRIME_PARAM) &&
             commitmentValue >= params->accumulatorParams.minCoinValue &&
             commitmentValue <= params->accumulatorParams.maxCoinValue) {
         this->serialNumber = s;
         this->randomness = r;
+        this->randomnessBc = t;
         if(commitmentValue == commitment_value) {
             this->publicCoin = PublicCoin(p, denomination, commitmentValue, mintPubKey);
             fValid = true;
