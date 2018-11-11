@@ -144,7 +144,6 @@ public:
                     params->serialNumberSoKCommitmentGroup.groupOrder);
     }
     const CBigNum& getRandomness() const { return this->randomness; }
-    const CBigNum& getRandomnessBc() const { return this->randomnessBc; }
     const uint8_t& getVersion() const { return this->version; }
 
     bool isValid();
@@ -156,7 +155,6 @@ public:
         READWRITE(version);
         READWRITE(publicCoin);
         READWRITE(randomness);
-        READWRITE(randomnessBc);
         READWRITE(serialNumber);
     }
 
@@ -164,7 +162,6 @@ private:
     const ZerocoinParams* params;
     PublicCoin publicCoin;
     CBigNum randomness;
-    CBigNum randomnessBc;
     CBigNum serialNumber;
     uint8_t version = 1;
     bool fValid = false;
