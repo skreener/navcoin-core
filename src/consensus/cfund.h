@@ -47,13 +47,13 @@ bool VotePaymentRequest(string strProp, bool vote, bool &duplicate);
 bool VotePaymentRequest(uint256 proposalHash, bool vote, bool &duplicate);
 bool RemoveVotePaymentRequest(string strProp);
 bool RemoveVotePaymentRequest(uint256 proposalHash);
-bool IsValidPaymentRequest(CTransaction tx);
-bool IsValidProposal(CTransaction tx);
+bool IsValidPaymentRequest(CTransaction tx, int nMaxVersion);
+bool IsValidProposal(CTransaction tx, int nMaxVersion);
 
 class CPaymentRequest
 {
 public:
-    static const int32_t CURRENT_VERSION=2;
+    static const int32_t CURRENT_VERSION=3;
 
     CAmount nAmount;
     flags fState;
@@ -112,8 +112,8 @@ public:
     std::string ToString() const {
         return strprintf("CPaymentRequest(hash=%s, nVersion=%d, nAmount=%f, fState=%s, nVotesYes=%u, nVotesNo=%u, nVotingCycle=%u, "
                          " proposalhash=%s, blockhash=%s, paymenthash=%s, strDZeel=%s)",
-                         hash.ToString().substr(0,10), nVersion, (float)nAmount/COIN, GetState(), nVotesYes, nVotesNo,
-                         nVotingCycle, proposalhash.ToString().substr(0,10), blockhash.ToString().substr(0,10),
+                         hash.ToString(), nVersion, (float)nAmount/COIN, GetState(), nVotesYes, nVotesNo,
+                         nVotingCycle, proposalhash.ToString(), blockhash.ToString().substr(0,10),
                          paymenthash.ToString().substr(0,10), strDZeel);
     }
 
@@ -172,7 +172,7 @@ public:
 class CProposal
 {
 public:
-    static const int32_t CURRENT_VERSION=2;
+    static const int32_t CURRENT_VERSION=3;
 
     CAmount nAmount;
     CAmount nFee;
@@ -202,7 +202,6 @@ public:
         vPayments.clear();
         strDZeel = "";
         hash = uint256();
-        blockhash = uint256();
         blockhash = uint256();
         nVersion = 0;
         nVotingCycle = 0;

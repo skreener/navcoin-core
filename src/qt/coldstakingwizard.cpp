@@ -26,15 +26,15 @@ IntroPage::IntroPage(QWidget *parent)
 {
     setTitle(tr("Introduction"));
 
-    label = new QLabel(tr("This wizard will help you generating a cold staking<br>"
+    label = new QLabel(tr("This wizard will help you generate a cold staking<br>"
                           "address where you can safely store coins while<br>"
                           "staking them.<br>"
-                          "Two addresses will be required:<br>"
-                          " - an spending address: authorised to spend the coins<br>"
-                          "      sent to the cold staking address<br>"
-                          " - an staking address: authorised to stake the coins<br>"
-                          "      sent to the cold staking address<br>"
-                          "As a result a new address will be given."));
+                          "You will need to provide two addresses from different wallets:<br>"
+                          " - a staking address: this address will be authorised to stake the<br>"
+                          "      coins sent to the cold staking address.<br>"
+                          " - a spending address: this address will be authorised to spend the<br>"
+                          "      coins sent to the cold staking address.<br>"
+                          "These addresses will be used to generate a cold staking address."));
     label->setWordWrap(true);
 
     QVBoxLayout *layout = new QVBoxLayout;
@@ -55,15 +55,21 @@ GetAddressesPage::GetAddressesPage(QWidget *parent)
     spendingAddressLineEdit = new QLineEdit;
     spendingAddressLabel->setBuddy(spendingAddressLineEdit);
 
+    descriptionLabel = new QLabel(tr("Your Spending address and Staking address must be different."));
+    errorLabel = new QLabel();
+    errorLabel->setStyleSheet("QLabel { color : red }");
+
     QGridLayout *layout = new QGridLayout;
     layout->addWidget(stakingAddressLabel, 0, 0);
     layout->addWidget(stakingAddressLineEdit, 0, 1);
     layout->addWidget(spendingAddressLabel, 1, 0);
     layout->addWidget(spendingAddressLineEdit, 1, 1);
+    layout->addWidget(descriptionLabel, 2, 0, 1, 2);
+    layout->addWidget(errorLabel, 3, 0, 1, 2);
     setLayout(layout);
 
-    registerField("stakingAddress", stakingAddressLineEdit);
-    registerField("spendingAddress", spendingAddressLineEdit);
+    registerField("stakingAddress*", stakingAddressLineEdit);
+    registerField("spendingAddress*", spendingAddressLineEdit);
 }
 
 bool GetAddressesPage::validatePage()
@@ -74,7 +80,21 @@ bool GetAddressesPage::validatePage()
     CNavCoinAddress stakingAddress(stakingAddressStr.toStdString());
     CNavCoinAddress spendingAddress(spendingAddressStr.toStdString());
 
-    return stakingAddress.IsValid() && spendingAddress.IsValid();
+    CKeyID stakingKeyID;
+    CKeyID spendingKeyID;
+    if (field("stakingAddress").toString() == field("spendingAddress").toString())  {
+        errorLabel->setText(tr("The addresses can't be the same!"));
+        return false;
+    }
+    if(!(stakingAddress.IsValid() && stakingAddress.GetKeyID(stakingKeyID))) {
+        errorLabel->setText("The staking address is not valid.");
+        return false;
+    }
+    if(!(spendingAddress.IsValid() && spendingAddress.GetKeyID(spendingKeyID))) {
+        errorLabel->setText("The spending address is not valid.");
+        return false;
+    }
+    return true;
 }
 
 ColdStakingAddressPage::ColdStakingAddressPage(QWidget *parent)

@@ -176,25 +176,39 @@ UniValue getcoldstakingaddress(const UniValue& params, bool fHelp)
     if (fHelp || params.size() != 2)
         throw runtime_error(
             "getcoldstakingaddress \"stakingaddress\" \"spendingaddress\"\n"
-            "\nTODO"
+            "Returns a coldstaking address based on two address inputs\n"
+            "Arguments:\n"
+            "1. \"stakingaddress\"  (string, required) The navcoin staking address.\n"
+            "2. \"spendingaddress\" (string, required) The navcoin spending address.\n\n"
+            "Result:\n"
+            "coldstakingaddress (string) The coldstaking address\n\n"
+            "Examples:\n\n"
+            "> navcoin-cli getcoldstakingaddress \"mqyGZvLYfEH27Zk3z6JkwJgB1zpjaEHfiW\" \"mrfjgazyerYxDQHJAPDdUcC3jpmi8WZ2uv\"\n"
+            "As a json rpc call:\n"
+       
+            
         );
 
     if (!IsColdStakingEnabled(pindexBestHeader,Params().GetConsensus()))
         throw runtime_error(
             "Cold Staking is not active yet.");
 
+    if (params[0].get_str() == params[1].get_str()) 
+        throw runtime_error(
+            "The staking address should be different to the spending address"
+        );
+
+
     CNavCoinAddress stakingAddress(params[0].get_str());
-    if (!stakingAddress.IsValid())
+    CKeyID stakingKeyID;
+    if (!stakingAddress.IsValid() || !stakingAddress.GetKeyID(stakingKeyID))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Staking address is not a valid NavCoin address");
 
-    CKeyID stakingKeyID;
-    stakingAddress.GetKeyID(stakingKeyID);
-
     CNavCoinAddress spendingAddress(params[1].get_str());
-    if (!spendingAddress.IsValid())
+    CKeyID spendingKeyID;
+    if (!spendingAddress.IsValid() || !spendingAddress.GetKeyID(spendingKeyID))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Spending address is not a valid NavCoin address");
 
-    CKeyID spendingKeyID;
     spendingAddress.GetKeyID(spendingKeyID);
 
     return CNavCoinAddress(stakingKeyID, spendingKeyID).ToString();
@@ -635,12 +649,12 @@ UniValue createproposal(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 4)
         throw runtime_error(
-            "createproposal address amount deadline\n"
+            "createproposal \"navcoinaddress\" \"amount\" duration \"desc\" ( fee )\n"
             "\nCreates a proposal for the community fund. Min fee of " + std::to_string((float)Params().GetConsensus().nProposalMinimalFee/COIN) + "NAV is required.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
             "1. \"navcoinaddress\"     (string, required) The navcoin address where coins would be sent if proposal is approved.\n"
-            "2. \"amount\"             (numeric or string, required) The amount in " + CURRENCY_UNIT + " to requesst. eg 0.1\n"
+            "2. \"amount\"             (numeric or string, required) The amount in " + CURRENCY_UNIT + " to request. eg 0.1\n"
             "3. duration               (numeric, required) Number of seconds the proposal will exist after being accepted.\n"
             "4. \"desc\"               (string, required) Short description of the proposal.\n"
             "5. fee                    (numeric, optional) Contribution to the fund used as fee.\n"
@@ -649,6 +663,7 @@ UniValue createproposal(const UniValue& params, bool fHelp)
             "\"  strDZeel: string }\"            (string) The attached strdzeel property.\n"
             "\nExamples:\n"
             + HelpExampleCli("createproposal", "\"NQFqqMUD55ZV3PJEJZtaKCsQmjLT6JkjvJ\" 1000 86400 \"Development\"")
+            + HelpExampleCli("createproposal", "\"NQFqqMUD55ZV3PJEJZtaKCsQmjLT6JkjvJ\" 12000 3600 \"Promotional stickers for everyone\" 100")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -683,7 +698,7 @@ UniValue createproposal(const UniValue& params, bool fHelp)
     strDZeel.push_back(Pair("a",Address));
     strDZeel.push_back(Pair("d",nDeadline));
     strDZeel.push_back(Pair("s",sDesc));
-    strDZeel.push_back(Pair("v",CFund::CProposal::CURRENT_VERSION));
+    strDZeel.push_back(Pair("v",IsReducedCFundQuorumEnabled(pindexBestHeader, Params().GetConsensus()) ? CFund::CProposal::CURRENT_VERSION : 2));
 
     wtx.strDZeel = strDZeel.write();
     wtx.nCustomVersion = CTransaction::PROPOSAL_VERSION;
@@ -726,7 +741,7 @@ UniValue createpaymentrequest(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() != 3)
         throw runtime_error(
-            "createpaymentrequest hash amount id\n"
+            "createpaymentrequest \"hash\" \"amount\" \"id\"\n"
             "\nCreates a proposal to withdraw funds from the community fund. Fee: 0.0001 NAV\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
@@ -796,7 +811,7 @@ UniValue createpaymentrequest(const UniValue& params, bool fHelp)
     strDZeel.push_back(Pair("s",Signature));
     strDZeel.push_back(Pair("r",sRandom));
     strDZeel.push_back(Pair("i",id));
-    strDZeel.push_back(Pair("v",CFund::CPaymentRequest::CURRENT_VERSION));
+    strDZeel.push_back(Pair("v",IsReducedCFundQuorumEnabled(pindexBestHeader, Params().GetConsensus()) ? CFund::CPaymentRequest::CURRENT_VERSION : 2));
 
     wtx.strDZeel = strDZeel.write();
     wtx.nCustomVersion = CTransaction::PAYMENT_REQUEST_VERSION;
@@ -821,7 +836,7 @@ UniValue donatefund(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "donatefund amount ( subtractfeefromamount )\n"
+            "donatefund \"amount\" ( subtractfeefromamount )\n"
             "\nDonates an amount to the community fund.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
@@ -3258,28 +3273,51 @@ UniValue resolveopenalias(const UniValue& params, bool fHelp)
 
 UniValue proposalvotelist(const UniValue& params, bool fHelp)
 {
+
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+                "proposalvotelist\n"
+
+                "\nReturns a list containing the wallet's current voting status for all active proposals.\n"
+
+                "\nResult:\n"
+                "{\n"
+                "      \"yes\":   List of proposals this wallet is casting a 'yes' vote for.\n"
+                "      \"no\":    List of proposals this wallet is casting a 'no' vote for.\n"
+                "      \"null\":  List of proposals this wallet has NOT yet cast a vote for.\n"
+                "}\n"
+        );
+
     UniValue ret(UniValue::VOBJ);
     UniValue yesvotes(UniValue::VARR);
     UniValue novotes(UniValue::VARR);
+    UniValue nullvotes(UniValue::VARR);
 
-    for (unsigned int i = 0; i < vAddedProposalVotes.size(); i++)
-    {
-        CFund::CProposal proposal;
-        if(pblocktree->ReadProposalIndex(uint256S("0x"+vAddedProposalVotes[i].first), proposal))
-        {
-            if(vAddedProposalVotes[i].second)
-            {
-                yesvotes.push_back(proposal.ToString());
-            }
-            else
-            {
-                novotes.push_back(proposal.ToString());
-            }
-        }
-    }
+    std::vector<CFund::CProposal> vec;
+     if(pblocktree->GetProposalIndex(vec))
+     {
+         BOOST_FOREACH(const CFund::CProposal& proposal, vec) {
+             if (proposal.fState != CFund::NIL)
+                 continue;
+             auto it = std::find_if( vAddedProposalVotes.begin(), vAddedProposalVotes.end(),
+                 [&proposal](const std::pair<std::string, bool>& element){ return element.first == proposal.hash.ToString();} );
+             if (it != vAddedProposalVotes.end()) {
+                 if (it->second)
+                     yesvotes.push_back(proposal.ToString());
+                 else
+                     novotes.push_back(proposal.ToString());
+             } else {
+                 nullvotes.push_back(proposal.ToString());
+             }
+         }
+     }
 
     ret.push_back(Pair("yes",yesvotes));
     ret.push_back(Pair("no",novotes));
+    ret.push_back(Pair("null",nullvotes));
 
     return ret;
 }
@@ -3337,28 +3375,47 @@ UniValue proposalvote(const UniValue& params, bool fHelp)
 
 UniValue paymentrequestvotelist(const UniValue& params, bool fHelp)
 {
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+                "paymentrequestvotelist\n"
+
+                "\nReturns a list containing the wallet's current voting status for all active payment requests.\n"
+
+                "\nResult:\n"
+                "{\n"
+                "      \"yes\":   List of proposals this wallet is casting a 'yes' vote for.\n"
+                "      \"no\":    List of proposals this wallet is casting a 'no' vote for.\n"
+                "      \"null\":  List of proposals this wallet has NOT yet cast a vote for.\n"
+                "}\n"
+        );
+
     UniValue ret(UniValue::VOBJ);
     UniValue yesvotes(UniValue::VARR);
     UniValue novotes(UniValue::VARR);
+    UniValue nullvotes(UniValue::VARR);
 
-    for (unsigned int i = 0; i < vAddedPaymentRequestVotes.size(); i++)
-    {
-        CFund::CPaymentRequest prequest;
-        if(pblocktree->ReadPaymentRequestIndex(uint256S("0x"+vAddedPaymentRequestVotes[i].first), prequest))
-        {
-            if(vAddedPaymentRequestVotes[i].second)
-            {
-                yesvotes.push_back(prequest.ToString());
-            }
-            else
-            {
-                novotes.push_back(prequest.ToString());
-            }
-        }
-    }
+    std::vector<CFund::CPaymentRequest> vec;
+     if(pblocktree->GetPaymentRequestIndex(vec))
+     {
+         BOOST_FOREACH(const CFund::CPaymentRequest& prequest, vec) {
+             if (prequest.fState != CFund::NIL)
+                 continue;
+             auto it = std::find_if( vAddedPaymentRequestVotes.begin(), vAddedPaymentRequestVotes.end(),
+                 [&prequest](const std::pair<std::string, bool>& element){ return element.first == prequest.hash.ToString();} );
+             if (it != vAddedPaymentRequestVotes.end()) {
+                 if (it->second)
+                     yesvotes.push_back(prequest.ToString());
+                 else
+                     novotes.push_back(prequest.ToString());
+             } else {
+                 nullvotes.push_back(prequest.ToString());
+             }
+         }
+     }
 
     ret.push_back(Pair("yes",yesvotes));
     ret.push_back(Pair("no",novotes));
+    ret.push_back(Pair("null",nullvotes));
 
     return ret;
 }
