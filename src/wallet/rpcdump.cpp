@@ -575,7 +575,7 @@ UniValue dumpprivateparameters(const UniValue& params, bool fHelp)
 
     EnsureWalletIsUnlocked();
 
-    CBigNum oj; CBigNum ok; CKey zk;
+    libzerocoin::ObfuscationValue oj; libzerocoin::ObfuscationValue ok; CKey zk;
 
     if(!pwalletMain->GetObfuscationJ(oj))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error reading obfuscation j value");
@@ -586,8 +586,10 @@ UniValue dumpprivateparameters(const UniValue& params, bool fHelp)
 
     UniValue ret(UniValue::VOBJ);
 
-    ret.push_back(Pair("obfuscationJ", oj.GetHex()));
-    ret.push_back(Pair("obfuscationK", ok.GetHex()));
+    ret.push_back(Pair("obfuscationJ1", oj.first.GetHex()));
+    ret.push_back(Pair("obfuscationJ1", oj.second.GetHex()));
+    ret.push_back(Pair("obfuscationK2", ok.first.GetHex()));
+    ret.push_back(Pair("obfuscationK2", ok.second.GetHex()));
     ret.push_back(Pair("zeroPrivKey", HexStr(std::vector<unsigned char>(zk.begin(), zk.end()))));
 
     return ret;

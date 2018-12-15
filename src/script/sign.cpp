@@ -473,7 +473,7 @@ bool TransactionSignatureCreator::CreateCoinSpend(const libzerocoin::ZerocoinPar
                                                   const CScript& scriptPubKey, CScript& scriptSig, std::string& strError) const
 {
     try {
-        CKey zk; CBigNum bc; CBigNum oj; CBigNum ok;
+        CKey zk; libzerocoin::BlindingCommitment bc; libzerocoin::ObfuscationValue oj; libzerocoin::ObfuscationValue ok;
 
         if (!keystore->GetZeroKey(zk)) {
             strError = "Could not read zero key from wallet";

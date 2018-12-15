@@ -161,7 +161,7 @@ UniValue getprivateaddress(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    CKey zk; CBigNum bc;
+    CKey zk; libzerocoin::BlindingCommitment bc;
     pwalletMain->GetBlindingCommitment(bc);
     pwalletMain->GetZeroKey(zk);
 

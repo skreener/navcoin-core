@@ -198,12 +198,12 @@ public:
             mi++;
         }
     }
-    bool GetObfuscationK(CBigNum& ok) const;
-    bool GetCryptedObfuscationK(std::vector<unsigned char>& ok) const;
-    bool SetObfuscationK(const CBigNum& ok);
-    bool SetCryptedObfuscationK(const std::vector<unsigned char>& ok);
+    bool GetObfuscationK(libzerocoin::ObfuscationValue& ok) const;
+    bool GetCryptedObfuscationK(std::pair<std::vector<unsigned char>,std::vector<unsigned char>>& ok) const;
+    bool SetObfuscationK(const libzerocoin::ObfuscationValue& ok);
+    bool SetCryptedObfuscationK(const std::pair<std::vector<unsigned char>,std::vector<unsigned char>>& ok);
     bool IsObfuscationSet() const {
-        return (zcParameters.obfuscationK != CBigNum() || !zcCryptedParameters.obfuscationK.empty());
+        return (zcParameters.obfuscationK.first != CBigNum() || !zcCryptedParameters.obfuscationK.first.empty() || zcParameters.obfuscationK.second != CBigNum() || !zcCryptedParameters.obfuscationK.second.empty());
     }
 
     /**

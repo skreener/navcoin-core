@@ -25,10 +25,12 @@ CBigNum SeedTo1024(uint256 hashSeed) {
     hasher << hashSeed;
 
     vector<unsigned char> vResult;
-    for (int i = 0; i < 4; i ++) {
-        vector<unsigned char> vHash = CBigNum(hasher.GetHash()).getvch();
-        vResult.insert(vResult.end(), vHash.begin(), vHash.end());
+    vector<unsigned char> vHash = CBigNum(hasher.GetHash()).getvch();
+    vResult.insert(vResult.end(), vHash.begin(), vHash.end());
+    for (int i = 0; i < 3; i ++) {
         hasher << vResult;
+        vHash = CBigNum(hasher.GetHash()).getvch();
+        vResult.insert(vResult.end(), vHash.begin(), vHash.end());
     }
 
     CBigNum bnResult;
@@ -37,10 +39,10 @@ CBigNum SeedTo1024(uint256 hashSeed) {
 }
 
 SerialNumberSignatureOfKnowledge::SerialNumberSignatureOfKnowledge(const
-                                                                   ZerocoinParams* p, const PrivateCoin& coin, const Commitment& commitmentToCoin,
-                                                                   uint256 msghash, CBigNum obfuscationJ, CBigNum obfuscationK):params(p),
+                                                                   ZerocoinParams* p, const PrivateCoin& coin, const Commitment& commitmentToCoin, const Commitment& coinValuePublic,
+                                                                   uint256 msghash, CBigNum obfuscatedRandomness):params(p),
     s_notprime(p->zkp_iterations),
-    sprime(p->zkp_iterations) {
+    sprime(p->zkp_iterations){
 
     // Sanity check: verify that the order of the "accumulatedValueCommitmentGroup" is
     // equal to the modulus of "coinCommitmentGroup". Otherwise we will produce invalid
@@ -54,18 +56,18 @@ SerialNumberSignatureOfKnowledge::SerialNumberSignatureOfKnowledge(const
     CBigNum g = params->serialNumberSoKCommitmentGroup.g;
     CBigNum h = params->serialNumberSoKCommitmentGroup.h;
 
-    CBigNum serialPubKey = a.pow_mod((coin.getSerialNumber()+obfuscationJ) % this->params->coinCommitmentGroup.groupOrder, params->serialNumberSoKCommitmentGroup.groupOrder);
-
     CHashWriter hasher(0,0);
-    hasher << *params << commitmentToCoin.getCommitmentValue() << serialPubKey << msghash;
+    hasher << *params << commitmentToCoin.getCommitmentValue() << coinValuePublic.getCommitmentValue() << msghash;
 
     vector<CBigNum> r(params->zkp_iterations);
+    vector<CBigNum> r2(params->zkp_iterations);
     vector<CBigNum> v_seed(params->zkp_iterations);
     vector<CBigNum> v_expanded(params->zkp_iterations);
     vector<CBigNum> c(params->zkp_iterations);
 
     for(uint32_t i=0; i < params->zkp_iterations; i++) {
         r[i] = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
+        r2[i] = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
 
         //use a random 256 bit seed that expands to 1024 bit for v[i]
         while (true) {
@@ -83,7 +85,7 @@ SerialNumberSignatureOfKnowledge::SerialNumberSignatureOfKnowledge(const
 
     for(uint32_t i=0; i < params->zkp_iterations; i++) {
         // compute g^{ {a^x b^r} h^v} mod p2
-        c[i] = challengeCalculation(serialPubKey, r[i], v_expanded[i]);
+        c[i] = challengeCalculation(g, coinValuePublic.getCommitmentValue(), 1, b, r[i], h, v_expanded[i]);
     }
 
     // We can't hash data in parallel either
@@ -104,34 +106,32 @@ SerialNumberSignatureOfKnowledge::SerialNumberSignatureOfKnowledge(const
             s_notprime[i]       = r[i];
             sprime[i]           = v_seed[i];
         } else {
-            s_notprime[i]       = r[i] - ((coin.getRandomness() + obfuscationK) % this->params->coinCommitmentGroup.groupOrder);
+            s_notprime[i]       = r[i] - obfuscatedRandomness;
             sprime[i]           = v_expanded[i] - (commitmentToCoin.getRandomness() *
-                                  b.pow_mod(r[i] - ((coin.getRandomness() + obfuscationK) % this->params->coinCommitmentGroup.groupOrder), params->serialNumberSoKCommitmentGroup.groupOrder));
+                                  b.pow_mod(r[i] - obfuscatedRandomness, params->serialNumberSoKCommitmentGroup.groupOrder));
         }
     }
 }
 
-inline CBigNum SerialNumberSignatureOfKnowledge::challengeCalculation(const CBigNum& a_,const CBigNum& b_exp,
-                                                                      const CBigNum& h_exp) const {
-
-    CBigNum a = params->coinCommitmentGroup.g;
-    CBigNum b = params->coinCommitmentGroup.h;
-    CBigNum g = params->serialNumberSoKCommitmentGroup.g;
-    CBigNum h = params->serialNumberSoKCommitmentGroup.h;
-
-    CBigNum exponent = (a_ * b.pow_mod(b_exp, params->serialNumberSoKCommitmentGroup.groupOrder)) % params->serialNumberSoKCommitmentGroup.groupOrder;
-
-    return (g.pow_mod(exponent, params->serialNumberSoKCommitmentGroup.modulus) * h.pow_mod(h_exp, params->serialNumberSoKCommitmentGroup.modulus)) % params->serialNumberSoKCommitmentGroup.modulus;
+inline CBigNum SerialNumberSignatureOfKnowledge::challengeCalculation(const CBigNum& g, const CBigNum& a,const CBigNum& a_exp,const CBigNum& b,const CBigNum& b_exp,
+                                                                      const CBigNum& h, const CBigNum& h_exp) const
+{
+    return (g.pow_mod(challengeCalculation(a,a_exp,b,b_exp), params->serialNumberSoKCommitmentGroup.modulus) * h.pow_mod(h_exp, params->serialNumberSoKCommitmentGroup.modulus)) % params->serialNumberSoKCommitmentGroup.modulus;
 }
 
-bool SerialNumberSignatureOfKnowledge::Verify(const CBigNum& coinSerialNumberPubKey, const CBigNum& valueOfCommitmentToCoin,
+inline CBigNum SerialNumberSignatureOfKnowledge::challengeCalculation(const CBigNum& a,const CBigNum& a_exp,const CBigNum& b,const CBigNum& b_exp) const
+{
+    return (a.pow_mod(a_exp, params->serialNumberSoKCommitmentGroup.groupOrder) * b.pow_mod(b_exp, params->serialNumberSoKCommitmentGroup.groupOrder)) % params->serialNumberSoKCommitmentGroup.groupOrder;
+}
+
+bool SerialNumberSignatureOfKnowledge::Verify(const CBigNum& valueOfCommitmentToCoin, const CBigNum& valueOfPublicCoin,
                                               const uint256 msghash) const {
     CBigNum a = params->coinCommitmentGroup.g;
     CBigNum b = params->coinCommitmentGroup.h;
     CBigNum g = params->serialNumberSoKCommitmentGroup.g;
     CBigNum h = params->serialNumberSoKCommitmentGroup.h;
     CHashWriter hasher(0,0);
-    hasher << *params << valueOfCommitmentToCoin << coinSerialNumberPubKey << msghash;
+    hasher << *params << valueOfCommitmentToCoin << valueOfPublicCoin << msghash;
 
     vector<CBigNum> tprime(params->zkp_iterations);
     unsigned char *hashbytes = (unsigned char*) &this->hash;
@@ -141,12 +141,12 @@ bool SerialNumberSignatureOfKnowledge::Verify(const CBigNum& coinSerialNumberPub
         int byte = i / 8;
         bool challenge_bit = ((hashbytes[byte] >> bit) & 0x01);
         if(challenge_bit) {
-            tprime[i] = challengeCalculation(coinSerialNumberPubKey, s_notprime[i], SeedTo1024(sprime[i].getuint256()));
+            tprime[i] = challengeCalculation(g, valueOfPublicCoin, 1, b, s_notprime[i], h, SeedTo1024(sprime[i].getuint256()));
         } else {
             CBigNum exp = b.pow_mod(s_notprime[i], params->serialNumberSoKCommitmentGroup.groupOrder);
             tprime[i] = ((valueOfCommitmentToCoin.pow_mod(exp, params->serialNumberSoKCommitmentGroup.modulus) % params->serialNumberSoKCommitmentGroup.modulus) *
                          (h.pow_mod(sprime[i], params->serialNumberSoKCommitmentGroup.modulus) % params->serialNumberSoKCommitmentGroup.modulus)) %
-                    params->serialNumberSoKCommitmentGroup.modulus;
+                        params->serialNumberSoKCommitmentGroup.modulus;
         }
     }
     for(uint32_t i = 0; i < params->zkp_iterations; i++) {
@@ -156,3 +156,4 @@ bool SerialNumberSignatureOfKnowledge::Verify(const CBigNum& coinSerialNumberPub
 }
 
 } /* namespace libzerocoin */
+

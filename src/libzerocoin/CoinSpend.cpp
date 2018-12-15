@@ -12,6 +12,7 @@
 // Copyright (c) 2017-2018 The PIVX developers
 // Copyright (c) 2018 The NavCoin Core developers
 
+#include "Keys.h"
 #include "CoinSpend.h"
 #include <iostream>
 #include <sstream>
@@ -19,19 +20,16 @@
 namespace libzerocoin
 {
 CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, const Accumulator& a, const uint256& checksum,
-                     const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType, const CBigNum obfuscationJ, const CBigNum obfuscationK) : accChecksum(checksum),
+                     const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType, const libzerocoin::ObfuscationValue obfuscationJ, const libzerocoin::ObfuscationValue obfuscationK) : accChecksum(checksum),
     ptxHash(ptxHash),
     accumulatorPoK(&params->accumulatorParams),
     serialNumberSoK(params),
-    serialNumberPoK(params),
+    serialNumberPoK(&params->coinCommitmentGroup),
     commitmentPoK(&params->serialNumberSoKCommitmentGroup,
                   &params->accumulatorParams.accumulatorPoKCommitmentGroup),
     spendType(spendType)
 {
     denomination = coin.getPublicCoin().getDenomination();
-    coinSerialNumber = params->coinCommitmentGroup.g.pow_mod(
-                        (coin.getSerialNumber()+obfuscationJ) % params->coinCommitmentGroup.groupOrder,
-                        params->serialNumberSoKCommitmentGroup.groupOrder);
     version = coin.getVersion();
 
     if (!static_cast<int>(version)) //todo: figure out why version does not make it here
@@ -52,7 +50,6 @@ CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, cons
     // group with a significantly larger order.
     const Commitment fullCommitmentToCoinUnderSerialParams(&params->serialNumberSoKCommitmentGroup, coin.getPublicCoin().getValue());
     this->serialCommitmentToCoinValue = fullCommitmentToCoinUnderSerialParams.getCommitmentValue();
-
     const Commitment fullCommitmentToCoinUnderAccParams(&params->accumulatorParams.accumulatorPoKCommitmentGroup, coin.getPublicCoin().getValue());
     this->accCommitmentToCoinValue = fullCommitmentToCoinUnderAccParams.getCommitmentValue();
 
@@ -63,18 +60,23 @@ CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, cons
     // 3. Proves that the committed public coin is in the Accumulator (PoK of "witness")
     this->accumulatorPoK = AccumulatorProofOfKnowledge(&params->accumulatorParams, fullCommitmentToCoinUnderAccParams, witness, a);
 
-    // 4. Proves that the coin is correct w.r.t. serial number and hidden coin secret
+    // We generate the Coin Value Image and its generator
+    CBigNum obfuscatedSerial = (obfuscationJ.first*coin.getObfuscationValue())+obfuscationJ.second;
+    CBigNum obfuscatedRandomness = ((obfuscationK.first*coin.getObfuscationValue())+obfuscationK.second)%params->coinCommitmentGroup.groupOrder;
+    Commitment publicSerialNumber(&params->coinCommitmentGroup, obfuscatedSerial, 0);
+    this->coinValuePublic = publicSerialNumber.getCommitmentValue();
+
+    // 4. Proves that the coin is correct w.r.t. serial number and hidden coin secret and the serial number image
     // (This proof is bound to the coin 'metadata', i.e., transaction hash)
     uint256 hashSig = signatureHash();
-    this->serialNumberSoK = SerialNumberSignatureOfKnowledge(params, coin, fullCommitmentToCoinUnderSerialParams, hashSig, obfuscationJ, obfuscationK);
+    this->serialNumberSoK = SerialNumberSignatureOfKnowledge(params, coin, fullCommitmentToCoinUnderSerialParams, publicSerialNumber, hashSig, obfuscatedRandomness);
 
     //5. Zero knowledge proof of the serial number
-    this->serialNumberPoK = SerialNumberProofOfKnowledge(params, (coin.getSerialNumber()+obfuscationJ) % params->coinCommitmentGroup.groupOrder, hashSig);
+    this->serialNumberPoK = SerialNumberProofOfKnowledge(&params->coinCommitmentGroup, obfuscatedSerial, hashSig);
 }
 
 bool CoinSpend::Verify(const Accumulator& a) const
 {
-
     if (a.getDenomination() != this->denomination) {
         throw std::runtime_error("CoinsSpend::Verify: failed, denominations do not match");
         return false;
@@ -91,12 +93,12 @@ bool CoinSpend::Verify(const Accumulator& a) const
         return false;
     }
 
-    if (!serialNumberSoK.Verify(coinSerialNumber, serialCommitmentToCoinValue, signatureHash())) {
+    if (!serialNumberSoK.Verify(serialCommitmentToCoinValue, coinValuePublic, signatureHash())) {
         throw std::runtime_error("CoinsSpend::Verify: serialNumberSoK failed.");
         return false;
     }
 
-    if (!serialNumberPoK.Verify(coinSerialNumber, signatureHash())) {
+    if (!serialNumberPoK.Verify(coinValuePublic, signatureHash())) {
         throw std::runtime_error("CoinsSpend::Verify: serialNumberPoK failed.");
         return false;
     }
@@ -108,7 +110,7 @@ const uint256 CoinSpend::signatureHash() const
 {
     CHashWriter h(0, 0);
     h << serialCommitmentToCoinValue << accCommitmentToCoinValue << commitmentPoK << accumulatorPoK << ptxHash
-      << coinSerialNumber << accChecksum << denomination << spendType;
+      << coinValuePublic << accChecksum << denomination << spendType;
 
     return h.GetHash();
 }
@@ -122,13 +124,13 @@ std::string CoinSpend::ToString() const
 
 bool CoinSpend::HasValidPublicSerial(ZerocoinParams* params) const
 {
-    return IsValidPublicSerial(params, coinSerialNumber);
+    return IsValidPublicSerial(params, coinValuePublic);
 }
 
 CBigNum CoinSpend::CalculateValidPublicSerial(ZerocoinParams* params)
 {
-    CBigNum bnSerial = coinSerialNumber;
-    bnSerial = bnSerial.mul_mod(CBigNum(1),params->serialNumberSoKCommitmentGroup.groupOrder);
+    CBigNum bnSerial = coinValuePublic;
+    bnSerial = bnSerial.mul_mod(CBigNum(1),params->coinCommitmentGroup.modulus);
     return bnSerial;
 }
 

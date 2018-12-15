@@ -69,9 +69,8 @@ CalculateParams(ZerocoinParams &params, CBigNum N, string aux, uint32_t security
 	// Calculate candidate parameters ("p", "q") for the coin commitment group
 	// using a deterministic process based on "N", the "aux" string, and
 	// the dedicated string "COMMITMENTGROUP".
-	params.coinCommitmentGroup = deriveIntegerGroupParams(calculateSeed(N, aux, securityLevel, STRING_COMMIT_GROUP),
-	                             pLen, qLen);
-
+  params.coinCommitmentGroup = deriveIntegerGroupParams(calculateSeed(N, aux, securityLevel, STRING_COMMIT_GROUP),
+                               pLen, qLen, pow(2,params.rangeProofBitSize+params.maxNumberOutputs));
 	// Next, we derive parameters for a second Accumulated Value commitment group.
 	// This is a Schnorr group with the specific property that the order of the group
 	// must be exactly equal to "q" from the commitment group. We set
@@ -244,7 +243,7 @@ calculateGroupParamLengths(uint32_t maxPLen, uint32_t securityLevel,
 /// derive two generators "g", "h".
 
 IntegerGroupParams
-deriveIntegerGroupParams(uint256 seed, uint32_t pLen, uint32_t qLen)
+deriveIntegerGroupParams(uint256 seed, uint32_t pLen, uint32_t qLen, uint32_t nGenerators)
 {
 	IntegerGroupParams result;
 	CBigNum p;
@@ -259,22 +258,44 @@ deriveIntegerGroupParams(uint256 seed, uint32_t pLen, uint32_t qLen)
 
 	// Calculate the generators "g", "h" using the process described in
 	// NIST FIPS 186-3, Appendix A.2.3. This algorithm takes ("p", "q",
-	// "domain_parameter_seed", "index"). We use "index" value 1
-	// to generate "g" and "index" value 2 to generate "h".
-	result.g = calculateGroupGenerator(seed, pSeed, qSeed, result.modulus, result.groupOrder, 1);
-	result.h = calculateGroupGenerator(seed, pSeed, qSeed, result.modulus, result.groupOrder, 2);
+  // "domain_parameter_seed", "index"). We use odd "index" values
+  // to generate "g" and even "index" values to generate "h".
+  for (unsigned int i = 1; i < nGenerators+1; i++)
+  {
+      CBigNum t1 = calculateGroupGenerator(seed, pSeed, qSeed, result.modulus, result.groupOrder, (i*2));
+      CBigNum t2 = calculateGroupGenerator(seed, pSeed, qSeed, result.modulus, result.groupOrder, (i*2)+1);
+      if (i > 1) {
+          if (t1 == result.gi[0] || t1 == result.hi[0] || t2 == result.gi[0] || t2 == result.hi[0]) {
+              i--;
+              continue;
+          }
+      }
+      result.gi.push_back(t1);
+      result.hi.push_back(t2);
+  }
+
+  assert(result.gi.size() == nGenerators);
+  assert(result.hi.size() == nGenerators);
+
+  result.g  = result.gi[0];
+  result.h  = result.hi[0];
+  result.g2 = result.gi[1];
 
 	// Perform some basic tests to make sure we have good parameters
-	if ((uint32_t)(result.modulus.bitSize()) < pLen ||          // modulus is pLen bits long
+  if ((uint32_t)(result.modulus.bitSize()) < pLen ||              // modulus is pLen bits long
 	        (uint32_t)(result.groupOrder.bitSize()) < qLen ||       // order is qLen bits long
 	        !(result.modulus.isPrime()) ||                          // modulus is prime
 	        !(result.groupOrder.isPrime()) ||                       // order is prime
-	        !((result.g.pow_mod(result.groupOrder, result.modulus)).isOne()) || // g^order mod modulus = 1
-	        !((result.h.pow_mod(result.groupOrder, result.modulus)).isOne()) || // h^order mod modulus = 1
-	        ((result.g.pow_mod(CBigNum(100), result.modulus)).isOne()) ||        // g^100 mod modulus != 1
-	        ((result.h.pow_mod(CBigNum(100), result.modulus)).isOne()) ||        // h^100 mod modulus != 1
+          !((result.g.pow_mod(result.groupOrder, result.modulus)).isOne()) ||  // g^order mod modulus = 1
+          !((result.g2.pow_mod(result.groupOrder, result.modulus)).isOne()) || // g2^order mod modulus = 1
+          !((result.h.pow_mod(result.groupOrder, result.modulus)).isOne()) ||  // h^order mod modulus = 1
+          ((result.g.pow_mod(CBigNum(100), result.modulus)).isOne()) ||        // g^100 mod modulus != 1
+          ((result.g2.pow_mod(CBigNum(100), result.modulus)).isOne()) ||       // g2^100 mod modulus != 1
+          ((result.h.pow_mod(CBigNum(100), result.modulus)).isOne()) ||        // h^100 mod modulus != 1
 	        result.g == result.h ||                                 // g != h
-	        result.g.isOne()) {                                     // g != 1
+          result.g.isOne() ||                                     // g != h
+          result.g2.isOne() ||                                    // g2 != h
+          result.h.isOne()) {                                     // h != 1
 		// If any of the above tests fail, throw an exception
 		throw std::runtime_error("Group parameters are not valid");
 	}
@@ -461,9 +482,9 @@ calculateGroupGenerator(uint256 seed, uint256 pSeed, uint256 qSeed, CBigNum modu
 	CBigNum result;
 
 	// Verify that 0 <= index < 256
-	if (index > 255) {
-		throw std::runtime_error("Invalid index for group generation");
-	}
+  //if (index > 255) {
+  //	throw std::runtime_error("Invalid index for group generation");
+  //}
 
 	// Compute e = (modulus - 1) / groupOrder
 	CBigNum e = (modulus - CBigNum(1)) / groupOrder;

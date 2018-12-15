@@ -290,7 +290,7 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
         }
         if (address.IsPrivateAddress(Params())) {
             ret.push_back(Pair("isprivateaddress", true));
-            CKey zk; CBigNum bc;
+            CKey zk; libzerocoin::BlindingCommitment bc;
             pwalletMain->GetBlindingCommitment(bc);
             pwalletMain->GetZeroKey(zk);
             libzerocoin::CPrivateAddress pa(&Params().GetConsensus().Zerocoin_Params,bc,zk);

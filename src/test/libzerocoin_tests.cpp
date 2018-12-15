@@ -53,9 +53,15 @@ PrivateCoin    *gCoins[TESTS_COINS_TO_ACCUMULATE];
 ZerocoinParams *g_Params;
 CKey privKey;
 CPubKey pubKey;
-CBigNum obfuscation_j;
-CBigNum obfuscation_k;
-CBigNum blindingCommitment;
+CBigNum obfuscation_j1;
+CBigNum obfuscation_j2;
+CBigNum obfuscation_k1;
+CBigNum obfuscation_k2;
+CBigNum blindingCommitment1;
+CBigNum blindingCommitment2;
+libzerocoin::ObfuscationValue obfuscation_j;
+libzerocoin::ObfuscationValue obfuscation_k;
+libzerocoin::BlindingCommitment blindingCommitment;
 
 //////////
 // Utility routines
@@ -464,9 +470,16 @@ Test_RunAllTests()
     pubKey = privKey.GetPubKey();
 
     // Calculate obfuscation values
-    obfuscation_j = CBigNum::randBignum(g_Params->coinCommitmentGroup.groupOrder);
-    obfuscation_k = CBigNum::randBignum(g_Params->coinCommitmentGroup.groupOrder);
-    blindingCommitment = g_Params->coinCommitmentGroup.g.pow_mod(obfuscation_j, g_Params->coinCommitmentGroup.modulus).mul_mod(g_Params->coinCommitmentGroup.h.pow_mod(obfuscation_k, g_Params->coinCommitmentGroup.modulus), g_Params->coinCommitmentGroup.modulus);
+    obfuscation_j1 = CBigNum::randBignum(g_Params->coinCommitmentGroup.groupOrder);
+    obfuscation_k1 = CBigNum::randBignum(g_Params->coinCommitmentGroup.groupOrder);
+    obfuscation_j2 = CBigNum::randBignum(g_Params->coinCommitmentGroup.groupOrder);
+    obfuscation_k2 = CBigNum::randBignum(g_Params->coinCommitmentGroup.groupOrder);
+    blindingCommitment1 = g_Params->coinCommitmentGroup.g.pow_mod(obfuscation_j1, g_Params->coinCommitmentGroup.modulus).mul_mod(g_Params->coinCommitmentGroup.h.pow_mod(obfuscation_k1, g_Params->coinCommitmentGroup.modulus), g_Params->coinCommitmentGroup.modulus);
+    blindingCommitment2 = g_Params->coinCommitmentGroup.g.pow_mod(obfuscation_j2, g_Params->coinCommitmentGroup.modulus).mul_mod(g_Params->coinCommitmentGroup.h.pow_mod(obfuscation_k2, g_Params->coinCommitmentGroup.modulus), g_Params->coinCommitmentGroup.modulus);
+
+    obfuscation_j = make_pair(obfuscation_j1, obfuscation_j2);
+    obfuscation_k = make_pair(obfuscation_k1, obfuscation_k2);
+    blindingCommitment = make_pair(blindingCommitment1, blindingCommitment2);
 
     gNumTests = gSuccessfulTests = gProofSize = 0;
     for (uint32_t i = 0; i < TESTS_COINS_TO_ACCUMULATE; i++) {

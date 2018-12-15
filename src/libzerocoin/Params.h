@@ -27,34 +27,43 @@ public:
 	**/
 	IntegerGroupParams();
 
-	/**
-	 * Generates a random group element
-	 * @return a random element in the group.
-	 */
-	CBigNum randomElement() const;
-	bool initialized;
+  /**
+   * Generates a random group element
+   * @return a random element in the group.
+   */
+  CBigNum randomElement() const;
+  bool initialized;
 
-	/**
-	 * A generator for the group.
-	 */
-	CBigNum g;
+  /**
+   * A generator for the group.
+   */
+  std::vector<CBigNum> gi;
+  CBigNum g;
 
-	/**
-	 * A second generator for the group.
-	 * Note log_g(h) and log_h(g) must
-	 * be unknown.
-	 */
-	CBigNum h;
+  /**
+   * A second generator for the group.
+   * Note log_g(h), log_g(g2), log_g2(g), log_g2(h), log_h(g) and log_h(g2) must
+   * be unknown.
+   */
+  std::vector<CBigNum> hi;
+  CBigNum h;
 
-	/**
-	 * The modulus for the group.
-	 */
-	CBigNum modulus;
+  /**
+   * A third generator for the group.
+   * Note log_g(h), log_g(g2), log_g2(g), log_g2(h), log_h(g) and log_h(g2) must
+   * be unknown.
+   */
+  CBigNum g2;
 
-	/**
-	 * The order of the group
-	 */
-	CBigNum groupOrder;
+  /**
+   * The modulus for the group.
+   */
+  CBigNum modulus;
+
+  /**
+   * The order of the group
+   */
+  CBigNum groupOrder;
 
 	ADD_SERIALIZE_METHODS;
   template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
@@ -184,7 +193,7 @@ public:
 	 * The Quadratic Residue group from which we form
 	 * a coin as a commitment  to a serial number.
 	 */
-	IntegerGroupParams coinCommitmentGroup;
+  IntegerGroupParams coinCommitmentGroup;
 
 	/**
 	 * One of two groups used to form a commitment to
@@ -205,13 +214,20 @@ public:
 	 * proofs.
 	 */
 	uint32_t zkp_hash_len;
+
+  /**
+   * Maximum number of outputs and bitsize of amount
+   * to prove in the rangeproof.
+   */
+  unsigned int maxNumberOutputs;
+  unsigned int rangeProofBitSize;
 	
 	ADD_SERIALIZE_METHODS;
   template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
-	    READWRITE(initialized);
-	    READWRITE(accumulatorParams);
-	    READWRITE(coinCommitmentGroup);
-	    READWRITE(serialNumberSoKCommitmentGroup);
+      READWRITE(initialized);
+      READWRITE(accumulatorParams);
+      READWRITE(coinCommitmentGroup);
+      READWRITE(serialNumberSoKCommitmentGroup);
 	    READWRITE(zkp_iterations);
 	    READWRITE(zkp_hash_len);
 	}

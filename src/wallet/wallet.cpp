@@ -1355,7 +1355,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletD
                 if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, out, pubCoin, NULL))
                     continue;
 
-                CKey zk; CBigNum bc; CBigNum oj;
+                CKey zk; libzerocoin::BlindingCommitment bc; libzerocoin::ObfuscationValue oj;
 
                 if (!GetZeroKey(zk))
                     break;
@@ -3189,7 +3189,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
                     if(fPrivate)
                     {
-                        CKey zk; CBigNum bc;
+                        CKey zk; libzerocoin::BlindingCommitment bc;
                         pwalletMain->GetBlindingCommitment(bc);
                         pwalletMain->GetZeroKey(zk);
 
@@ -3536,9 +3536,9 @@ DBErrors CWallet::LoadWallet(bool& fFirstRunRet, bool& fFirstZeroRunRet)
         return nLoadWalletRet;
     fFirstRunRet = !vchDefaultKey.IsValid();
 
-    CBigNum oj; CBigNum ok; CBigNum bc; CKey zk;
+    libzerocoin::ObfuscationValue oj; libzerocoin::ObfuscationValue ok; libzerocoin::BlindingCommitment bc; CKey zk;
 
-    fFirstZeroRunRet = !(zcParameters.zerokey.IsValid() && zcParameters.blindingCommitment != CBigNum() && IsObfuscationSet());
+    fFirstZeroRunRet = !(zcParameters.zerokey.IsValid() && zcParameters.blindingCommitment.first != CBigNum() && zcParameters.blindingCommitment.second != CBigNum() && IsObfuscationSet());
 
     uiInterface.LoadWallet(this);
 
@@ -3640,7 +3640,7 @@ bool CWallet::DelAddressBook(const CTxDestination& address)
     return CWalletDB(strWalletFile).EraseName(CNavCoinAddress(address).ToString());
 }
 
-bool CWallet::SetZerocoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey)
+bool CWallet::SetZerocoinValues(const ObfuscationValue& obfuscationJ, const ObfuscationValue& obfuscationK, const BlindingCommitment& blindingCommitment, const CKey& zerokey)
 {
     if(!(this->SetObfuscationJ(obfuscationJ) &&
             this->SetObfuscationK(obfuscationK) &&
@@ -4369,11 +4369,13 @@ bool CWallet::InitLoadWallet()
 
     if(fFirstZeroRun)
     {
-        CBigNum obfuscationj; CBigNum obfuscationk; CBigNum blindingcommitment; CKey zeroKey;
+        ObfuscationValue obfuscationj; ObfuscationValue obfuscationk; BlindingCommitment blindingcommitment; CKey zeroKey;
         libzerocoin::GenerateParameters(&Params().GetConsensus().Zerocoin_Params, obfuscationj, obfuscationk, blindingcommitment, zeroKey);
         walletInstance->SetZerocoinValues(obfuscationj, obfuscationk, blindingcommitment, zeroKey);
-        obfuscationj.Nullify();
-        obfuscationk.Nullify();
+        obfuscationj.first.Nullify();
+        obfuscationj.second.Nullify();
+        obfuscationk.first.Nullify();
+        obfuscationk.second.Nullify();
         LogPrintf("Generated zerocoin parameters.\n");
     }
 

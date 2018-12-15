@@ -44,7 +44,7 @@ PublicCoin::PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const 
         throw std::runtime_error("Commitment Value of Public Coin is invalid");
 }
 
-PublicCoin::PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CPubKey destPubKey, const CBigNum blindingCommitment): params(p), denomination(d) {
+PublicCoin::PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CPubKey destPubKey, const BlindingCommitment blindingCommitment): params(p), denomination(d) {
     // Verify that the parameters are valid
     if(this->params->initialized == false)
         throw std::runtime_error("Params are not initialized");
@@ -69,15 +69,15 @@ PublicCoin::PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const 
         if(!key.ECDHSecret(destPubKey, shared_secret))
             throw std::runtime_error("PrivateCoin::PrivateCoin(): Could not calculate ECDH Secret");
 
-        uint256 pre_s(Hash(shared_secret.begin(), shared_secret.end()));
+        uint256 pre_s(std::vector<unsigned char>(shared_secret.begin(), shared_secret.end()));
         uint256 pre_r(Hash(pre_s.begin(), pre_s.end()));
 
         CBigNum s = CBigNum(pre_s) % (this->params->coinCommitmentGroup.groupOrder);
         CBigNum r = CBigNum(pre_r) % (this->params->coinCommitmentGroup.groupOrder);
 
-        // Manually compute a Pedersen commitment to the serial number "s" under randomness "r" and obfuscate it with blinding commitment "b"
-        // C = g^s * h^r * b mod p
-        CBigNum commitmentValue = (this->params->coinCommitmentGroup.g.pow_mod(s, this->params->coinCommitmentGroup.modulus) * blindingCommitment).mul_mod(this->params->coinCommitmentGroup.h.pow_mod(r, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus);
+        // C = bc * (bc ^ z) mod p
+        CBigNum commitmentValue = blindingCommitment.first.pow_mod(s, this->params->coinCommitmentGroup.modulus).mul_mod(
+                                  blindingCommitment.second, this->params->coinCommitmentGroup.modulus);
 
         // First verify that the commitment is a prime number
         // in the appropriate range. If not, we repeat the process.
@@ -128,7 +128,7 @@ bool PublicCoin::isValid() const
 }
 
 PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomination, const CKey privKey, const CPubKey mintPubKey,
-                         const CBigNum blindingCommitment, const CBigNum commitment_value) : params(p), publicCoin(p), randomness(0), serialNumber(0), fValid(false)
+                         const BlindingCommitment blindingCommitment, const CBigNum commitment_value) : params(p), publicCoin(p), randomness(0), serialNumber(0), fValid(false)
 {
     // Verify that the parameters are valid
     if(!this->params->initialized)
@@ -145,15 +145,15 @@ PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomin
     if(!privKey.ECDHSecret(mintPubKey, shared_secret))
         throw std::runtime_error("PrivateCoin::PrivateCoin(): Could not calculate ECDH Secret");
 
-    uint256 pre_s(Hash(shared_secret.begin(), shared_secret.end()));
+    uint256 pre_s(std::vector<unsigned char>(shared_secret.begin(), shared_secret.end()));
     uint256 pre_r(Hash(pre_s.begin(), pre_s.end()));
 
     CBigNum s = CBigNum(pre_s) % (this->params->coinCommitmentGroup.groupOrder);
     CBigNum r = CBigNum(pre_r) % (this->params->coinCommitmentGroup.groupOrder);
 
-    // Manually compute a Pedersen commitment to the serial number "s" under randomness "r" after obfuscating them with the blinding commitment "blindingCommitment"
-    // C = g^(s+j) * h^(r+k) mod p
-    CBigNum commitmentValue = (this->params->coinCommitmentGroup.g.pow_mod(s, this->params->coinCommitmentGroup.modulus) * blindingCommitment).mul_mod(this->params->coinCommitmentGroup.h.pow_mod(r, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus);
+    // C = bc * (bc ^ z) mod p
+    CBigNum commitmentValue = blindingCommitment.first.pow_mod(s, this->params->coinCommitmentGroup.modulus).mul_mod(
+                              blindingCommitment.second, this->params->coinCommitmentGroup.modulus);
 
     if (commitmentValue.isPrime(ZEROCOIN_MINT_PRIME_PARAM) &&
             commitmentValue >= params->accumulatorParams.minCoinValue &&

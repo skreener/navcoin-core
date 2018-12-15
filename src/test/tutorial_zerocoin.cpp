@@ -85,10 +85,16 @@ ZerocoinTutorial()
         pubKey = privKey.GetPubKey();
 
         // Generate obfuscation parameters and a blinding commitment
+        CBigNum obfuscation_j1 = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
+        CBigNum obfuscation_j2 = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
+        CBigNum obfuscation_k1 = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
+        CBigNum obfuscation_k2 = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
+        CBigNum blindingCommitment1 = params->coinCommitmentGroup.g.pow_mod(obfuscation_j1, params->coinCommitmentGroup.modulus).mul_mod(params->coinCommitmentGroup.h.pow_mod(obfuscation_k1, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
+        CBigNum blindingCommitment2 = params->coinCommitmentGroup.g.pow_mod(obfuscation_j2, params->coinCommitmentGroup.modulus).mul_mod(params->coinCommitmentGroup.h.pow_mod(obfuscation_k2, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
 
-        CBigNum obfuscation_j = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
-        CBigNum obfuscation_k = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
-        CBigNum blindingCommitment = params->coinCommitmentGroup.g.pow_mod(obfuscation_j, params->coinCommitmentGroup.modulus).mul_mod(params->coinCommitmentGroup.h.pow_mod(obfuscation_k, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
+        libzerocoin::ObfuscationValue obfuscation_j = make_pair(obfuscation_j1, obfuscation_j2);
+        libzerocoin::ObfuscationValue obfuscation_k = make_pair(obfuscation_k1, obfuscation_k2);
+        libzerocoin::BlindingCommitment blindingCommitment = make_pair(blindingCommitment1, blindingCommitment2);
 
 //        std::cout << "Generated Identity:" << endl
 //                  << " PrivKey: " << HexStr(privKey.begin(), privKey.end()) << endl
@@ -124,7 +130,7 @@ ZerocoinTutorial()
         libzerocoin::PrivateCoin newCoin(params,libzerocoin::CoinDenomination::ZQ_ONE, privKey, pubCoin.getPubKey(), blindingCommitment, pubCoin.getValue());
 
 //        cout << "Successfully minted a zerocoin (Private Part):"
-//             << "\n   Serial Number: " << newCoin.getSerialNumber()
+//             << "\n   Serial Number: " << newCoin.getObfuscationValue()
 //             << "\n   Randomness: " << newCoin.getRandomness()
 //             << "\n   Commitment Value: " << newCoin.getPublicCoin().getValue()
 //             << "\n   PublicKey: " << HexStr(newCoin.getPublicCoin().getPubKey().begin(),

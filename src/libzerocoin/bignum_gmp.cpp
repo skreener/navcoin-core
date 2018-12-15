@@ -6,6 +6,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "bignum.h"
+#include <iostream>
 
 /** C++ wrapper for BIGNUM (Gmp bignum) */
 CBigNum::CBigNum()
@@ -215,6 +216,17 @@ CBigNum CBigNum::mul_mod(const CBigNum& b, const CBigNum& m) const
     CBigNum ret;
     mpz_mul (ret.bn, bn, b.bn);
     mpz_mod (ret.bn, ret.bn, m.bn);
+    return ret;
+}
+
+/**
+ * integer division: (this over d)
+ * @param d operand
+ */
+CBigNum CBigNum::div(const CBigNum& d) const
+{
+    CBigNum ret;
+    mpz_tdiv_q(ret.bn,bn,d.bn);
     return ret;
 }
 

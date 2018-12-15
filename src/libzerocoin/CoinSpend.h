@@ -41,7 +41,7 @@ public:
     CoinSpend(const ZerocoinParams* params) :
         accumulatorPoK(&params->accumulatorParams),
         serialNumberSoK(params),
-        serialNumberPoK(params),
+        serialNumberPoK(&params->coinCommitmentGroup),
         commitmentPoK(&params->serialNumberSoKCommitmentGroup, &params->accumulatorParams.accumulatorPoKCommitmentGroup) {}
 
     //! \param param - params
@@ -50,7 +50,7 @@ public:
     CoinSpend(const ZerocoinParams* params, Stream& strm) :
         accumulatorPoK(&params->accumulatorParams),
         serialNumberSoK(params),
-        serialNumberPoK(params),
+        serialNumberPoK(&params->coinCommitmentGroup),
         commitmentPoK(&params->serialNumberSoKCommitmentGroup, &params->accumulatorParams.accumulatorPoKCommitmentGroup)
     {
         Stream strmCopy = strm;
@@ -80,13 +80,13 @@ public:
    * @throw ZerocoinException if the process fails
    */
     CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, const Accumulator& a, const uint256& checksum,
-              const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType, const CBigNum obfuscationJ, const CBigNum obfuscationK);
+              const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType, const libzerocoin::ObfuscationValue obfuscationJ, const libzerocoin::ObfuscationValue obfuscationK);
 
     /** Returns the serial number of the coin spend by this proof.
    *
    * @return the coin's serial number
    */
-    const CBigNum& getCoinSerialNumber() const { return this->coinSerialNumber; }
+    const CBigNum& getCoinSerialNumber() const { return this->coinValuePublic; }
 
     /**Gets the denomination of the coin spent in this proof.
    *
@@ -125,11 +125,11 @@ public:
         READWRITE(accChecksum);
         READWRITE(accCommitmentToCoinValue);
         READWRITE(serialCommitmentToCoinValue);
-        READWRITE(coinSerialNumber);
+        READWRITE(coinValuePublic);
         READWRITE(accumulatorPoK);
         READWRITE(serialNumberSoK);
-        READWRITE(commitmentPoK);
         READWRITE(serialNumberPoK);
+        READWRITE(commitmentPoK);
         READWRITE(version);
         READWRITE(spendType);
     }
@@ -141,7 +141,7 @@ private:
     uint256 ptxHash;
     CBigNum accCommitmentToCoinValue;
     CBigNum serialCommitmentToCoinValue;
-    CBigNum coinSerialNumber;
+    CBigNum coinValuePublic;
     AccumulatorProofOfKnowledge accumulatorPoK;
     SerialNumberSignatureOfKnowledge serialNumberSoK;
     SerialNumberProofOfKnowledge serialNumberPoK;

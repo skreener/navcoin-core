@@ -82,7 +82,7 @@ isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
     case TX_ZEROCOIN:
     {
         CPubKey p(vSolutions[0]); CBigNum c(vSolutions[1]);
-        CKey zk; CBigNum bc;
+        CKey zk; libzerocoin::BlindingCommitment bc;
         uint256 scriptHash = Hash(scriptPubKey.begin(), scriptPubKey.end());
         if(std::find(vMyMints.begin(), vMyMints.end(), scriptHash) != vMyMints.end())
             return ISMINE_SPENDABLE_PRIVATE;

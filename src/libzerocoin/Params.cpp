@@ -23,6 +23,9 @@ ZerocoinParams::ZerocoinParams(CBigNum N, uint32_t securityLevel) {
     this->accumulatorParams.k_prime = ACCPROOF_KPRIME;
     this->accumulatorParams.k_dprime = ACCPROOF_KDPRIME;
 
+    this->maxNumberOutputs = 1;    // max number of proofs to aggregate using bulletproofs (2^M)
+    this->rangeProofBitSize = 6;   // number of bits in amount range (so amounts are 0..2^(N-1))
+
     // Generate the parameters
     CalculateParams(*this, N, ZEROCOIN_PROTOCOL_VERSION, securityLevel);
 

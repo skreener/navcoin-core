@@ -9,6 +9,7 @@
 
 #include "amount.h"
 #include "libzerocoin/bignum.h"
+#include "libzerocoin/Keys.h"
 #include "primitives/transaction.h"
 #include "wallet/db.h"
 #include "key.h"
@@ -148,8 +149,8 @@ public:
     bool WriteOrderPosNext(int64_t nOrderPosNext);
 
     bool WriteDefaultKey(const CPubKey& vchPubKey);
-    bool WriteZerocoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey);
-    bool WriteZerocoinValues(const CBigNum& obfuscationJ, const std::vector<unsigned char>& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey);
+    bool WriteZerocoinValues(const libzerocoin::ObfuscationValue& obfuscationJ, const libzerocoin::ObfuscationValue& obfuscationK, const libzerocoin::BlindingCommitment& blindingCommitment, const CKey& zerokey);
+    bool WriteZerocoinValues(const libzerocoin::ObfuscationValue& obfuscationJ, const std::pair<std::vector<unsigned char>,std::vector<unsigned char>>& obfuscationK, const libzerocoin::BlindingCommitment& blindingCommitment, const CKey& zerokey);
     bool WriteZerocoinValues(const CWallet* pwallet);
 
     bool ReadPool(int64_t nPool, CKeyPool& keypool);
