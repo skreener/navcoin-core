@@ -48,9 +48,15 @@ PrivateCoin    *ggCoins[TESTS_COINS_TO_ACCUMULATE];
 ZerocoinParams *gg_Params;
 CKey privKey_;
 CPubKey pubKey_;
-CBigNum obfuscation_jj;
-CBigNum obfuscation_kk;
-CBigNum blindingCommitment_;
+CBigNum obfuscation_jj1;
+CBigNum obfuscation_jj2;
+CBigNum obfuscation_kk1;
+CBigNum obfuscation_kk2;
+CBigNum blindingCommitment1_;
+CBigNum blindingCommitment2_;
+libzerocoin::ObfuscationValue obfuscation_jj;
+libzerocoin::ObfuscationValue obfuscation_kk;
+libzerocoin::BlindingCommitment blindingCommitment_;
 
 //////////
 // Utility routines
@@ -294,6 +300,7 @@ Testb_MintCoin()
         // Generate a list of coins
         timer.start();
         for (uint32_t i = 0; i < TESTS_COINS_TO_ACCUMULATE; i++) {
+
             PublicCoin pubCoin(gg_Params,libzerocoin::CoinDenomination::ZQ_ONE,pubKey_,blindingCommitment_);
             ggCoins[i] = new PrivateCoin(gg_Params,pubCoin.getDenomination(),privKey_,pubCoin.getPubKey(),blindingCommitment_,pubCoin.getValue());
         }
@@ -301,7 +308,6 @@ Testb_MintCoin()
     } catch (exception &e) {
         return false;
     }
-
     cout << "\tMINT ELAPSED TIME:\n\t\tTotal: " << timer.duration() << " ms\t" << timer.duration()*0.001 << " s\n\t\tPer Coin: " << timer.duration()/TESTS_COINS_TO_ACCUMULATE << " ms\t" << (timer.duration()/TESTS_COINS_TO_ACCUMULATE)*0.001 << " s" << endl;
 
     return true;
@@ -332,7 +338,6 @@ Testb_MintAndSpend()
             acc += ggCoins[i]->getPublicCoin();
         }
         timer.stop();
-
         cout << "\tACCUMULATOR ELAPSED TIME:\n\t\tTotal: " << timer.duration() << " ms\t" << timer.duration()*0.001 << " s\n\t\tPer Element: " << timer.duration()/TESTS_COINS_TO_ACCUMULATE << " ms\t" << (timer.duration()/TESTS_COINS_TO_ACCUMULATE)*0.001 << " s" << endl;
 
         timer.start();
@@ -365,7 +370,6 @@ Testb_MintAndSpend()
         timer.start();
         bool ret = newSpend.Verify(acc);
         timer.stop();
-
         cout << "\tSPEND VERIFY ELAPSED TIME: " << timer.duration() << " ms\t" << timer.duration()*0.001 << " s" << endl;
 
         return ret;
@@ -388,9 +392,16 @@ Testb_RunAllTests()
     pubKey_ = privKey_.GetPubKey();
 
     // Calculate obfuscation values
-    obfuscation_jj = CBigNum::randBignum(gg_Params->coinCommitmentGroup.groupOrder);
-    obfuscation_kk = CBigNum::randBignum(gg_Params->coinCommitmentGroup.groupOrder);
-    blindingCommitment_ = gg_Params->coinCommitmentGroup.g.pow_mod(obfuscation_jj, gg_Params->coinCommitmentGroup.modulus).mul_mod(gg_Params->coinCommitmentGroup.h.pow_mod(obfuscation_kk, gg_Params->coinCommitmentGroup.modulus), gg_Params->coinCommitmentGroup.modulus);
+    obfuscation_jj1 = CBigNum::randBignum(gg_Params->coinCommitmentGroup.groupOrder);
+    obfuscation_kk1 = CBigNum::randBignum(gg_Params->coinCommitmentGroup.groupOrder);
+    obfuscation_jj2 = CBigNum::randBignum(gg_Params->coinCommitmentGroup.groupOrder);
+    obfuscation_kk2 = CBigNum::randBignum(gg_Params->coinCommitmentGroup.groupOrder);
+    blindingCommitment1_ = gg_Params->coinCommitmentGroup.g.pow_mod(obfuscation_jj1, gg_Params->coinCommitmentGroup.modulus).mul_mod(gg_Params->coinCommitmentGroup.h.pow_mod(obfuscation_kk1, gg_Params->coinCommitmentGroup.modulus), gg_Params->coinCommitmentGroup.modulus);
+    blindingCommitment2_ = gg_Params->coinCommitmentGroup.g.pow_mod(obfuscation_jj2, gg_Params->coinCommitmentGroup.modulus).mul_mod(gg_Params->coinCommitmentGroup.h.pow_mod(obfuscation_kk2, gg_Params->coinCommitmentGroup.modulus), gg_Params->coinCommitmentGroup.modulus);
+
+    obfuscation_jj = make_pair(obfuscation_jj1, obfuscation_jj2);
+    obfuscation_kk = make_pair(obfuscation_kk1, obfuscation_kk2);
+    blindingCommitment_ = make_pair(blindingCommitment1_, blindingCommitment2_);
 
     ggNumTests = ggSuccessfulTests = 0;
     for (uint32_t i = 0; i < TESTS_COINS_TO_ACCUMULATE; i++) {

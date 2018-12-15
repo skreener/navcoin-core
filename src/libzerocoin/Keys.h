@@ -14,102 +14,114 @@
 #ifndef KEYS_H
 #define KEYS_H
 
-#include "Coin.h"
 #include "key.h"
 #include "Params.h"
 
 #include <vector>
 
 namespace libzerocoin {
+typedef std::pair<CBigNum,CBigNum> ObfuscationValue;
+typedef std::pair<CBigNum,CBigNum> BlindingCommitment;
 class CPrivateAddress
 {
 public:
     CPrivateAddress(const ZerocoinParams* p) : params(p) { }
-    CPrivateAddress(const ZerocoinParams* p, CBigNum blindingCommitment, CPubKey zeroKey) : params(p), bc(blindingCommitment.getvch()), zpk(zeroKey) {
+    CPrivateAddress(const ZerocoinParams* p, BlindingCommitment blindingCommitment, CPubKey zeroKey) : params(p), bc1(blindingCommitment.first.getvch()), bc2(blindingCommitment.second.getvch()), zpk(zeroKey) {
         unsigned int vectorSize = (params->coinCommitmentGroup.modulus.bitSize()/8)+1;
-        bc.resize(vectorSize);
+        bc1.resize(vectorSize);
+        bc2.resize(vectorSize);
     }
-    CPrivateAddress(const ZerocoinParams* p, CBigNum blindingCommitment, CKey zeroKey) : params(p), bc(blindingCommitment.getvch()), zpk(zeroKey.GetPubKey()) {
+    CPrivateAddress(const ZerocoinParams* p, BlindingCommitment blindingCommitment, CKey zeroKey) : params(p), bc1(blindingCommitment.first.getvch()), bc2(blindingCommitment.second.getvch()), zpk(zeroKey.GetPubKey()) {
         unsigned int vectorSize = (params->coinCommitmentGroup.modulus.bitSize()/8)+1;
-        bc.resize(vectorSize);
+        bc1.resize(vectorSize);
+        bc2.resize(vectorSize);
     }
 
-    bool GetBlindingCommitment(CBigNum& blindingCommitment) const;
+    bool GetBlindingCommitment(BlindingCommitment& blindingCommitment) const;
     bool GetPubKey(CPubKey& zerokey) const;
-    bool MintPublicCoin(CoinDenomination d, PublicCoin& pubcoin) const;
 
     const ZerocoinParams* GetParams() const { return params; }
 
     bool operator<(const CPrivateAddress& rhs) const {
-        CBigNum lhsBN; CBigNum rhsBN;
+        BlindingCommitment lhsBN; BlindingCommitment rhsBN;
         this->GetBlindingCommitment(lhsBN);
         rhs.GetBlindingCommitment(rhsBN);
-        return lhsBN < rhsBN;
+        return lhsBN.first < rhsBN.first;
     }
 
     bool operator==(const CPrivateAddress& rhs) const {
-        return this->bc == rhs.bc && this->zpk == rhs.zpk;
+        return this->bc1 == rhs.bc1 && this->bc2 == rhs.bc2 && this->zpk == rhs.zpk;
     }
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
-        READWRITE(bc);
+        READWRITE(bc1);
+        READWRITE(bc2);
         READWRITE(zpk);
     }
 private:
     const ZerocoinParams* params;
-    std::vector<unsigned char> bc;
+    std::vector<unsigned char> bc1;
+    std::vector<unsigned char> bc2;
     CPubKey zpk;
 };
 class CPrivateViewKey
 {
 public:
     CPrivateViewKey(const ZerocoinParams* p) : params(p) { }
-    CPrivateViewKey(const ZerocoinParams* p, CBigNum blindingCommitment, CPrivKey zeroPrivKey) : params(p), bc(blindingCommitment.getvch()), zpk(zeroPrivKey) {
+    CPrivateViewKey(const ZerocoinParams* p, BlindingCommitment blindingCommitment, CPrivKey zeroPrivKey) : params(p), bc1(blindingCommitment.first.getvch()), bc2(blindingCommitment.second.getvch()), zpk(zeroPrivKey) {
         unsigned int vectorSize = (params->coinCommitmentGroup.modulus.bitSize()/8)+1;
-        bc.resize(vectorSize);
+        bc1.resize(vectorSize);
+        bc2.resize(vectorSize);
     }
 
-    bool GetBlindingCommitment(CBigNum& blindingCommitment) const;
+    bool GetBlindingCommitment(BlindingCommitment& blindingCommitment) const;
     bool GetPrivKey(CPrivKey& zerokey) const;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
-        READWRITE(bc);
+        READWRITE(bc1);
+        READWRITE(bc2);
         READWRITE(zpk);
     }
 private:
     const ZerocoinParams* params;
-    std::vector<unsigned char> bc;
+    std::vector<unsigned char> bc1;
+    std::vector<unsigned char> bc2;
     CPrivKey zpk;
 };
 class CPrivateSpendKey
 {
 public:
     CPrivateSpendKey(const ZerocoinParams* p) : params(p) { }
-    CPrivateSpendKey(const ZerocoinParams* p, CBigNum obfuscationJ, CBigNum obfuscationK, CPrivKey zeroPrivKey) : params(p), oj(obfuscationJ.getvch()), ok(obfuscationK.getvch()), zpk(zeroPrivKey) {
+    CPrivateSpendKey(const ZerocoinParams* p, libzerocoin::ObfuscationValue obfuscationJ, libzerocoin::ObfuscationValue obfuscationK, CPrivKey zeroPrivKey) : params(p), oj1(obfuscationJ.first.getvch()), oj2(obfuscationJ.second.getvch()), ok1(obfuscationK.first.getvch()), ok2(obfuscationK.second.getvch()), zpk(zeroPrivKey) {
         unsigned int vectorSize = (params->coinCommitmentGroup.groupOrder.bitSize()/8)+1;
-        oj.resize(vectorSize);
-        ok.resize(vectorSize);
+        oj1.resize(vectorSize);
+        oj2.resize(vectorSize);
+        ok1.resize(vectorSize);
+        ok2.resize(vectorSize);
     }
 
-    bool GetObfuscationJ(CBigNum& obfuscationJ) const;
-    bool GetObfuscationK(CBigNum& obfuscationK) const;
+    bool GetObfuscationJ(libzerocoin::ObfuscationValue& obfuscationJ) const;
+    bool GetObfuscationK(libzerocoin::ObfuscationValue& obfuscationK) const;
     bool GetPrivKey(CPrivKey& zerokey) const;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
-        READWRITE(oj);
-        READWRITE(ok);
+        READWRITE(oj1);
+        READWRITE(oj2);
+        READWRITE(ok1);
+        READWRITE(ok2);
         READWRITE(zpk);
     }
 private:
     const ZerocoinParams* params;
-    std::vector<unsigned char> oj;
-    std::vector<unsigned char> ok;
+    std::vector<unsigned char> oj1;
+    std::vector<unsigned char> oj2;
+    std::vector<unsigned char> ok1;
+    std::vector<unsigned char> ok2;
     CPrivKey zpk;
 };
-void GenerateParameters(const ZerocoinParams* params, CBigNum& oj, CBigNum& ok, CBigNum& bc, CKey& zk);
+void GenerateParameters(const ZerocoinParams* params, libzerocoin::ObfuscationValue& oj, libzerocoin::ObfuscationValue& ok, libzerocoin::BlindingCommitment& bc, CKey& zk);
 }
-
 #endif // KEYS_H

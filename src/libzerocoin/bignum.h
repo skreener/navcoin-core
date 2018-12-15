@@ -139,6 +139,12 @@ public:
     CBigNum mul_mod(const CBigNum& b, const CBigNum& m) const;
 
     /**
+     * integer division: (this over d)
+     * @param d operand
+     */
+    CBigNum div(const CBigNum& d) const;
+
+    /**
      * modular exponentiation: this^e mod n
      * @param e exponent
      * @param m modulus

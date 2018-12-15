@@ -25,8 +25,8 @@ namespace libzerocoin {
 class SerialNumberProofOfKnowledge
 {
 public:
-    SerialNumberProofOfKnowledge(const ZerocoinParams* p);
-    SerialNumberProofOfKnowledge(const ZerocoinParams* p, const CBigNum serialNumber, const uint256 signatureHash);
+    SerialNumberProofOfKnowledge(const IntegerGroupParams* p);
+    SerialNumberProofOfKnowledge(const IntegerGroupParams* p, const CBigNum serialNumber, const uint256 signatureHash);
 
     bool Verify(const CBigNum& coinSerialNumberPubKey, const uint256 signatureHash) const;
     ADD_SERIALIZE_METHODS;
@@ -35,7 +35,7 @@ public:
         READWRITE(r);
     }
 private:
-    const ZerocoinParams* params;
+    const IntegerGroupParams* params;
     CBigNum t;
     CBigNum r;
 };

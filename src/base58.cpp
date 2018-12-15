@@ -192,7 +192,7 @@ bool CBase58Data::SetString(const char* psz, unsigned int nVersionBytes)
 
 bool CBase58Data::SetString(const std::string& str)
 {
-    return SetString(str.c_str(), str.length() == 232 ? 2 : 1);
+    return SetString(str.c_str(), str.length() == 410 ? 2 : 1);
 }
 
 std::string CBase58Data::ToString() const
@@ -291,7 +291,7 @@ bool CNavCoinAddress::GetStakingAddress(CNavCoinAddress &address) const
     return true;
 }
 
-bool CNavCoinAddress::GetBlindingCommitment(CBigNum &bc) const {
+bool CNavCoinAddress::GetBlindingCommitment(libzerocoin::BlindingCommitment &bc) const {
     if(!IsPrivateAddress(Params()))
         return false;
     libzerocoin::CPrivateAddress id(&Params().GetConsensus().Zerocoin_Params);
@@ -317,10 +317,10 @@ bool CNavCoinAddress::IsValid(const CChainParams& params) const
         libzerocoin::CPrivateAddress id(&Params().GetConsensus().Zerocoin_Params);
         CDataStream ss(std::vector<unsigned char>(vchData.begin(), vchData.end()), SER_NETWORK, 0);
         ss >> id;
-        CPubKey zpk; CBigNum bc;
+        CPubKey zpk; libzerocoin::BlindingCommitment bc;
         if(!id.GetPubKey(zpk)) return false;
         if(!id.GetBlindingCommitment(bc)) return false;
-        return zpk.IsValid() && bc != CBigNum();
+        return zpk.IsValid() && bc.first != CBigNum() && bc.second != CBigNum();
     }
     if (vchVersion == params.Base58Prefix(CChainParams::COLDSTAKING_ADDRESS))
         return vchData.size() == 40;

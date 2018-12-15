@@ -16,8 +16,10 @@
 #define COIN_H_
 
 #include "amount.h"
+#include "bulletproof_rangeproof.h"
 #include "bignum.h"
 #include "Denominations.h"
+#include "Keys.h"
 #include "Params.h"
 #include "key.h"
 #include "util.h"
@@ -62,7 +64,7 @@ public:
    * @throws ZerocoinException if the process takes too long
    **/
 
-    PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CPubKey destPubKey, const CBigNum blindingCommitment);
+    PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CPubKey destPubKey, const BlindingCommitment blindingCommitment);
     PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CBigNum value, const CPubKey pubKey);
 
     const CBigNum& getValue() const { return this->value; }
@@ -134,14 +136,14 @@ public:
    * @param commitment_value the commitment value specified on the mint
    **/
 
-    PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomination, const CKey privKey, const CPubKey mintPubKey, const CBigNum blindingCommitment, const CBigNum commitment_value);
+    PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomination, const CKey privKey, const CPubKey mintPubKey, const BlindingCommitment blindingCommitment, const CBigNum commitment_value);
 
     const PublicCoin& getPublicCoin() const { return this->publicCoin; }
-    const CBigNum& getSerialNumber() const { return this->serialNumber; }
-    const CBigNum getPublicSerialNumber(const CBigNum& bnObfuscationJ) const {
+    const CBigNum& getObfuscationValue() const { return this->serialNumber; }
+    const CBigNum getPublicSerialNumber(const libzerocoin::ObfuscationValue& bnObfuscationJ) const {
         return params->coinCommitmentGroup.g.pow_mod(
-                    (this->serialNumber+bnObfuscationJ) % params->coinCommitmentGroup.groupOrder,
-                    params->serialNumberSoKCommitmentGroup.groupOrder);
+                    ((bnObfuscationJ.first*this->serialNumber)+bnObfuscationJ.second) % params->coinCommitmentGroup.groupOrder,
+                    params->coinCommitmentGroup.modulus);
     }
     const CBigNum& getRandomness() const { return this->randomness; }
     const uint8_t& getVersion() const { return this->version; }

@@ -137,7 +137,7 @@ public:
     bool GetStakingAddress(CNavCoinAddress &address) const;
     bool GetSpendingAddress(CNavCoinAddress &address) const;
 
-    bool GetBlindingCommitment(CBigNum &bc) const;
+    bool GetBlindingCommitment(libzerocoin::BlindingCommitment &bc) const;
     bool GetZeroPubKey(CPubKey &zerokey) const;
 
 };

@@ -149,7 +149,7 @@ bool CWalletDB::WriteOrderPosNext(int64_t nOrderPosNext)
     return Write(std::string("orderposnext"), nOrderPosNext);
 }
 
-bool CWalletDB::WriteZerocoinValues(const CBigNum& obfuscationJ, const CBigNum& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey)
+bool CWalletDB::WriteZerocoinValues(const libzerocoin::ObfuscationValue& obfuscationJ, const libzerocoin::ObfuscationValue& obfuscationK, const libzerocoin::BlindingCommitment& blindingCommitment, const CKey& zerokey)
 {
     nWalletDBUpdated++;
     return Write(std::string("obfuscationj"), obfuscationJ) &&
@@ -158,7 +158,7 @@ bool CWalletDB::WriteZerocoinValues(const CBigNum& obfuscationJ, const CBigNum& 
            Write(std::string("zerokey"), std::vector<unsigned char>(zerokey.begin(), zerokey.end()));
 }
 
-bool CWalletDB::WriteZerocoinValues(const CBigNum& obfuscationJ, const std::vector<unsigned char>& obfuscationK, const CBigNum& blindingCommitment, const CKey& zerokey)
+bool CWalletDB::WriteZerocoinValues(const libzerocoin::ObfuscationValue& obfuscationJ, const std::pair<std::vector<unsigned char>,std::vector<unsigned char>>& obfuscationK, const libzerocoin::BlindingCommitment& blindingCommitment, const CKey& zerokey)
 {
     nWalletDBUpdated++;
     return Write(std::string("obfuscationj"), obfuscationJ) &&
@@ -170,8 +170,8 @@ bool CWalletDB::WriteZerocoinValues(const CBigNum& obfuscationJ, const std::vect
 
 bool CWalletDB::WriteZerocoinValues(const CWallet* pwallet)
 {
-    std::vector<unsigned char> vchCOj; std::vector<unsigned char> vchCOk;
-    CBigNum oj; CBigNum ok; CBigNum bc; CKey zk;
+    std::pair<std::vector<unsigned char>,std::vector<unsigned char>> vchCOk;
+    libzerocoin::ObfuscationValue oj; libzerocoin::ObfuscationValue ok; libzerocoin::BlindingCommitment bc; CKey zk;
 
     if (!pwallet->GetObfuscationJ(oj))
         return false;
@@ -186,7 +186,7 @@ bool CWalletDB::WriteZerocoinValues(const CWallet* pwallet)
     if (!pwallet->GetBlindingCommitment(bc))
         return false;
 
-    if (vchCOk.empty()) {
+    if (vchCOk.first.empty() || vchCOk.second.empty()) {
         if (!WriteZerocoinValues(oj, ok, bc, zk))
             return false;
     } else if (!WriteZerocoinValues(oj, vchCOk, bc, zk))
@@ -608,25 +608,25 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
         }
         else if (strType == "obfuscationj")
         {
-            CBigNum oj;
+            libzerocoin::ObfuscationValue oj;
             ssValue >> oj;
             pwallet->SetObfuscationJ(oj);
         }
         else if (strType == "obfuscationk")
         {
-            CBigNum ok;
+            libzerocoin::ObfuscationValue ok;
             ssValue >> ok;
             pwallet->SetObfuscationK(ok);
         }
         else if (strType == "cobfuscationk")
         {
-            std::vector<unsigned char>  ok;
+            std::pair<std::vector<unsigned char>,std::vector<unsigned char>>  ok;
             ssValue >> ok;
             pwallet->SetCryptedObfuscationK(ok);
         }
         else if (strType == "blindingcommitment")
         {
-            CBigNum bc;
+            libzerocoin::BlindingCommitment bc;
             ssValue >> bc;
             pwallet->SetBlindingCommitment(bc);
         }

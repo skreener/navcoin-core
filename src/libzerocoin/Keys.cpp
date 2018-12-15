@@ -14,22 +14,29 @@
 #include "Keys.h"
 
 namespace libzerocoin {
-void GenerateParameters(const ZerocoinParams* params, CBigNum& oj, CBigNum& ok, CBigNum& bc, CKey& zk) {
-    oj = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
-    ok = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
-    bc = params->coinCommitmentGroup.g.pow_mod(oj, params->coinCommitmentGroup.modulus).mul_mod(
-         params->coinCommitmentGroup.h.pow_mod(ok, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
+void GenerateParameters(const ZerocoinParams* params, libzerocoin::ObfuscationValue& oj, libzerocoin::ObfuscationValue& ok, libzerocoin::BlindingCommitment& bc, CKey& zk) {
+    CBigNum oj1 = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
+    CBigNum ok1 = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
+    CBigNum oj2 = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
+    CBigNum ok2 = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
+    CBigNum bc1 = params->coinCommitmentGroup.g.pow_mod(oj1, params->coinCommitmentGroup.modulus).mul_mod(
+          params->coinCommitmentGroup.h.pow_mod(ok1, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
+    CBigNum bc2 = params->coinCommitmentGroup.g.pow_mod(oj1, params->coinCommitmentGroup.modulus).mul_mod(
+          params->coinCommitmentGroup.h.pow_mod(ok1, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
+    oj = std::make_pair(oj1,oj2);
+    ok = std::make_pair(ok1,ok2);
+    bc = std::make_pair(bc1,bc2);
     zk.MakeNewKey(true);
 }
 
-bool CPrivateSpendKey::GetObfuscationJ(CBigNum& obfuscationJ) const {
+bool CPrivateSpendKey::GetObfuscationJ(libzerocoin::ObfuscationValue& obfuscationJ) const {
     if (this->params->initialized == false) return false;
-    obfuscationJ = CBigNum(oj);
+    obfuscationJ = std::make_pair(CBigNum(oj1),CBigNum(oj2));
     return true;
 }
-bool CPrivateSpendKey::GetObfuscationK(CBigNum& obfuscationK) const {
+bool CPrivateSpendKey::GetObfuscationK(libzerocoin::ObfuscationValue& obfuscationK) const {
     if (this->params->initialized == false) return false;
-    obfuscationK = CBigNum(ok);
+    obfuscationK = std::make_pair(CBigNum(ok1),CBigNum(ok2));
     return true;
 }
 bool CPrivateSpendKey::GetPrivKey(CPrivKey& zerokey) const {
@@ -38,9 +45,9 @@ bool CPrivateSpendKey::GetPrivKey(CPrivKey& zerokey) const {
     return true;
 }
 
-bool CPrivateViewKey::GetBlindingCommitment(CBigNum& blindingCommitment) const {
+bool CPrivateViewKey::GetBlindingCommitment(libzerocoin::BlindingCommitment& blindingCommitment) const {
     if (this->params->initialized == false) return false;
-    blindingCommitment = CBigNum(bc);
+    blindingCommitment = std::make_pair(CBigNum(bc1),CBigNum(bc2));
     return true;
 }
 bool CPrivateViewKey::GetPrivKey(CPrivKey& zerokey) const {
@@ -49,19 +56,14 @@ bool CPrivateViewKey::GetPrivKey(CPrivKey& zerokey) const {
     return true;
 }
 
-bool CPrivateAddress::GetBlindingCommitment(CBigNum& blindingCommitment) const {
+bool CPrivateAddress::GetBlindingCommitment(libzerocoin::ObfuscationValue& blindingCommitment) const {
     if (this->params->initialized == false) return false;
-    blindingCommitment = CBigNum(bc);
+    blindingCommitment = std::make_pair(CBigNum(bc1),CBigNum(bc2));
     return true;
 }
 bool CPrivateAddress::GetPubKey(CPubKey& zerokey) const {
     if (this->params->initialized == false) return false;
     zerokey = zpk;
-    return true;
-}
-bool CPrivateAddress::MintPublicCoin(CoinDenomination d, PublicCoin& pubcoin) const {
-    if (this->params->initialized == false) return false;
-    pubcoin = PublicCoin(this->params, d, zpk, CBigNum(bc));
     return true;
 }
 }

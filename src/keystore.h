@@ -7,6 +7,7 @@
 #define NAVCOIN_KEYSTORE_H
 
 #include "key.h"
+#include "libzerocoin/Keys.h"
 #include "pubkey.h"
 #include "script/script.h"
 #include "script/standard.h"
@@ -46,13 +47,13 @@ public:
     virtual bool HaveWatchOnly() const =0;
 
     //! Zerocoin Address Parameters
-    virtual bool GetObfuscationJ(CBigNum& oj) const =0;
-    virtual bool GetObfuscationK(CBigNum& ok) const =0;
-    virtual bool GetBlindingCommitment(CBigNum& bc) const =0;
+    virtual bool GetObfuscationJ(libzerocoin::ObfuscationValue& oj) const =0;
+    virtual bool GetObfuscationK(libzerocoin::ObfuscationValue& ok) const =0;
+    virtual bool GetBlindingCommitment(libzerocoin::BlindingCommitment& bc) const =0;
     virtual bool GetZeroKey(CKey& zk) const =0;
-    virtual bool SetObfuscationJ(const CBigNum& oj) =0;
-    virtual bool SetObfuscationK(const CBigNum& ok) =0;
-    virtual bool SetBlindingCommitment(const CBigNum& bc) =0;
+    virtual bool SetObfuscationJ(const libzerocoin::ObfuscationValue& oj) =0;
+    virtual bool SetObfuscationK(const libzerocoin::ObfuscationValue& ok) =0;
+    virtual bool SetBlindingCommitment(const libzerocoin::BlindingCommitment& bc) =0;
     virtual bool SetZeroKey(const CKey& zk) =0;
 
 };
@@ -62,18 +63,18 @@ typedef std::map<CKeyID, CPubKey> WatchKeyMap;
 typedef std::map<CScriptID, CScript > ScriptMap;
 typedef std::set<CScript> WatchOnlySet;
 struct ZerocoinAddressParameters {
-    CBigNum obfuscationJ;
-    CBigNum obfuscationK;
-    CBigNum blindingCommitment;
+    libzerocoin::ObfuscationValue obfuscationJ;
+    libzerocoin::ObfuscationValue obfuscationK;
+    libzerocoin::BlindingCommitment blindingCommitment;
     CKey zerokey;
     void SetToZero() {
-        obfuscationK = CBigNum();
+        obfuscationK = make_pair(CBigNum(),CBigNum());
     }
 };
 struct CryptedZerocoinAddressParameters {
-    std::vector<unsigned char> obfuscationJ;
-    std::vector<unsigned char> obfuscationK;
-    CBigNum blindingCommitment;
+    std::pair<std::vector<unsigned char>, std::vector<unsigned char>> obfuscationJ;
+    std::pair<std::vector<unsigned char>, std::vector<unsigned char>> obfuscationK;
+    libzerocoin::BlindingCommitment blindingCommitment;
     CKey zerokey;
 };
 
@@ -134,21 +135,21 @@ public:
     virtual bool HaveWatchOnly(const CScript &dest) const;
     virtual bool HaveWatchOnly() const;
 
-    bool GetObfuscationJ(CBigNum& oj) const {
-        if(zcParameters.obfuscationJ == CBigNum())
+    bool GetObfuscationJ(libzerocoin::ObfuscationValue& oj) const {
+        if(zcParameters.obfuscationJ.first == CBigNum() || zcParameters.obfuscationJ.second == CBigNum())
             return false;
         oj = zcParameters.obfuscationJ;
         return true;
     }
-    bool GetObfuscationK(CBigNum& ok) const {
-        if(zcParameters.obfuscationK == CBigNum())
+    bool GetObfuscationK(libzerocoin::ObfuscationValue& ok) const {
+        if(zcParameters.obfuscationK.first == CBigNum() || zcParameters.obfuscationK.second == CBigNum())
             return false;
         ok = zcParameters.obfuscationK;
         return true;
 
     }
-    bool GetBlindingCommitment(CBigNum& bc) const {
-        if(zcParameters.blindingCommitment == CBigNum())
+    bool GetBlindingCommitment(libzerocoin::BlindingCommitment& bc) const {
+        if(zcParameters.blindingCommitment.first == CBigNum() || zcParameters.blindingCommitment.second == CBigNum())
             return false;
         bc = zcParameters.blindingCommitment;
         return true;
@@ -162,20 +163,20 @@ public:
         return true;
 
     }
-    bool SetObfuscationJ(const CBigNum& oj) {
-        if(oj == CBigNum())
+    bool SetObfuscationJ(const libzerocoin::ObfuscationValue& oj) {
+        if(oj.first == CBigNum() || oj.second == CBigNum())
             return false;
         zcParameters.obfuscationJ = oj;
         return true;
     }
-    bool SetObfuscationK(const CBigNum& ok) {
-        if(ok == CBigNum())
+    bool SetObfuscationK(const libzerocoin::ObfuscationValue& ok) {
+        if(ok.first == CBigNum() || ok.second == CBigNum())
             return false;
         zcParameters.obfuscationK = ok;
         return true;
     }
-    bool SetBlindingCommitment(const CBigNum& bc) {
-        if(bc == CBigNum())
+    bool SetBlindingCommitment(const libzerocoin::BlindingCommitment& bc) {
+        if(bc.first == CBigNum() || bc.second == CBigNum())
             return false;
         zcParameters.blindingCommitment = bc;
         return true;

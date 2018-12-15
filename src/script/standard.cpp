@@ -383,7 +383,7 @@ public:
     }
 
     bool operator()(const libzerocoin::CPrivateAddress &dest) const {
-        CPubKey zpk; CBigNum bc;
+        CPubKey zpk; libzerocoin::BlindingCommitment bc;
         if(!dest.GetPubKey(zpk))
             return false;
         if(!dest.GetBlindingCommitment(bc))

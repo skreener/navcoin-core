@@ -349,6 +349,16 @@ CBigNum CBigNum::mul_mod(const CBigNum& b, const CBigNum& m) const
 }
 
 /**
+ * integer division: (this over d)
+ * @param d operand
+ *
+ * NOT SUPPORTED BY OPENSSL!
+ */
+CBigNum CBigNum::div(const CBigNum& d) const {
+    assert(false);
+}
+
+/**
  * modular exponentiation: this^e mod n
  * @param e exponent
  * @param m modulus
