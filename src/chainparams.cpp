@@ -106,7 +106,8 @@ public:
         consensus.nLastPOWBlock = 20000;
         consensus.nBlocksPerVotingCycle = 2880 * 7; // 7 Days
         consensus.nMinimumQuorum = 0.5;
-        consensus.nQuorumVotes = consensus.nBlocksPerVotingCycle * consensus.nMinimumQuorum;
+        consensus.nMinimumQuorumFirstHalf = 0.5;
+        consensus.nMinimumQuorumSecondHalf = 0.4;
         consensus.nVotesAcceptProposal = 0.7;
         consensus.nVotesRejectProposal = 0.7;
         consensus.nVotesAcceptPaymentRequest = 0.7;
@@ -120,9 +121,10 @@ public:
         consensus.nCommunityFundAmountV2 = 0.5 * COIN;
         consensus.nCyclesProposalVoting = 6;
         consensus.nCyclesPaymentRequestVoting = 8;
-        consensus.nPaymentRequestMaxVersion = 2;
-        consensus.nProposalMaxVersion = 2;
+        consensus.nPaymentRequestMaxVersion = 3;
+        consensus.nProposalMaxVersion = 3;
         consensus.nMaxFutureDrift = 60;
+        consensus.nStaticReward = 2 * COIN;
 
         /** Zerocoin */
         consensus.zerocoinModulus = "25195908475657893494027183240048398571429282126204032027777137836043662020707595556264018525880784"
@@ -192,9 +194,19 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_COMMUNITYFUND_AMOUNT_V2].nTimeout = 1564617600; // Aug 1st, 2019
 
         // Deployment of Zerocoin
-        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].bit = 17;
+        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].bit = 18;
         consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].nStartTime = 1538352000; // May 1st, 2018
         consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].nTimeout = 1601510400; // May 1st, 2019
+
+        // Deployment of Static Reward
+        consensus.vDeployments[Consensus::DEPLOYMENT_STATIC_REWARD].bit = 15;
+        consensus.vDeployments[Consensus::DEPLOYMENT_STATIC_REWARD].nStartTime = 1533081600; // August 1st, 2018
+        consensus.vDeployments[Consensus::DEPLOYMENT_STATIC_REWARD].nTimeout = 1564617600; // August 1st, 2019
+
+        // Deployment of Quorum reduction for the Community Fund
+        consensus.vDeployments[Consensus::DEPLOYMENT_QUORUM_CFUND].bit = 17;
+        consensus.vDeployments[Consensus::DEPLOYMENT_QUORUM_CFUND].nStartTime = 1543622400; // Dec 1st, 2018
+        consensus.vDeployments[Consensus::DEPLOYMENT_QUORUM_CFUND].nTimeout = 1575158400; // Dec 1st, 2019
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.
@@ -263,7 +275,7 @@ public:
             (1750000,uint256S("0x713cbac2df077bacb25dedf4acd60745f102cbe53ede019b738a6864fc0b12c6"))
             (2000000,uint256S("0x41b723e003cab30d326a0fae995521554ab59e550e1e0013187b3267d09dd42c"))
             (2250000,uint256S("0x1f7d459f6dcb3752868395819ac676adccfb0d0ec904a60b9fcb15879bcc5228"))
-            (2400000,uint256S("0x0cdb7f4f763be43ddc209ffeac440ba34c850f8210d52eb010fb0e6296dbe3ea")),
+            (2500000,uint256S("0x38000f4f433d47f171c7cccc001a2e7c9292620b37170d347b5a21ef19243dda")),
             1535607904, // * UNIX timestamp of last checkpoint block
             5067164,    // * total number of transactions between genesis and last checkpoint
                         //   (the tx=... number in the SetBestChain debug.log lines)
@@ -306,7 +318,8 @@ public:
         consensus.nLastPOWBlock = 1000000;
         consensus.nBlocksPerVotingCycle = 180; // 1.5 hours
         consensus.nMinimumQuorum = 0.5;
-        consensus.nQuorumVotes = consensus.nBlocksPerVotingCycle * consensus.nMinimumQuorum;
+        consensus.nMinimumQuorumFirstHalf = 0.5;
+        consensus.nMinimumQuorumSecondHalf = 0.4;
         consensus.nVotesAcceptProposal = 0.7;
         consensus.nVotesRejectProposal = 0.7;
         consensus.nVotesAcceptPaymentRequest = 0.7;
@@ -320,8 +333,8 @@ public:
         consensus.nCommunityFundAmountV2 = 0.5 * COIN;
         consensus.nCyclesProposalVoting = 4;
         consensus.nCyclesPaymentRequestVoting = 4;
-        consensus.nPaymentRequestMaxVersion = 2;
-        consensus.nProposalMaxVersion = 2;
+        consensus.nPaymentRequestMaxVersion = 3;
+        consensus.nProposalMaxVersion = 3;
         consensus.nMaxFutureDrift = 60;
 
         /** Zerocoin */
@@ -337,6 +350,8 @@ public:
         CBigNum bnModulus;
         bnModulus.SetDec(consensus.zerocoinModulus);
         consensus.Zerocoin_Params = libzerocoin::ZerocoinParams(bnModulus);
+
+        consensus.nStaticReward = 2 * COIN;
 
         // Deployment of BIP68, BIP112, and BIP113.
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].bit = 0;
@@ -379,9 +394,19 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_COMMUNITYFUND_AMOUNT_V2].nTimeout = 1564617600; // Aug 1st, 2019
 
         // Deployment of Zerocoin
-        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].bit = 17;
+        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].bit = 18;
         consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].nStartTime = 1538352000; // May 1st, 2018
         consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].nTimeout = 1601510400; // May 1st, 2019
+
+        // Deployment of Static Reward
+        consensus.vDeployments[Consensus::DEPLOYMENT_STATIC_REWARD].bit = 15;
+        consensus.vDeployments[Consensus::DEPLOYMENT_STATIC_REWARD].nStartTime = 1533081600; // August 1st, 2018
+        consensus.vDeployments[Consensus::DEPLOYMENT_STATIC_REWARD].nTimeout = 1564617600; // August 1st, 2019
+
+        // Deployment of Quorum reduction for the Community Fund
+        consensus.vDeployments[Consensus::DEPLOYMENT_QUORUM_CFUND].bit = 17;
+        consensus.vDeployments[Consensus::DEPLOYMENT_QUORUM_CFUND].nStartTime = 1543622400; // Dec 1st, 2018
+        consensus.vDeployments[Consensus::DEPLOYMENT_QUORUM_CFUND].nTimeout = 1575158400; // Dec 1st, 2019
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.
@@ -396,10 +421,10 @@ public:
         nPruneAfterHeight = 1000;
         bnProofOfWorkLimit = ~uint256() >> 16;
     
-        uint32_t nTimestamp = 1535727262;
-        uint256 hashGenesisBlock = uint256S("0x00006f7464b3c2eb79b99878d6d92d815be7662d1eba485babb6328b3d3b327f");
-        uint256 hashMerkleRoot = uint256S("0x58a4826e64f486bc438f1553cf1dafffc338aa22f8fc2487cb8a378eef37056b");
-        uint32_t nNonce = 2043455443;
+        uint32_t nTimestamp = 1541978905;
+        uint256 hashGenesisBlock = uint256S("0x0000c493d0f928a9f0a0eb0e0d88d871f4f5ab8bacc308f77bb0e8c7adee1307");
+        uint256 hashMerkleRoot = uint256S("0xf3f3286d731fc322d34f6a7c4df3eecfc1abaa6032350acf6cd363eb34edf574");
+        uint32_t nNonce = 2043537527;
 	    
         genesis = CreateGenesisBlockTestnet(nTimestamp, nNonce, 0x1d00ffff, 1, 0);
         consensus.hashGenesisBlock = genesis.GetHash();
@@ -486,7 +511,8 @@ public:
         consensus.nLastPOWBlock = 100000;
         consensus.nBlocksPerVotingCycle = 180; // 1.5 hours
         consensus.nMinimumQuorum = 0.5;
-        consensus.nQuorumVotes = consensus.nBlocksPerVotingCycle * consensus.nMinimumQuorum;
+        consensus.nMinimumQuorumFirstHalf = 0.5;
+        consensus.nMinimumQuorumSecondHalf = 0.4;
         consensus.nVotesAcceptProposal = 0.7;
         consensus.nVotesRejectProposal = 0.7;
         consensus.nVotesAcceptPaymentRequest = 0.7;
@@ -500,9 +526,10 @@ public:
         consensus.nCommunityFundAmountV2 = 0.5 * COIN;
         consensus.nCyclesProposalVoting = 4;
         consensus.nCyclesPaymentRequestVoting = 4;
-        consensus.nPaymentRequestMaxVersion = 2;
-        consensus.nProposalMaxVersion = 2;
+        consensus.nPaymentRequestMaxVersion = 3;
+        consensus.nProposalMaxVersion = 3;
         consensus.nMaxFutureDrift = 60000;
+        consensus.nStaticReward = 2 * COIN;
 
         /** Zerocoin */
         consensus.zerocoinModulus = "25195908475657893494027183240048398571429282126204032027777137836043662020707595556264018525880784"
@@ -559,9 +586,19 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_COMMUNITYFUND_AMOUNT_V2].nTimeout = 1564617600; // Aug 1st, 2019
 
         // Deployment of Zerocoin
-        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].bit = 17;
+        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].bit = 18;
         consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].nStartTime = 1538352000; // May 1st, 2018
         consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].nTimeout = 1601510400; // May 1st, 2019
+
+        // Deployment of Static Reward
+        consensus.vDeployments[Consensus::DEPLOYMENT_STATIC_REWARD].bit = 15;
+        consensus.vDeployments[Consensus::DEPLOYMENT_STATIC_REWARD].nStartTime = 1533081600; // August 1st, 2018
+        consensus.vDeployments[Consensus::DEPLOYMENT_STATIC_REWARD].nTimeout = 1564617600; // August 1st, 2019
+
+        // Deployment of Quorum reduction for the Community Fund
+        consensus.vDeployments[Consensus::DEPLOYMENT_QUORUM_CFUND].bit = 17;
+        consensus.vDeployments[Consensus::DEPLOYMENT_QUORUM_CFUND].nStartTime = 1543622400; // Dec 1st, 2018
+        consensus.vDeployments[Consensus::DEPLOYMENT_QUORUM_CFUND].nTimeout = 1575158400; // Dec 1st, 2019
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.
@@ -676,7 +713,8 @@ public:
         consensus.nLastPOWBlock = 100000;
         consensus.nBlocksPerVotingCycle = 180; // 1.5 hours
         consensus.nMinimumQuorum = 0.5;
-        consensus.nQuorumVotes = consensus.nBlocksPerVotingCycle * consensus.nMinimumQuorum;
+        consensus.nMinimumQuorumFirstHalf = 0.5;
+        consensus.nMinimumQuorumSecondHalf = 0.4;
         consensus.nVotesAcceptProposal = 0.7;
         consensus.nVotesRejectProposal = 0.7;
         consensus.nVotesAcceptPaymentRequest = 0.7;
@@ -690,9 +728,10 @@ public:
         consensus.nCommunityFundAmountV2 = 0.5 * COIN;
         consensus.nCyclesProposalVoting = 4;
         consensus.nCyclesPaymentRequestVoting = 4;
-        consensus.nPaymentRequestMaxVersion = 2;
-        consensus.nProposalMaxVersion = 2;
+        consensus.nPaymentRequestMaxVersion = 3;
+        consensus.nProposalMaxVersion = 3;
         consensus.nMaxFutureDrift = 60000;
+        consensus.nStaticReward = 2 * COIN;
 
         /** Zerocoin */
         consensus.zerocoinModulus = "25195908475657893494027183240048398571429282126204032027777137836043662020707595556264018525880784"
@@ -712,6 +751,11 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].bit = 0;
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nStartTime = 0;
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = 2556712000;
+
+        // Deployment of Cold Staking
+        consensus.vDeployments[Consensus::DEPLOYMENT_COLDSTAKING].bit = 3;
+        consensus.vDeployments[Consensus::DEPLOYMENT_COLDSTAKING].nStartTime = 1525132800; // May 1st, 2018
+        consensus.vDeployments[Consensus::DEPLOYMENT_COLDSTAKING].nTimeout = 1556712000; // May 1st, 2019
 
         // Deployment of SegWit (BIP141 and BIP143)
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].bit = 5;
@@ -744,9 +788,19 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_COMMUNITYFUND_AMOUNT_V2].nTimeout = 1564617600; // Aug 1st, 2019
 
         // Deployment of Zerocoin
-        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].bit = 17;
+        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].bit = 18;
         consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].nStartTime = 1538352000; // May 1st, 2018
         consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].nTimeout = 1601510400; // May 1st, 2019
+
+        // Deployment of Static Reward
+        consensus.vDeployments[Consensus::DEPLOYMENT_STATIC_REWARD].bit = 15;
+        consensus.vDeployments[Consensus::DEPLOYMENT_STATIC_REWARD].nStartTime = 1533081600; // August 1st, 2018
+        consensus.vDeployments[Consensus::DEPLOYMENT_STATIC_REWARD].nTimeout = 1564617600; // August 1st, 2019
+
+        // Deployment of Quorum reduction for the Community Fund
+        consensus.vDeployments[Consensus::DEPLOYMENT_QUORUM_CFUND].bit = 17;
+        consensus.vDeployments[Consensus::DEPLOYMENT_QUORUM_CFUND].nStartTime = 1543622400; // Dec 1st, 2018
+        consensus.vDeployments[Consensus::DEPLOYMENT_QUORUM_CFUND].nTimeout = 1575158400; // Dec 1st, 2019
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.

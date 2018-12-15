@@ -31,6 +31,8 @@ enum DeploymentPos
     DEPLOYMENT_COMMUNITYFUND_AMOUNT_V2,
     DEPLOYMENT_ZEROCOIN,
     DEPLOYMENT_NTPSYNC,
+    DEPLOYMENT_STATIC_REWARD,
+    DEPLOYMENT_QUORUM_CFUND,
     MAX_VERSION_BITS_DEPLOYMENTS
 };
 
@@ -77,12 +79,13 @@ struct Params {
     int nLastPOWBlock;
 
     int nBlocksPerVotingCycle;
-    int nQuorumVotes;
     float nVotesAcceptProposal;
     float nVotesRejectProposal;
     float nVotesAcceptPaymentRequest;
     float nVotesRejectPaymentRequest;
     float nMinimumQuorum;
+    float nMinimumQuorumFirstHalf;
+    float nMinimumQuorumSecondHalf;
     int nCommunityFundMinAge;
     int64_t nProposalMinimalFee;
     int nBlockSpreadCFundAccumulation;
@@ -104,6 +107,7 @@ struct Params {
     int64_t sigActivationTime;
     int64_t nCoinbaseTimeActivationHeight;
     int64_t nMaxFutureDrift;
+    CAmount nStaticReward;
 
     int64_t DifficultyAdjustmentInterval() const { return nPowTargetTimespan / nPowTargetSpacing; }
 

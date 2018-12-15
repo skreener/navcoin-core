@@ -276,6 +276,89 @@ struct CBlockReject {
     uint256 hashBlock;
 };
 
+class CNodeHeaders
+{
+public:
+    CNodeHeaders():
+        maxSize(0),
+        maxAvg(0)
+    {
+        maxSize = GetArg("-headerspamfiltermaxsize", DEFAULT_HEADER_SPAM_FILTER_MAX_SIZE);
+        maxAvg = GetArg("-headerspamfiltermaxavg", DEFAULT_HEADER_SPAM_FILTER_MAX_AVG);
+    }
+
+    bool addHeaders(int nBegin, int nEnd)
+    {
+
+        if(nBegin > 0 && nEnd > 0 && maxSize && maxAvg)
+        {
+
+            for(int point = nBegin; point<= nEnd; point++)
+            {
+                addPoint(point);
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    bool updateState(CValidationState& state, bool ret)
+    {
+        // No headers
+        size_t size = points.size();
+        if(size == 0)
+            return ret;
+
+        // Compute the number of the received headers
+        size_t nHeaders = 0;
+        for(auto point : points)
+        {
+            nHeaders += point.second;
+        }
+
+        // Compute the average value per height
+        double nAvgValue = (double)nHeaders / size;
+
+        // Ban the node if try to spam
+        bool banNode = (nAvgValue >= 1.5 * maxAvg && size >= maxAvg) ||
+                (nAvgValue >= maxAvg && nHeaders >= maxSize) ||
+                (nHeaders >= maxSize * 3);
+        if(banNode)
+        {
+            // Clear the points and ban the node
+            points.clear();
+            return state.DoS(100, false, REJECT_INVALID, "header-spam", false, "ban node for sending spam");
+        }
+
+        return ret;
+    }
+
+private:
+    void addPoint(int height)
+    {
+        // Erace the last element in the list
+        if(points.size() == maxSize)
+        {
+            points.erase(points.begin());
+        }
+
+        // Add the point to the list
+        int occurrence = 0;
+        auto mi = points.find(height);
+         if (mi != points.end())
+             occurrence = (*mi).second;
+         occurrence++;
+         points[height] = occurrence;
+     }
+
+ private:
+     std::map<int,int> points;
+     size_t maxSize;
+     size_t maxAvg;
+ };
+
 /**
  * Maintain validation-specific state about nodes, protected by cs_main, instead
  * by CNode's own locks. This simplifies asynchronous operation, where
@@ -324,6 +407,8 @@ struct CNodeState {
     bool fProvidesHeaderAndIDs;
     //! Whether this peer can give us witnesses
     bool fHaveWitness;
+
+    CNodeHeaders headers;
 
     CNodeState() {
         fCurrentlyConnected = false;
@@ -1208,12 +1293,16 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
       return state.DoS(100, false, REJECT_INVALID, "old-version");
 
     if (IsCommunityFundEnabled(pindexBestHeader, Params().GetConsensus())) {
+        bool fReducedQuorum = IsReducedCFundQuorumEnabled(pindexBestHeader, Params().GetConsensus());
+        int nMaxVersionProposal = fReducedQuorum ? Params().GetConsensus().nProposalMaxVersion : 2;
+        int nMaxVersionPaymentRequest = fReducedQuorum ? Params().GetConsensus().nPaymentRequestMaxVersion : 2;
+
         if(tx.nVersion == CTransaction::PROPOSAL_VERSION) // Community Fund Proposal
-            if(!CFund::IsValidProposal(tx))
+            if(!CFund::IsValidProposal(tx, nMaxVersionProposal))
                 return state.DoS(10, false, REJECT_INVALID, "bad-cfund-proposal");
 
         if(tx.nVersion == CTransaction::PAYMENT_REQUEST_VERSION) // Community Fund Payment Request
-            if(!CFund::IsValidPaymentRequest(tx))
+            if(!CFund::IsValidPaymentRequest(tx, nMaxVersionPaymentRequest))
                 return state.DoS(10, false, REJECT_INVALID, "bad-cfund-payment-request");
     }
 
@@ -2394,7 +2483,11 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
         }
 
         if(IsCommunityFundEnabled(pindex->pprev, Params().GetConsensus())) {
-            if(tx.nVersion == CTransaction::PROPOSAL_VERSION && CFund::IsValidProposal(tx)) {
+            bool fReducedQuorum = IsReducedCFundQuorumEnabled(pindexBestHeader, Params().GetConsensus());
+            int nMaxVersionProposal = fReducedQuorum ? Params().GetConsensus().nProposalMaxVersion : 2;
+            int nMaxVersionPaymentRequest = fReducedQuorum ? Params().GetConsensus().nPaymentRequestMaxVersion : 2;
+
+            if(tx.nVersion == CTransaction::PROPOSAL_VERSION && CFund::IsValidProposal(tx, nMaxVersionProposal)) {
                 std::vector<std::pair<uint256, CFund::CProposal> > proposalIndex;
                 proposalIndex.push_back(make_pair(hash,CFund::CProposal()));
                 if (!pfClean && !pblocktree->UpdateProposalIndex(proposalIndex)) {
@@ -2402,7 +2495,7 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                 }
             }
 
-            if(tx.nVersion == CTransaction::PAYMENT_REQUEST_VERSION && CFund::IsValidPaymentRequest(tx)) {
+            if(tx.nVersion == CTransaction::PAYMENT_REQUEST_VERSION && CFund::IsValidPaymentRequest(tx, nMaxVersionPaymentRequest)) {
                 std::vector<std::pair<uint256, CFund::CProposal> > proposalIndex;
                 std::vector<std::pair<uint256, CFund::CPaymentRequest> > paymentRequestIndex;
                 paymentRequestIndex.push_back(make_pair(hash,CFund::CPaymentRequest()));
@@ -2671,6 +2764,12 @@ int32_t ComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Para
     if(IsCommunityFundAmountV2Enabled(pindexPrev,Params().GetConsensus()))
         nVersion |= nCFundAmountV2Mask;
 
+    if(IsStaticRewardEnabled(pindexPrev,Params().GetConsensus()))
+        nVersion |= nStaticRewardVersionMask;
+
+    if(IsReducedCFundQuorumEnabled(pindexPrev,Params().GetConsensus()))
+        nVersion |= nCFundReducedQuorumMask;
+
     return nVersion;
 }
 
@@ -2737,6 +2836,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         pindex->mapZerocoinSupply
                          = pindex->pprev->mapZerocoinSupply;
     }
+
+    pindex->vProposalVotes.clear();
+    pindex->vPaymentRequestVotes.clear();
 
     pindex->vProposalVotes.clear();
     pindex->vPaymentRequestVotes.clear();
@@ -3215,7 +3317,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
 
         if(IsCommunityFundEnabled(pindex->pprev, Params().GetConsensus())) {
-            if(fContribution && tx.nVersion == CTransaction::PROPOSAL_VERSION && CFund::IsValidProposal(tx)){
+            bool fReducedQuorum = IsReducedCFundQuorumEnabled(pindexBestHeader, Params().GetConsensus());
+            int nMaxVersionProposal = fReducedQuorum ? Params().GetConsensus().nProposalMaxVersion : 2;
+            int nMaxVersionPaymentRequest = fReducedQuorum ? Params().GetConsensus().nPaymentRequestMaxVersion : 2;
+
+            if(fContribution && tx.nVersion == CTransaction::PROPOSAL_VERSION && CFund::IsValidProposal(tx, nMaxVersionProposal)){
                 std::vector<std::pair<uint256, CFund::CProposal> > proposalIndex;
 
                 UniValue metadata(UniValue::VOBJ);
@@ -3259,7 +3365,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
             }
 
-            if(tx.nVersion == CTransaction::PAYMENT_REQUEST_VERSION && CFund::IsValidPaymentRequest(tx)){
+            if(tx.nVersion == CTransaction::PAYMENT_REQUEST_VERSION && CFund::IsValidPaymentRequest(tx, nMaxVersionPaymentRequest)){
                 std::vector<std::pair<uint256, CFund::CProposal> > proposalIndex;
                 std::vector<std::pair<uint256, CFund::CPaymentRequest> > paymentRequestIndex;
 
@@ -4016,7 +4122,6 @@ void CountVotes(CValidationState& state, CBlockIndex *pindexNew, bool fUndo)
     int64_t nTimeStart = GetTimeMicros();
     CFund::CPaymentRequest prequest; CFund::CProposal proposal;
 
-
     int nBlocks = (pindexNew->nHeight % Params().GetConsensus().nBlocksPerVotingCycle) + 1;
     CBlockIndex* pindexblock = pindexNew;
 
@@ -4138,14 +4243,18 @@ void CountVotes(CValidationState& state, CBlockIndex *pindexNew, bool fUndo)
                     fUpdate = true;
                 }
 
-                if(prequest.IsExpired() && prequest.fState != CFund::EXPIRED) {
-                    prequest.fState = CFund::EXPIRED;
-                    prequest.blockhash = pindexNew->GetBlockHash();
-                    fUpdate = true;
-                } else if(prequest.IsRejected() && prequest.fState != CFund::REJECTED) {
-                    prequest.fState = CFund::REJECTED;
-                    prequest.blockhash = pindexNew->GetBlockHash();
-                    fUpdate = true;
+                if(prequest.IsExpired()) {
+                    if (prequest.fState != CFund::EXPIRED) {
+                        prequest.fState = CFund::EXPIRED;
+                        prequest.blockhash = pindexNew->GetBlockHash();
+                        fUpdate = true;
+                    }
+                } else if(prequest.IsRejected()) {
+                    if (prequest.fState != CFund::REJECTED) {
+                        prequest.fState = CFund::REJECTED;
+                        prequest.blockhash = pindexNew->GetBlockHash();
+                        fUpdate = true;
+                    }
                 } else if(prequest.fState == CFund::NIL){
                     if(proposal.fState == CFund::ACCEPTED && prequest.IsAccepted()) {
                         if(prequest.nAmount <= pindexNew->nCFLocked && prequest.nAmount <= proposal.GetAvailable()) {
@@ -4215,29 +4324,35 @@ void CountVotes(CValidationState& state, CBlockIndex *pindexNew, bool fUndo)
                     fUpdate = true;
                 }
 
-                if(proposal.IsExpired(pindexNew->GetBlockTime()) && proposal.fState != CFund::EXPIRED) {
-                    if(proposal.fState == CFund::ACCEPTED) {
-                        pindexNew->nCFSupply += proposal.GetAvailable();
-                        pindexNew->nCFLocked -= proposal.GetAvailable();
-                    }
-                    proposal.fState = CFund::EXPIRED;
-                    proposal.blockhash = pindexNew->GetBlockHash();
-                    fUpdate = true;
-                } else if(proposal.IsRejected() && proposal.fState != CFund::REJECTED) {
-                    proposal.fState = CFund::REJECTED;
-                    proposal.blockhash = pindexNew->GetBlockHash();
-                    fUpdate = true;
-                } else if(proposal.IsAccepted() && (proposal.fState == CFund::NIL || proposal.fState == CFund::PENDING_FUNDS)) {
-                    if(pindexNew->nCFSupply >= proposal.GetAvailable()) {
-                        pindexNew->nCFSupply -= proposal.GetAvailable();
-                        pindexNew->nCFLocked += proposal.GetAvailable();
-                        proposal.fState = CFund::ACCEPTED;
+                if(proposal.IsExpired(pindexNew->GetBlockTime())) {
+                    if (proposal.fState != CFund::EXPIRED) {
+                        if (proposal.fState == CFund::ACCEPTED) {
+                            pindexNew->nCFSupply += proposal.GetAvailable();
+                            pindexNew->nCFLocked -= proposal.GetAvailable();
+                        }
+                        proposal.fState = CFund::EXPIRED;
                         proposal.blockhash = pindexNew->GetBlockHash();
                         fUpdate = true;
-                    } else if(proposal.fState != CFund::PENDING_FUNDS) {
-                        proposal.fState = CFund::PENDING_FUNDS;
-                        proposal.blockhash = uint256();
+                    }
+                } else if(proposal.IsRejected()) {
+                    if (proposal.fState != CFund::REJECTED) {
+                        proposal.fState = CFund::REJECTED;
+                        proposal.blockhash = pindexNew->GetBlockHash();
                         fUpdate = true;
+                    }
+                } else if(proposal.IsAccepted()) {
+                    if((proposal.fState == CFund::NIL || proposal.fState == CFund::PENDING_FUNDS)) {
+                        if(pindexNew->nCFSupply >= proposal.GetAvailable()) {
+                            pindexNew->nCFSupply -= proposal.GetAvailable();
+                            pindexNew->nCFLocked += proposal.GetAvailable();
+                            proposal.fState = CFund::ACCEPTED;
+                            proposal.blockhash = pindexNew->GetBlockHash();
+                            fUpdate = true;
+                        } else if(proposal.fState != CFund::PENDING_FUNDS) {
+                            proposal.fState = CFund::PENDING_FUNDS;
+                            proposal.blockhash = uint256();
+                            fUpdate = true;
+                        }
                     }
                 }
             }
@@ -4939,6 +5054,12 @@ bool IsCommunityFundEnabled(const CBlockIndex* pindexPrev, const Consensus::Para
     return (VersionBitsState(pindexPrev, params, Consensus::DEPLOYMENT_COMMUNITYFUND, versionbitscache) == THRESHOLD_ACTIVE);
 }
 
+bool IsReducedCFundQuorumEnabled(const CBlockIndex* pindexPrev, const Consensus::Params& params)
+{
+    LOCK(cs_main);
+    return (VersionBitsState(pindexPrev, params, Consensus::DEPLOYMENT_QUORUM_CFUND, versionbitscache) == THRESHOLD_ACTIVE);
+}
+
 bool IsCommunityFundAccumulationEnabled(const CBlockIndex* pindexPrev, const Consensus::Params& params, bool fStrict)
 {
     LOCK(cs_main);
@@ -4980,6 +5101,18 @@ bool IsColdStakingEnabled(const CBlockIndex* pindexPrev, const Consensus::Params
 {
     LOCK(cs_main);
     return (VersionBitsState(pindexPrev, params, Consensus::DEPLOYMENT_COLDSTAKING, versionbitscache) == THRESHOLD_ACTIVE);
+}
+
+bool IsStaticRewardLocked(const CBlockIndex* pindexPrev, const Consensus::Params& params)
+{
+    LOCK(cs_main);
+    return (VersionBitsState(pindexPrev, params, Consensus::DEPLOYMENT_STATIC_REWARD, versionbitscache) == THRESHOLD_LOCKED_IN);
+}
+
+bool IsStaticRewardEnabled(const CBlockIndex* pindexPrev, const Consensus::Params& params)
+{
+    LOCK(cs_main);
+    return (VersionBitsState(pindexPrev, params, Consensus::DEPLOYMENT_STATIC_REWARD, versionbitscache) == THRESHOLD_ACTIVE);
 }
 
 // Compute at which vout of the block's coinbase transaction the witness
@@ -5093,6 +5226,14 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
         return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
                            "rejected no nsync block");
 
+   if((block.nVersion & nStaticRewardVersionMask) != nStaticRewardVersionMask && IsStaticRewardEnabled(pindexPrev,Params().GetConsensus()))
+     return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
+                        "rejected no static reward block");
+
+   if((block.nVersion & nCFundReducedQuorumMask) != nCFundReducedQuorumMask && IsReducedCFundQuorumEnabled(pindexPrev,Params().GetConsensus()))
+     return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
+                        "rejected no reduced quorum block");
+
     return true;
 }
 
@@ -5127,12 +5268,16 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
             return state.DoS(10, false, REJECT_INVALID, "bad-txns-nonfinal", false, "non-final transaction");
         }
         if(IsCommunityFundEnabled(pindexBestHeader, Params().GetConsensus())) {
+            bool fReducedQuorum = IsReducedCFundQuorumEnabled(pindexBestHeader, Params().GetConsensus());
+            int nMaxVersionProposal = fReducedQuorum ? Params().GetConsensus().nProposalMaxVersion : 2;
+            int nMaxVersionPaymentRequest = fReducedQuorum ? Params().GetConsensus().nPaymentRequestMaxVersion : 2;
+
             if(tx.nVersion == CTransaction::PROPOSAL_VERSION) // Community Fund Proposal
-                if(!CFund::IsValidProposal(tx))
+                if(!CFund::IsValidProposal(tx, nMaxVersionProposal))
                     return state.DoS(10, false, REJECT_INVALID, "bad-cfund-proposal");
 
             if(tx.nVersion == CTransaction::PAYMENT_REQUEST_VERSION) // Community Fund Payment Request
-                if(!CFund::IsValidPaymentRequest(tx))
+                if(!CFund::IsValidPaymentRequest(tx, nMaxVersionPaymentRequest))
                     return state.DoS(10, false, REJECT_INVALID, "bad-cfund-payment-request");
         }
     }
@@ -7537,24 +7682,62 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             return true;
         }
 
+        bool ret = true;
+        bool bFirst = true;
+        string strError = "";
+
+        int nFirst = 0;
+        int nLast = 0;
+
         CBlockIndex *pindexLast = NULL;
+
         BOOST_FOREACH(const CBlock& header, headers) {
             CValidationState state;
             if (pindexLast != NULL && header.hashPrevBlock != pindexLast->GetBlockHash()) {
                 Misbehaving(pfrom->GetId(), 20);
-                return error("non-continuous headers sequence");
+                ret = false;
+                strError = "non-continuous headers sequence";
+                break;
             }
             CBlockHeader pblockheader = CBlockHeader(header);
             if (!AcceptBlockHeader(pblockheader, state, chainparams, &pindexLast)) {
-
                 int nDoS;
                 if (state.IsInvalid(nDoS)) {
                     if (nDoS > 0)
                         Misbehaving(pfrom->GetId(), nDoS);
-                    return error("invalid header received");
+                    ret = false;
+                    strError = "invalid header received";
+                    break;
+                }
+            }
+            if (pindexLast) {
+                nLast = pindexLast->nHeight;
+                if (bFirst){
+                    nFirst = pindexLast->nHeight;
+                    bFirst = false;
                 }
             }
         }
+
+        if(GetBoolArg("-headerspamfilter", DEFAULT_HEADER_SPAM_FILTER))
+        {
+            LOCK(cs_main);
+            CValidationState state;
+            CNodeState *nodestate = State(pfrom->GetId());
+            nodestate->headers.addHeaders(nFirst, nLast);
+            int nDoS;
+            ret = nodestate->headers.updateState(state, ret);
+            if (state.IsInvalid(nDoS)) {
+                if (nDoS > 0)
+                    Misbehaving(pfrom->GetId(), nDoS);
+                ret = false;
+                strError = strError!="" ? strError + " / ": "";
+                strError = "header spam protection";
+            }
+        }
+
+        if (!ret)
+            return error(strError.c_str());
 
         if (nodestate->nUnconnectingHeaders > 0) {
             LogPrint("net", "peer=%d: resetting nUnconnectingHeaders (%d -> 0)\n", pfrom->id, nodestate->nUnconnectingHeaders);
@@ -9016,23 +9199,29 @@ bool CheckKernel(CBlockIndex* pindexPrev, const CCoinsViewCache& view, unsigned 
 // staker's coin stake reward based on coin age spent (coin-days)
 int64_t GetProofOfStakeReward(int nHeight, int64_t nCoinAge, int64_t nFees, CBlockIndex* pindexPrev)
 {
-    int64_t nRewardCoinYear;
-    nRewardCoinYear = MAX_MINT_PROOF_OF_STAKE;
+  int64_t nSubsidy;
 
-    if(nHeight-1 < 7 * Params().GetConsensus().nDailyBlockCount)
-        nRewardCoinYear = 1 * MAX_MINT_PROOF_OF_STAKE;
-    else if(nHeight-1 < (365 * Params().GetConsensus().nDailyBlockCount))
-        nRewardCoinYear = 0.5 * MAX_MINT_PROOF_OF_STAKE;
-    else if(nHeight-1 < (730 * Params().GetConsensus().nDailyBlockCount))
-        nRewardCoinYear = 0.5 * MAX_MINT_PROOF_OF_STAKE;
-    else if(IsCommunityFundAccumulationEnabled(pindexPrev, Params().GetConsensus(), false))
-        nRewardCoinYear = 0.4 * MAX_MINT_PROOF_OF_STAKE;
-    else
-        nRewardCoinYear = 0.5 * MAX_MINT_PROOF_OF_STAKE;
+  if(IsStaticRewardEnabled(pindexPrev, Params().GetConsensus())){
+      nSubsidy = Params().GetConsensus().nStaticReward;
+  } else {
+      int64_t nRewardCoinYear;
+      nRewardCoinYear = MAX_MINT_PROOF_OF_STAKE;
 
-    int64_t nSubsidy = nCoinAge * nRewardCoinYear / 365;
+      if(nHeight-1 < 7 * Params().GetConsensus().nDailyBlockCount)
+          nRewardCoinYear = 1 * MAX_MINT_PROOF_OF_STAKE;
+      else if(nHeight-1 < (365 * Params().GetConsensus().nDailyBlockCount))
+          nRewardCoinYear = 0.5 * MAX_MINT_PROOF_OF_STAKE;
+      else if(nHeight-1 < (730 * Params().GetConsensus().nDailyBlockCount))
+          nRewardCoinYear = 0.5 * MAX_MINT_PROOF_OF_STAKE;
+      else if(IsCommunityFundAccumulationEnabled(pindexPrev, Params().GetConsensus(), false))
+          nRewardCoinYear = 0.4 * MAX_MINT_PROOF_OF_STAKE;
+      else
+          nRewardCoinYear = 0.5 * MAX_MINT_PROOF_OF_STAKE;
 
-    return  nSubsidy + nFees;
+       nSubsidy = nCoinAge * nRewardCoinYear / 365;
+  }
+
+  return  nSubsidy + nFees;
 }
 
 unsigned int ComputeMaxBits(uint256 bnTargetLimit, unsigned int nBase, int64_t nTime)

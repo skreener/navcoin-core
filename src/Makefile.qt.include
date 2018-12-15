@@ -1,4 +1,4 @@
-bin_PROGRAMS += qt/navcoin-qt
+wbin_PROGRAMS += qt/navcoin-qt
 EXTRA_LIBRARIES += qt/libnavcoinqt.a
 
 # navcoin qt core #
@@ -106,6 +106,7 @@ QT_FORMS_UI = \
   qt/forms/sendcoinsentry.ui \
   qt/forms/signverifymessagedialog.ui \
   qt/forms/transactiondescdialog.ui \
+  qt/forms/cfund_voting.ui \
   qt/getaddresstoreceive.ui
 
 QT_MOC_CPP = \
@@ -127,6 +128,7 @@ QT_MOC_CPP = \
   qt/moc_intro.cpp \
   qt/moc_macdockiconhandler.cpp \
   qt/moc_macnotificationhandler.cpp \
+  qt/forms/moc_cfund_voting.cpp \
   qt/moc_getaddresstoreceive.cpp \
   qt/moc_notificator.cpp \
   qt/moc_openuridialog.cpp \
@@ -197,6 +199,7 @@ NAVCOIN_QT_H = \
   qt/listview.h \
   qt/macdockiconhandler.h \
   qt/macnotificationhandler.h \
+  qt/forms/cfund_voting.h \
   qt/getaddresstoreceive.h \
   qt/networkstyle.h \
   qt/notificator.h \
@@ -315,6 +318,7 @@ NAVCOIN_QT_CPP = \
   qt/navcoinamountfield.cpp \
   qt/navcoingui.cpp \
   qt/navcoinunits.cpp \
+  qt/forms/cfund_voting.cpp \
   qt/getaddresstoreceive.cpp \
   qt/clientmodel.cpp \
   qt/csvmodelwriter.cpp \

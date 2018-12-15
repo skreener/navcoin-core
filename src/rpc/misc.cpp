@@ -173,9 +173,9 @@ public:
         obj.push_back(Pair("isprivatedestination", false));
         if (pwalletMain && pwalletMain->GetPubKey(keyID.first, vchPubKey)) {
             obj.push_back(Pair("stakingpubkey", HexStr(vchPubKey)));
-            if(pwalletMain->GetPubKey(keyID.second, vchPubKey)) {
-                obj.push_back(Pair("spendingpubkey", HexStr(vchPubKey)));
-            }
+        }
+        if(pwalletMain->GetPubKey(keyID.second, vchPubKey)) {
+            obj.push_back(Pair("spendingpubkey", HexStr(vchPubKey)));
         }
         return obj;
     }
