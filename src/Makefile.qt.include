@@ -1,4 +1,4 @@
-wbin_PROGRAMS += qt/navcoin-qt
+bin_PROGRAMS += qt/navcoin-qt
 EXTRA_LIBRARIES += qt/libnavcoinqt.a
 
 # navcoin qt core #
