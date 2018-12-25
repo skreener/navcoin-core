@@ -377,10 +377,7 @@ libzerocoin_libnavcoin_zerocoin_a_SOURCES = \
   libzerocoin/AccumulatorProofOfKnowledge.h \
   libzerocoin/bignum.h \
   libzerocoin/bignum.cpp \
-  libzerocoin/bulletproof_rangeproof.cpp \
-  libzerocoin/bulletproof_rangeproof.h \
   libzerocoin/Coin.h \
-  libzerocoin/Math.h \
   libzerocoin/CoinSpend.h \
   libzerocoin/Commitment.h \
   libzerocoin/Denominations.h \

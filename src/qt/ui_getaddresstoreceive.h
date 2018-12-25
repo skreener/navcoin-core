@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'getaddresstoreceive.ui'
 **
-** Created by: Qt User Interface Compiler version 5.10.0
+** Created by: Qt User Interface Compiler version 5.12.0
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
 ********************************************************************************/
@@ -10,12 +10,9 @@
 #define UI_GETADDRESSTORECEIVE_H
 
 #include <QtCore/QVariant>
-#include <QtWidgets/QAction>
 #include <QtWidgets/QApplication>
-#include <QtWidgets/QButtonGroup>
 #include <QtWidgets/QGridLayout>
 #include <QtWidgets/QHBoxLayout>
-#include <QtWidgets/QHeaderView>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QSpacerItem>
@@ -65,7 +62,7 @@ public:
     void setupUi(QWidget *getAddressToReceive)
     {
         if (getAddressToReceive->objectName().isEmpty())
-            getAddressToReceive->setObjectName(QStringLiteral("getAddressToReceive"));
+            getAddressToReceive->setObjectName(QString::fromUtf8("getAddressToReceive"));
         getAddressToReceive->setWindowModality(Qt::NonModal);
         getAddressToReceive->resize(1497, 558);
         QSizePolicy sizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
@@ -74,22 +71,22 @@ public:
         sizePolicy.setHeightForWidth(getAddressToReceive->sizePolicy().hasHeightForWidth());
         getAddressToReceive->setSizePolicy(sizePolicy);
         gridLayout = new QGridLayout(getAddressToReceive);
-        gridLayout->setObjectName(QStringLiteral("gridLayout"));
+        gridLayout->setObjectName(QString::fromUtf8("gridLayout"));
         verticalLayout = new QVBoxLayout();
-        verticalLayout->setObjectName(QStringLiteral("verticalLayout"));
+        verticalLayout->setObjectName(QString::fromUtf8("verticalLayout"));
         verticalLayout->setSizeConstraint(QLayout::SetNoConstraint);
         verticalSpacer = new QSpacerItem(20, 10, QSizePolicy::Minimum, QSizePolicy::Maximum);
 
         verticalLayout->addItem(verticalSpacer);
 
         horizontalLayout = new QHBoxLayout();
-        horizontalLayout->setObjectName(QStringLiteral("horizontalLayout"));
+        horizontalLayout->setObjectName(QString::fromUtf8("horizontalLayout"));
         horizontalSpacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
         horizontalLayout->addItem(horizontalSpacer);
 
         label = new QLabel(getAddressToReceive);
-        label->setObjectName(QStringLiteral("label"));
+        label->setObjectName(QString::fromUtf8("label"));
         QFont font;
         font.setPointSize(11);
         label->setFont(font);
@@ -108,28 +105,28 @@ public:
         verticalLayout->addItem(verticalSpacer_2);
 
         horizontalLayout_8 = new QHBoxLayout();
-        horizontalLayout_8->setObjectName(QStringLiteral("horizontalLayout_8"));
+        horizontalLayout_8->setObjectName(QString::fromUtf8("horizontalLayout_8"));
         horizontalSpacer_4 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
         horizontalLayout_8->addItem(horizontalSpacer_4);
 
         horizontalLayout_2 = new QHBoxLayout();
-        horizontalLayout_2->setObjectName(QStringLiteral("horizontalLayout_2"));
+        horizontalLayout_2->setObjectName(QString::fromUtf8("horizontalLayout_2"));
         horizontalSpacer_16 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
         horizontalLayout_2->addItem(horizontalSpacer_16);
 
         verticalLayout_3 = new QVBoxLayout();
-        verticalLayout_3->setObjectName(QStringLiteral("verticalLayout_3"));
+        verticalLayout_3->setObjectName(QString::fromUtf8("verticalLayout_3"));
         lblQRCode = new QRImageWidget(getAddressToReceive);
-        lblQRCode->setObjectName(QStringLiteral("lblQRCode"));
+        lblQRCode->setObjectName(QString::fromUtf8("lblQRCode"));
         QSizePolicy sizePolicy1(QSizePolicy::Expanding, QSizePolicy::Fixed);
         sizePolicy1.setHorizontalStretch(0);
         sizePolicy1.setVerticalStretch(0);
         sizePolicy1.setHeightForWidth(lblQRCode->sizePolicy().hasHeightForWidth());
         lblQRCode->setSizePolicy(sizePolicy1);
         lblQRCode->setMinimumSize(QSize(300, 320));
-        lblQRCode->setStyleSheet(QStringLiteral(""));
+        lblQRCode->setStyleSheet(QString::fromUtf8(""));
         lblQRCode->setTextFormat(Qt::PlainText);
         lblQRCode->setAlignment(Qt::AlignCenter);
         lblQRCode->setWordWrap(true);
@@ -158,14 +155,14 @@ public:
         verticalLayout->addItem(verticalSpacer_3);
 
         horizontalLayout_4 = new QHBoxLayout();
-        horizontalLayout_4->setObjectName(QStringLiteral("horizontalLayout_4"));
+        horizontalLayout_4->setObjectName(QString::fromUtf8("horizontalLayout_4"));
         horizontalSpacer_7 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
         horizontalLayout_4->addItem(horizontalSpacer_7);
 
         privateAddressButton = new QPushButton(getAddressToReceive);
-        privateAddressButton->setObjectName(QStringLiteral("privateAddressButton"));
-        privateAddressButton->setStyleSheet(QStringLiteral(""));
+        privateAddressButton->setObjectName(QString::fromUtf8("privateAddressButton"));
+        privateAddressButton->setStyleSheet(QString::fromUtf8(""));
 
         horizontalLayout_4->addWidget(privateAddressButton);
 
@@ -177,26 +174,26 @@ public:
         verticalLayout->addLayout(horizontalLayout_4);
 
         horizontalLayout_7 = new QHBoxLayout();
-        horizontalLayout_7->setObjectName(QStringLiteral("horizontalLayout_7"));
+        horizontalLayout_7->setObjectName(QString::fromUtf8("horizontalLayout_7"));
         horizontalSpacer_13 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
         horizontalLayout_7->addItem(horizontalSpacer_13);
 
         copyClipboardButton = new QPushButton(getAddressToReceive);
-        copyClipboardButton->setObjectName(QStringLiteral("copyClipboardButton"));
-        copyClipboardButton->setStyleSheet(QStringLiteral(""));
+        copyClipboardButton->setObjectName(QString::fromUtf8("copyClipboardButton"));
+        copyClipboardButton->setStyleSheet(QString::fromUtf8(""));
 
         horizontalLayout_7->addWidget(copyClipboardButton);
 
         requestPaymentButton = new QPushButton(getAddressToReceive);
-        requestPaymentButton->setObjectName(QStringLiteral("requestPaymentButton"));
-        requestPaymentButton->setStyleSheet(QStringLiteral(""));
+        requestPaymentButton->setObjectName(QString::fromUtf8("requestPaymentButton"));
+        requestPaymentButton->setStyleSheet(QString::fromUtf8(""));
 
         horizontalLayout_7->addWidget(requestPaymentButton);
 
         requestNewAddressButton = new QPushButton(getAddressToReceive);
-        requestNewAddressButton->setObjectName(QStringLiteral("requestNewAddressButton"));
-        requestNewAddressButton->setStyleSheet(QStringLiteral(""));
+        requestNewAddressButton->setObjectName(QString::fromUtf8("requestNewAddressButton"));
+        requestNewAddressButton->setStyleSheet(QString::fromUtf8(""));
 
         horizontalLayout_7->addWidget(requestNewAddressButton);
 
@@ -208,20 +205,20 @@ public:
         verticalLayout->addLayout(horizontalLayout_7);
 
         horizontalLayout_3 = new QHBoxLayout();
-        horizontalLayout_3->setObjectName(QStringLiteral("horizontalLayout_3"));
+        horizontalLayout_3->setObjectName(QString::fromUtf8("horizontalLayout_3"));
         horizontalSpacer_5 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
         horizontalLayout_3->addItem(horizontalSpacer_5);
 
         newAddressButton = new QPushButton(getAddressToReceive);
-        newAddressButton->setObjectName(QStringLiteral("newAddressButton"));
-        newAddressButton->setStyleSheet(QStringLiteral(""));
+        newAddressButton->setObjectName(QString::fromUtf8("newAddressButton"));
+        newAddressButton->setStyleSheet(QString::fromUtf8(""));
 
         horizontalLayout_3->addWidget(newAddressButton);
 
         coldStakingButton = new QPushButton(getAddressToReceive);
-        coldStakingButton->setObjectName(QStringLiteral("coldStakingButton"));
-        coldStakingButton->setStyleSheet(QStringLiteral(""));
+        coldStakingButton->setObjectName(QString::fromUtf8("coldStakingButton"));
+        coldStakingButton->setStyleSheet(QString::fromUtf8(""));
 
         horizontalLayout_3->addWidget(coldStakingButton);
 

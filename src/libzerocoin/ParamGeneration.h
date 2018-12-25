@@ -13,7 +13,6 @@
 #define PARAMGENERATION_H_
 
 #include "Params.h"
-#include "bulletproof_rangeproof.h"
 
 namespace libzerocoin {
 

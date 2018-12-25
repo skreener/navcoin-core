@@ -155,6 +155,14 @@ PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomin
     CBigNum commitmentValue = blindingCommitment.first.pow_mod(s, this->params->coinCommitmentGroup.modulus).mul_mod(
                               blindingCommitment.second, this->params->coinCommitmentGroup.modulus);
 
+    std::cout << "bc1 " << blindingCommitment.first.ToString(16) << std::endl;
+    std::cout << "bc2 " << blindingCommitment.second.ToString(16) << std::endl;
+
+    if (blindingCommitment.first == blindingCommitment.second) {
+        int da = 12;
+        //throw std::runtime_error("wey\n");
+    }
+
     if (commitmentValue.isPrime(ZEROCOIN_MINT_PRIME_PARAM) &&
             commitmentValue >= params->accumulatorParams.minCoinValue &&
             commitmentValue <= params->accumulatorParams.maxCoinValue) {
