@@ -16,7 +16,6 @@
 #define COIN_H_
 
 #include "amount.h"
-#include "bulletproof_rangeproof.h"
 #include "bignum.h"
 #include "Denominations.h"
 #include "Keys.h"

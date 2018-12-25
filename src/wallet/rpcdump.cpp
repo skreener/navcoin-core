@@ -575,7 +575,7 @@ UniValue dumpprivateparameters(const UniValue& params, bool fHelp)
 
     EnsureWalletIsUnlocked();
 
-    libzerocoin::ObfuscationValue oj; libzerocoin::ObfuscationValue ok; CKey zk;
+    libzerocoin::BlindingCommitment bc; libzerocoin::ObfuscationValue oj; libzerocoin::ObfuscationValue ok; CKey zk;
 
     if(!pwalletMain->GetObfuscationJ(oj))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error reading obfuscation j value");
@@ -583,13 +583,17 @@ UniValue dumpprivateparameters(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_WALLET_ERROR, "Error reading obfuscation k value");
     if(!pwalletMain->GetZeroKey(zk))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error reading private key value");
+    if(!pwalletMain->GetBlindingCommitment(bc))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error reading blinding commitment value");
 
     UniValue ret(UniValue::VOBJ);
 
     ret.push_back(Pair("obfuscationJ1", oj.first.GetHex()));
-    ret.push_back(Pair("obfuscationJ1", oj.second.GetHex()));
-    ret.push_back(Pair("obfuscationK2", ok.first.GetHex()));
+    ret.push_back(Pair("obfuscationJ2", oj.second.GetHex()));
+    ret.push_back(Pair("obfuscationK1", ok.first.GetHex()));
     ret.push_back(Pair("obfuscationK2", ok.second.GetHex()));
+    ret.push_back(Pair("blindingCommitment1", bc.first.GetHex()));
+    ret.push_back(Pair("blindingCommitment2", bc.second.GetHex()));
     ret.push_back(Pair("zeroPrivKey", HexStr(std::vector<unsigned char>(zk.begin(), zk.end()))));
 
     return ret;

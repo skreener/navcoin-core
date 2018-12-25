@@ -21,8 +21,8 @@ void GenerateParameters(const ZerocoinParams* params, libzerocoin::ObfuscationVa
     CBigNum ok2 = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
     CBigNum bc1 = params->coinCommitmentGroup.g.pow_mod(oj1, params->coinCommitmentGroup.modulus).mul_mod(
           params->coinCommitmentGroup.h.pow_mod(ok1, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
-    CBigNum bc2 = params->coinCommitmentGroup.g.pow_mod(oj1, params->coinCommitmentGroup.modulus).mul_mod(
-          params->coinCommitmentGroup.h.pow_mod(ok1, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
+    CBigNum bc2 = params->coinCommitmentGroup.g.pow_mod(oj2, params->coinCommitmentGroup.modulus).mul_mod(
+          params->coinCommitmentGroup.h.pow_mod(ok2, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
     oj = std::make_pair(oj1,oj2);
     ok = std::make_pair(ok1,ok2);
     bc = std::make_pair(bc1,bc2);

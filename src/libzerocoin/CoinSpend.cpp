@@ -78,29 +78,24 @@ CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, cons
 bool CoinSpend::Verify(const Accumulator& a) const
 {
     if (a.getDenomination() != this->denomination) {
-        throw std::runtime_error("CoinsSpend::Verify: failed, denominations do not match");
-        return false;
+        return error("CoinsSpend::Verify: failed, denominations do not match");
     }
 
     // Verify both of the sub-proofs using the given meta-data
     if (!commitmentPoK.Verify(serialCommitmentToCoinValue, accCommitmentToCoinValue)) {
-        throw std::runtime_error("CoinsSpend::Verify: commitmentPoK failed");
-        return false;
+        return error("CoinsSpend::Verify: commitmentPoK failed");
     }
 
     if (!accumulatorPoK.Verify(a, accCommitmentToCoinValue)) {
-        throw std::runtime_error("CoinsSpend::Verify: accumulatorPoK failed");
-        return false;
+        return error("CoinsSpend::Verify: accumulatorPoK failed");
     }
 
     if (!serialNumberSoK.Verify(serialCommitmentToCoinValue, coinValuePublic, signatureHash())) {
-        throw std::runtime_error("CoinsSpend::Verify: serialNumberSoK failed.");
-        return false;
+        return error("CoinsSpend::Verify: serialNumberSoK failed.");
     }
 
     if (!serialNumberPoK.Verify(coinValuePublic, signatureHash())) {
-        throw std::runtime_error("CoinsSpend::Verify: serialNumberPoK failed.");
-        return false;
+        return error("CoinsSpend::Verify: serialNumberPoK failed.");
     }
 
     return true;
