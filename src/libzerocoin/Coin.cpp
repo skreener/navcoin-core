@@ -155,9 +155,6 @@ PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomin
     CBigNum commitmentValue = blindingCommitment.first.pow_mod(s, this->params->coinCommitmentGroup.modulus).mul_mod(
                               blindingCommitment.second, this->params->coinCommitmentGroup.modulus);
 
-    std::cout << "bc1 " << blindingCommitment.first.ToString(16) << std::endl;
-    std::cout << "bc2 " << blindingCommitment.second.ToString(16) << std::endl;
-
     if (blindingCommitment.first == blindingCommitment.second) {
         int da = 12;
         //throw std::runtime_error("wey\n");
@@ -199,6 +196,17 @@ bool IsValidPublicSerial(const ZerocoinParams* params, const CBigNum& bnSerial)
 bool IsValidPrivateSerial(const ZerocoinParams* params, const CBigNum& bnSerial)
 {
     return bnSerial > 0 && bnSerial < params->coinCommitmentGroup.groupOrder;
+}
+
+void GetRandomnessBits(CBigNum randomness, std::vector<int> &randomness_bits)
+{
+    randomness_bits.resize(ZKP_SERIALSIZE);
+    std::string bin_string = randomness.ToString(2);
+    unsigned int len = bin_string.length();
+    for(unsigned int i=0; i<len; i++)
+        randomness_bits[len-1-i] = (int)bin_string[i]-'0';
+    for(unsigned int i=len; i<ZKP_SERIALSIZE; i++)
+        randomness_bits[i] = 0;
 }
 
 } /* namespace libzerocoin */

@@ -27,6 +27,7 @@ namespace libzerocoin
 {
 bool IsValidPrivateSerial(const ZerocoinParams* params, const CBigNum& bnSerial);
 bool IsValidPublicSerial(const ZerocoinParams* params, const CBigNum& bnSerial);
+void GetRandomnessBits(CBigNum randomness, std::vector<int> &randomness_bits);
 
 /** A Public coin is the part of a coin that
  * is published to the network and what is handled

@@ -13,6 +13,7 @@
 
 #include "Params.h"
 #include "ParamGeneration.h"
+#include "ArithmeticCircuit.h"
 
 namespace libzerocoin {
 
@@ -29,6 +30,10 @@ ZerocoinParams::ZerocoinParams(CBigNum N, uint32_t securityLevel) {
     // Generate the parameters
     CalculateParams(*this, N, ZEROCOIN_PROTOCOL_VERSION, securityLevel);
 
+    // Generate w-Polynomials constraints for arithmetic circuits
+    ArithmeticCircuit::setPreConstraints(this, ZKP_wA, ZKP_wB, ZKP_wC, ZKP_K);
+    ArithmeticCircuit::set_s_poly(this, S_POLY_A1, S_POLY_A2, S_POLY_B1, S_POLY_B2, S_POLY_C1, S_POLY_C2);
+
     this->accumulatorParams.initialized = true;
     this->initialized = true;
 }
@@ -37,7 +42,9 @@ AccumulatorAndProofParams::AccumulatorAndProofParams() {
     this->initialized = false;
 }
 
-IntegerGroupParams::IntegerGroupParams() {
+IntegerGroupParams::IntegerGroupParams() :
+    gis(ZKP_N+ZKP_PADS)
+{
     this->initialized = false;
 }
 

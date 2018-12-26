@@ -127,7 +127,7 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const C
     int nHeight;
 
     if (pblocktree->ReadCoinSpend(coinSpend.getCoinSerialNumber(), txHash) && IsTransactionInChain(txHash, view, nHeight))
-        return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Serial Number is already spent in tx %s in block %d", txHash.ToString(), nHeight)));
+        return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Serial Number %s is already spent in tx %s in block %d", coinSpend.getCoinSerialNumber().ToString(16), txHash.ToString(), nHeight)));
 
     for(auto& it : vSeen)
     {

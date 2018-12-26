@@ -375,8 +375,10 @@ libnavcoin_util_a_SOURCES = \
 libzerocoin_libnavcoin_zerocoin_a_SOURCES = \
   libzerocoin/Accumulator.h \
   libzerocoin/AccumulatorProofOfKnowledge.h \
+  libzerocoin/ArithmeticCircuit.h \
   libzerocoin/bignum.h \
   libzerocoin/bignum.cpp \
+  libzerocoin/Bulletproofs.h \
   libzerocoin/Coin.h \
   libzerocoin/CoinSpend.h \
   libzerocoin/Commitment.h \
@@ -384,11 +386,16 @@ libzerocoin_libnavcoin_zerocoin_a_SOURCES = \
   libzerocoin/Keys.h \
   libzerocoin/ParamGeneration.h \
   libzerocoin/Params.h \
+  libzerocoin/PolynomialCommitment.h \
   libzerocoin/SerialNumberSignatureOfKnowledge.h \
+  libzerocoin/SerialNumberSoK_small.h \
   libzerocoin/SerialNumberProofOfKnowledge.h \
   libzerocoin/ZerocoinDefines.h \
+  libzerocoin/zkplib.h \
   libzerocoin/Accumulator.cpp \
   libzerocoin/AccumulatorProofOfKnowledge.cpp \
+  libzerocoin/ArithmeticCircuit.cpp \
+  libzerocoin/Bulletproofs.cpp \
   libzerocoin/Coin.cpp \
   libzerocoin/CoinSpend.cpp \
   libzerocoin/Commitment.cpp \
@@ -396,7 +403,9 @@ libzerocoin_libnavcoin_zerocoin_a_SOURCES = \
   libzerocoin/Keys.cpp \
   libzerocoin/ParamGeneration.cpp \
   libzerocoin/Params.cpp \
+  libzerocoin/PolynomialCommitment.cpp \
   libzerocoin/SerialNumberSignatureOfKnowledge.cpp \
+  libzerocoin/SerialNumberSoK_small.cpp \
   libzerocoin/SerialNumberProofOfKnowledge.cpp
 
 if USE_NUM_GMP
