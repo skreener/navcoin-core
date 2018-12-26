@@ -39,7 +39,7 @@ uint256             calculateSeed(CBigNum modulus, std::string auxString, uint32
 uint256             calculateGeneratorSeed(uint256 seed, uint256 pSeed, uint256 qSeed, std::string label, uint32_t index, uint32_t count);
 
 uint256             calculateHash(uint256 input);
-IntegerGroupParams  deriveIntegerGroupParams(uint256 seed, uint32_t pLen, uint32_t qLen, uint32_t nGenerators = 2);
+IntegerGroupParams  deriveIntegerGroupParams(uint256 seed, uint32_t pLen, uint32_t qLen);
 IntegerGroupParams  deriveIntegerGroupFromOrder(CBigNum &groupOrder);
 void                calculateGroupModulusAndOrder(uint256 seed, uint32_t pLen, uint32_t qLen,
         CBigNum *resultModulus, CBigNum *resultGroupOrder,

@@ -37,15 +37,19 @@ public:
   /**
    * A generator for the group.
    */
-  std::vector<CBigNum> gi;
   CBigNum g;
+
+  /**
+   * A list of ZKP_N + ZKP_PAD generators for the group.
+   * The first one is g (i.e. gis[0] = g)
+   */
+  CBN_vector gis;
 
   /**
    * A second generator for the group.
    * Note log_g(h), log_g(g2), log_g2(g), log_g2(h), log_h(g) and log_h(g2) must
    * be unknown.
    */
-  std::vector<CBigNum> hi;
   CBigNum h;
 
   /**
@@ -54,6 +58,11 @@ public:
    * be unknown.
    */
   CBigNum g2;
+
+  /**
+   * A random generator in Zp used for Bulletproofs inner Product
+   */
+  CBigNum u_inner_prod;
 
   /**
    * The modulus for the group.
@@ -69,8 +78,10 @@ public:
   template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
 		    READWRITE(initialized);
 		    READWRITE(g);
-		    READWRITE(h);
-		    READWRITE(modulus);
+        READWRITE(g2);
+        READWRITE(h);
+        READWRITE(gis);
+        READWRITE(modulus);
 		    READWRITE(groupOrder);
 	}	
 };
@@ -221,6 +232,17 @@ public:
    */
   unsigned int maxNumberOutputs;
   unsigned int rangeProofBitSize;
+
+  /**
+   * Constraints tensors generated with ArithmeticCircuit::setPreConstraints()
+   */
+  std::vector<CBN_matrix> ZKP_wA;
+  std::vector<CBN_matrix> ZKP_wB;
+  std::vector<CBN_matrix> ZKP_wC;
+  CBN_vector ZKP_K;
+  std::vector< std::vector< std::pair<int, CBigNum> > > S_POLY_A1, S_POLY_A2;
+  std::vector< std::vector< std::pair<int, CBigNum> > > S_POLY_B1, S_POLY_B2;
+  std::vector< std::vector< std::pair<int, CBigNum> > > S_POLY_C1, S_POLY_C2;
 	
 	ADD_SERIALIZE_METHODS;
   template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {

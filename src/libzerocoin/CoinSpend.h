@@ -21,6 +21,7 @@
 #include "Commitment.h"
 #include "Params.h"
 #include "SerialNumberSignatureOfKnowledge.h"
+#include "SerialNumberSoK_small.h"
 #include "SerialNumberProofOfKnowledge.h"
 #include "SpendType.h"
 
@@ -41,6 +42,7 @@ public:
     CoinSpend(const ZerocoinParams* params) :
         accumulatorPoK(&params->accumulatorParams),
         serialNumberSoK(params),
+        serialNumberSoK_small(params),
         serialNumberPoK(&params->coinCommitmentGroup),
         commitmentPoK(&params->serialNumberSoKCommitmentGroup, &params->accumulatorParams.accumulatorPoKCommitmentGroup) {}
 
@@ -50,6 +52,7 @@ public:
     CoinSpend(const ZerocoinParams* params, Stream& strm) :
         accumulatorPoK(&params->accumulatorParams),
         serialNumberSoK(params),
+        serialNumberSoK_small(params),
         serialNumberPoK(&params->coinCommitmentGroup),
         commitmentPoK(&params->serialNumberSoKCommitmentGroup, &params->accumulatorParams.accumulatorPoKCommitmentGroup)
     {
@@ -80,7 +83,9 @@ public:
    * @throw ZerocoinException if the process fails
    */
     CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, const Accumulator& a, const uint256& checksum,
-              const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType, const libzerocoin::ObfuscationValue obfuscationJ, const libzerocoin::ObfuscationValue obfuscationK);
+              const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType,
+              const libzerocoin::ObfuscationValue obfuscationJ, const libzerocoin::ObfuscationValue obfuscationK,
+              bool fUseBulletproofs = false);
 
     /** Returns the serial number of the coin spend by this proof.
    *
@@ -110,7 +115,7 @@ public:
     uint8_t getVersion() const { return version; }
     SpendType getSpendType() const { return spendType; }
 
-    bool Verify(const Accumulator& a) const;
+    bool Verify(const Accumulator& a, bool fUseBulletproofs = false) const;
     bool HasValidPublicSerial(ZerocoinParams* params) const;
     bool HasValidSignature() const;
     CBigNum CalculateValidPublicSerial(ZerocoinParams* params);
@@ -128,6 +133,7 @@ public:
         READWRITE(coinValuePublic);
         READWRITE(accumulatorPoK);
         READWRITE(serialNumberSoK);
+        READWRITE(serialNumberSoK_small);
         READWRITE(serialNumberPoK);
         READWRITE(commitmentPoK);
         READWRITE(version);
@@ -144,6 +150,7 @@ private:
     CBigNum coinValuePublic;
     AccumulatorProofOfKnowledge accumulatorPoK;
     SerialNumberSignatureOfKnowledge serialNumberSoK;
+    SerialNumberSoK_small serialNumberSoK_small;
     SerialNumberProofOfKnowledge serialNumberPoK;
     CommitmentProofOfKnowledge commitmentPoK;
     uint8_t version;

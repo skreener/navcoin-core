@@ -20,7 +20,9 @@
 namespace libzerocoin
 {
 CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, const Accumulator& a, const uint256& checksum,
-                     const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType, const libzerocoin::ObfuscationValue obfuscationJ, const libzerocoin::ObfuscationValue obfuscationK) : accChecksum(checksum),
+                     const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType,
+                     const libzerocoin::ObfuscationValue obfuscationJ, const libzerocoin::ObfuscationValue obfuscationK,
+                     bool fUseBulletproofs) : accChecksum(checksum),
     ptxHash(ptxHash),
     accumulatorPoK(&params->accumulatorParams),
     serialNumberSoK(params),
@@ -69,13 +71,17 @@ CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, cons
     // 4. Proves that the coin is correct w.r.t. serial number and hidden coin secret and the serial number image
     // (This proof is bound to the coin 'metadata', i.e., transaction hash)
     uint256 hashSig = signatureHash();
-    this->serialNumberSoK = SerialNumberSignatureOfKnowledge(params, coin, fullCommitmentToCoinUnderSerialParams, publicSerialNumber, hashSig, obfuscatedRandomness);
+    if (!fUseBulletproofs) {
+        this->serialNumberSoK = SerialNumberSignatureOfKnowledge(params, coin, fullCommitmentToCoinUnderSerialParams, publicSerialNumber, hashSig, obfuscatedRandomness);
+    } else {
+        this->serialNumberSoK_small = SerialNumberSoK_small(params, obfuscatedSerial, obfuscatedRandomness, fullCommitmentToCoinUnderSerialParams, hashSig);
+    }
 
     //5. Zero knowledge proof of the serial number
     this->serialNumberPoK = SerialNumberProofOfKnowledge(&params->coinCommitmentGroup, obfuscatedSerial, hashSig);
 }
 
-bool CoinSpend::Verify(const Accumulator& a) const
+bool CoinSpend::Verify(const Accumulator& a, bool fUseBulletproofs) const
 {
     if (a.getDenomination() != this->denomination) {
         return error("CoinsSpend::Verify: failed, denominations do not match");
@@ -90,8 +96,14 @@ bool CoinSpend::Verify(const Accumulator& a) const
         return error("CoinsSpend::Verify: accumulatorPoK failed");
     }
 
-    if (!serialNumberSoK.Verify(serialCommitmentToCoinValue, coinValuePublic, signatureHash())) {
-        return error("CoinsSpend::Verify: serialNumberSoK failed.");
+    if (!fUseBulletproofs) {
+        if (!serialNumberSoK.Verify(serialCommitmentToCoinValue, coinValuePublic, signatureHash())) {
+            return error("CoinsSpend::Verify: serialNumberSoK failed.");
+        }
+    } else {
+        if (!serialNumberSoK_small.Verify(coinValuePublic, serialCommitmentToCoinValue, signatureHash())) {
+            return error("CoinsSpend::Verify: serialNumberSoK failed.");
+        }
     }
 
     if (!serialNumberPoK.Verify(coinValuePublic, signatureHash())) {
