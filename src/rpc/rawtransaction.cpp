@@ -10,6 +10,7 @@
 #include "core_io.h"
 #include "init.h"
 #include "keystore.h"
+#include "libzerocoin/CoinSpend.h"
 #include "main.h"
 #include "merkleblock.h"
 #include "net.h"
@@ -24,6 +25,7 @@
 #include "uint256.h"
 #include "timedata.h"
 #include "utilstrencodings.h"
+#include "zerochain.h"
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 #endif
@@ -92,6 +94,11 @@ void TxToJSONExpanded(const CTransaction& tx, const uint256 hashBlock, UniValue&
         UniValue in(UniValue::VOBJ);
         if (tx.IsCoinBase())
             in.push_back(Pair("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
+        else if (txin.scriptSig.IsZerocoinSpend()) {
+            libzerocoin::CoinSpend coinSpend(&Params().GetConsensus().Zerocoin_Params);
+            if (TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, coinSpend, NULL))
+                in.push_back(Pair("zerocoinspend", coinSpend.getCoinSerialNumber().ToString(16)));
+        }
         else {
             in.push_back(Pair("txid", txin.prevout.hash.GetHex()));
             in.push_back(Pair("vout", (int64_t)txin.prevout.n));
