@@ -411,6 +411,9 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
 {
     CAmount curBalance = pwalletMain->GetBalance();
 
+    if (fPrivate)
+        curBalance = pwalletMain->GetPrivateBalance();
+
     // Check amount
     if (nValue <= 0)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid amount");

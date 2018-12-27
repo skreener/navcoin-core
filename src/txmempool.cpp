@@ -419,9 +419,11 @@ bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry,
 
     const CTransaction& tx = newit->GetTx();
     std::set<uint256> setParentTransactions;
-    for (unsigned int i = 0; i < tx.vin.size(); i++) {
-        mapNextTx.insert(std::make_pair(&tx.vin[i].prevout, &tx));
-        setParentTransactions.insert(tx.vin[i].prevout.hash);
+    if(!tx.IsZerocoinSpend()) {
+        for (unsigned int i = 0; i < tx.vin.size(); i++) {
+            mapNextTx.insert(std::make_pair(&tx.vin[i].prevout, &tx));
+            setParentTransactions.insert(tx.vin[i].prevout.hash);
+        }
     }
     // Don't bother worrying about child transactions of this one.
     // Normal case of a new transaction arriving is that there can't be any
