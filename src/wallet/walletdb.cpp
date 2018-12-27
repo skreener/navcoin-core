@@ -829,7 +829,7 @@ bool CWalletDB::EraseSerialNumber(const CBigNum& bnSerialNumber)
     return Erase(std::make_pair(std::string("serial"), bnSerialNumber));
 }
 
-DBErrors CWalletDB::FindWalletTx(CWallet* pwallet, vector<uint256>& vTxHash, vector<CWalletTx>& vWtx)
+DBErrors CWalletDB::FindWalletTx(CWallet* pwallet, vector<uint256>& vTxHash, vector<CBigNum>& vSerial, vector<CWalletTx>& vWtx)
 {
     pwallet->vchDefaultKey = CPubKey();
     bool fNoncriticalErrors = false;
@@ -879,6 +879,13 @@ DBErrors CWalletDB::FindWalletTx(CWallet* pwallet, vector<uint256>& vTxHash, vec
                 vTxHash.push_back(hash);
                 vWtx.push_back(wtx);
             }
+            else if (strType == "serial") {
+                CBigNum bnSerial;
+                COutPoint out;
+                ssKey >> bnSerial;
+                ssValue >> out;
+                vSerial.push_back(bnSerial);
+            }
         }
         pcursor->close();
     }
@@ -900,7 +907,8 @@ DBErrors CWalletDB::ZapSelectTx(CWallet* pwallet, vector<uint256>& vTxHashIn, ve
     // build list of wallet TXs and hashes
     vector<uint256> vTxHash;
     vector<CWalletTx> vWtx;
-    DBErrors err = FindWalletTx(pwallet, vTxHash, vWtx);
+    vector<CBigNum> vSerial;
+    DBErrors err = FindWalletTx(pwallet, vTxHash, vSerial, vWtx);
     if (err != DB_LOAD_OK) {
         return err;
     }
@@ -928,6 +936,12 @@ DBErrors CWalletDB::ZapSelectTx(CWallet* pwallet, vector<uint256>& vTxHashIn, ve
         }
     }
 
+    // erase each serial from mapSerial
+    BOOST_FOREACH (CBigNum& bnSn, vSerial) {
+        if (!EraseSerialNumber(bnSn))
+            return DB_CORRUPT;
+    }
+
     if (delerror) {
         return DB_CORRUPT;
     }
@@ -938,13 +952,20 @@ DBErrors CWalletDB::ZapWalletTx(CWallet* pwallet, vector<CWalletTx>& vWtx)
 {
     // build list of wallet TXs
     vector<uint256> vTxHash;
-    DBErrors err = FindWalletTx(pwallet, vTxHash, vWtx);
+    vector<CBigNum> vSerial;
+    DBErrors err = FindWalletTx(pwallet, vTxHash, vSerial, vWtx);
     if (err != DB_LOAD_OK)
         return err;
 
     // erase each wallet TX
     BOOST_FOREACH (uint256& hash, vTxHash) {
         if (!EraseTx(hash))
+            return DB_CORRUPT;
+    }
+
+    // erase each serial from mapSerial
+    BOOST_FOREACH (CBigNum& bnSn, vSerial) {
+        if (!EraseSerialNumber(bnSn))
             return DB_CORRUPT;
     }
 
