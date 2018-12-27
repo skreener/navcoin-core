@@ -3593,6 +3593,7 @@ DBErrors CWallet::ZapWalletTx(std::vector<CWalletTx>& vWtx)
         {
             LOCK(cs_wallet);
             setKeyPool.clear();
+            mapSerial.clear();
             // Note: can't top-up keypool here, because wallet is locked.
             // User will be prompted to unlock wallet the next operation
             // that requires a new key.
