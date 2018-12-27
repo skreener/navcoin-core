@@ -174,9 +174,9 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
         UniValue in(UniValue::VOBJ);
         if (tx.IsCoinBase())
             in.pushKV("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
-        else if(tx.IsZerocoinSpend())
-            in.pushKV("zerocoinspend", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
-        else {
+        else if(txin.scriptSig.IsZerocoinSpend()) {
+            in.pushKV("zerocoinspend", "HexStr(txin.scriptSig.begin(), txin.scriptSig.end())");
+        } else {
             in.pushKV("txid", txin.prevout.hash.GetHex());
             in.pushKV("vout", (int64_t)txin.prevout.n);
             UniValue o(UniValue::VOBJ);
