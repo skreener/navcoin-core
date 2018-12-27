@@ -985,7 +985,7 @@ bool CheckStake(CBlock* pblock, CWallet& wallet, const CChainParams& chainparams
         return error("CheckStake() : proof-of-stake checking failed");
 
     //// debug print
-    LogPrintf("CheckStake() : new proof-of-stake block found hash: %s\n", hashBlock.GetHex());
+    LogPrintf("CheckStake() : new proof-of-stake block found hash: %s coinstake: %s\n", hashBlock.GetHex(), pblock->vtx[1].GetHash().ToString());
 
     // Found a solution
     {
