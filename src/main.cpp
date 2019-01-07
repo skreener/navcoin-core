@@ -2775,6 +2775,9 @@ int32_t ComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Para
     if(IsReducedCFundQuorumEnabled(pindexPrev,Params().GetConsensus()))
         nVersion |= nCFundReducedQuorumMask;
 
+    if(pindexPrev->nHeight >= Params().GetConsensus().nHeightv451Fork)
+        nVersion |= nV451ForkMask;
+
     return nVersion;
 }
 
@@ -3064,7 +3067,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                             CBlockIndex* pblockindex = mapBlockIndex[proposal.blockhash];
                             if(pblockindex == NULL)
                                 continue;
-                            if((proposal.CanRequestPayments() || (proposal.fState == CFund::EXPIRED && prequest.nVotingCycle > 0))
+                            if((proposal.CanRequestPayments() || proposal.fState == CFund::PENDING_VOTING_PREQ)
                                     && prequest.CanVote()
                                     && pindex->nHeight - pblockindex->nHeight > Params().GetConsensus().nCommunityFundMinAge)
                                 pindex->vPaymentRequestVotes.push_back(make_pair(hash, vote));
@@ -3803,6 +3806,9 @@ void static UpdateTip(CBlockIndex *pindexNew, const CChainParams& chainParams) {
             strMiscWarning = _("A new version of the wallet has been released. Please update as soon as possible.");
             warningMessages.push_back("A new version of the wallet has been released. Please update as soon as possible.");
             if (!fWarned) {
+                uiInterface.ThreadSafeMessageBox(
+                    strMiscWarning,
+                    "", CClientUIInterface::MSG_WARNING);
                 AlertNotify(strMiscWarning);
                 fWarned = true;
             }
@@ -4236,7 +4242,7 @@ void CountVotes(CValidationState& state, CBlockIndex *pindexNew, bool fUndo)
             }
 
             if((pindexNew->nHeight + 1) % Params().GetConsensus().nBlocksPerVotingCycle == 0) {
-                if((!prequest.IsExpired() && proposal.fState == CFund::EXPIRED) ||
+                if((!prequest.IsExpired() && prequest.fState == CFund::EXPIRED) ||
                         (!prequest.IsRejected() && prequest.fState == CFund::REJECTED)){
                     prequest.fState = CFund::NIL;
                     prequest.blockhash = uint256();
@@ -4261,7 +4267,7 @@ void CountVotes(CValidationState& state, CBlockIndex *pindexNew, bool fUndo)
                         fUpdate = true;
                     }
                 } else if(prequest.fState == CFund::NIL){
-                    if(proposal.fState == CFund::ACCEPTED && prequest.IsAccepted()) {
+                    if((proposal.fState == CFund::ACCEPTED || proposal.fState == CFund::PENDING_VOTING_PREQ) && prequest.IsAccepted()) {
                         if(prequest.nAmount <= pindexNew->nCFLocked && prequest.nAmount <= proposal.GetAvailable()) {
                             pindexNew->nCFLocked -= prequest.nAmount;
                             prequest.fState = CFund::ACCEPTED;
@@ -4274,7 +4280,7 @@ void CountVotes(CValidationState& state, CBlockIndex *pindexNew, bool fUndo)
             if((pindexNew->nHeight) % Params().GetConsensus().nBlocksPerVotingCycle == 0)
             {
                 if (!vSeen.count(prequest.hash) && prequest.fState == CFund::NIL
-                        && !(proposal.fState == CFund::ACCEPTED && prequest.IsAccepted())){
+                        && !((proposal.fState == CFund::ACCEPTED || proposal.fState == CFund::PENDING_VOTING_PREQ) && prequest.IsAccepted())){
                     prequest.nVotesYes = 0;
                     prequest.nVotesNo = 0;
                     fUpdate = true;
@@ -4318,7 +4324,7 @@ void CountVotes(CValidationState& state, CBlockIndex *pindexNew, bool fUndo)
 
             if((pindexNew->nHeight + 1) % Params().GetConsensus().nBlocksPerVotingCycle == 0) {
                 if((!proposal.IsExpired(pindexNew->GetBlockTime()) && proposal.fState == CFund::EXPIRED) ||
-                        (!proposal.IsRejected() && proposal.fState == CFund::REJECTED)){
+                   (!proposal.IsRejected() && proposal.fState == CFund::REJECTED)){
                     proposal.fState = CFund::NIL;
                     proposal.blockhash = uint256();
                     fUpdate = true;
@@ -4329,23 +4335,28 @@ void CountVotes(CValidationState& state, CBlockIndex *pindexNew, bool fUndo)
                     fUpdate = true;
                 }
 
-                if(proposal.IsExpired(pindexNew->GetBlockTime())) {
+                if(proposal.IsExpired(pindexNew->GetBlockTime())){
                     if (proposal.fState != CFund::EXPIRED) {
-                        if (proposal.fState == CFund::ACCEPTED) {
-                            pindexNew->nCFSupply += proposal.GetAvailable();
-                            pindexNew->nCFLocked -= proposal.GetAvailable();
+                        if (proposal.HasPendingPaymentRequests()) {
+                            proposal.fState = CFund::PENDING_VOTING_PREQ;
+                            fUpdate = true;
+                        } else {
+                            if(proposal.fState == CFund::ACCEPTED || proposal.fState == CFund::PENDING_VOTING_PREQ) {
+                                pindexNew->nCFSupply += proposal.GetAvailable();
+                                pindexNew->nCFLocked -= proposal.GetAvailable();
+                            }
+                            proposal.fState = CFund::EXPIRED;
+                            proposal.blockhash = pindexNew->GetBlockHash();
+                            fUpdate = true;
                         }
-                        proposal.fState = CFund::EXPIRED;
-                        proposal.blockhash = pindexNew->GetBlockHash();
-                        fUpdate = true;
                     }
-                } else if(proposal.IsRejected()) {
-                    if (proposal.fState != CFund::REJECTED) {
+                } else if(proposal.IsRejected()){
+                    if(proposal.fState != CFund::REJECTED) {
                         proposal.fState = CFund::REJECTED;
                         proposal.blockhash = pindexNew->GetBlockHash();
                         fUpdate = true;
                     }
-                } else if(proposal.IsAccepted()) {
+                } else if(proposal.IsAccepted()){
                     if((proposal.fState == CFund::NIL || proposal.fState == CFund::PENDING_FUNDS)) {
                         if(pindexNew->nCFSupply >= proposal.GetAvailable()) {
                             pindexNew->nCFSupply -= proposal.GetAvailable();
@@ -5236,8 +5247,12 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
                         "rejected no static reward block");
 
    if((block.nVersion & nCFundReducedQuorumMask) != nCFundReducedQuorumMask && IsReducedCFundQuorumEnabled(pindexPrev,Params().GetConsensus()))
-     return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
+       return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
                         "rejected no reduced quorum block");
+
+   if((block.nVersion & nV451ForkMask) != nV451ForkMask && pindexPrev->nHeight >= Params().GetConsensus().nHeightv451Fork)
+       return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
+                        "rejected, block version isn't v4.5.1");
 
     return true;
 }
