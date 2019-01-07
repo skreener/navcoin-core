@@ -108,6 +108,7 @@ struct Params {
     int64_t nCoinbaseTimeActivationHeight;
     int64_t nMaxFutureDrift;
     CAmount nStaticReward;
+    int nHeightv451Fork;
 
     int64_t DifficultyAdjustmentInterval() const { return nPowTargetTimespan / nPowTargetSpacing; }
 
