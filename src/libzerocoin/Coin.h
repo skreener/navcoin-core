@@ -145,6 +145,9 @@ public:
                     ((bnObfuscationJ.first*this->serialNumber)+bnObfuscationJ.second) % params->coinCommitmentGroup.groupOrder,
                     params->coinCommitmentGroup.modulus);
     }
+    const CBigNum getPrivateSerialNumber(const libzerocoin::ObfuscationValue& bnObfuscationJ) const {
+        return ((bnObfuscationJ.first*this->serialNumber)+bnObfuscationJ.second) % params->coinCommitmentGroup.groupOrder;
+    }
     const CBigNum& getRandomness() const { return this->randomness; }
     const uint8_t& getVersion() const { return this->version; }
 

@@ -1132,7 +1132,7 @@ unsigned int GetLegacySigOpCount(const CTransaction& tx)
 
 unsigned int GetP2SHSigOpCount(const CTransaction& tx, const CCoinsViewCache& inputs)
 {
-    if (tx.IsCoinBase())
+    if (tx.IsCoinBase() && !tx.IsZerocoinSpend())
         return 0;
 
     unsigned int nSigOps = 0;
@@ -1151,7 +1151,7 @@ int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& i
 {
     int64_t nSigOps = GetLegacySigOpCount(tx) * WITNESS_SCALE_FACTOR;
 
-    if (tx.IsCoinBase())
+    if (tx.IsCoinBase() && !tx.IsZerocoinSpend())
         return nSigOps;
 
     if (flags & SCRIPT_VERIFY_P2SH) {
@@ -1217,7 +1217,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state)
             vInOutPoints.insert(txin.prevout);
     }
 
-    if (tx.IsCoinBase())
+    if (tx.IsCoinBase() && !tx.IsZerocoinSpend())
     {
         if (tx.vin[0].scriptSig.size() < 2 || tx.vin[0].scriptSig.size() > 100)
             return state.DoS(100, false, REJECT_INVALID, "bad-cb-length");
@@ -1307,7 +1307,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
     }
 
     // Coinbase is only valid in a block, not as a loose transaction
-    if (tx.IsCoinBase())
+    if (tx.IsCoinBase() && !tx.IsZerocoinSpend())
         return state.DoS(100, false, REJECT_INVALID, "coinbase");
 
     // Coinbase is only valid in a block, not as a loose transaction
@@ -1764,7 +1764,7 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState &state, const CTransa
     std::vector<uint256> vHashTxToUncache;
     bool res = AcceptToMemoryPoolWorker(pool, state, tx, fLimitFree, pfMissingInputs, fOverrideMempoolLimit, nAbsurdFee, vHashTxToUncache);
     if (!res) {
-        LogPrintf("Error ACceptomemorypool %s: %s\n", state.GetRejectReason(), state.GetDebugMessage());
+        LogPrintf("Error AcceptToMemoryPool %s: %s\n", state.GetRejectReason(), state.GetDebugMessage());
         BOOST_FOREACH(const uint256& hashTx, vHashTxToUncache)
             pcoinsTip->Uncache(hashTx);
     }
@@ -2133,7 +2133,7 @@ void static InvalidBlockFound(CBlockIndex *pindex, const CValidationState &state
 void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txundo, int nHeight)
 {
     // mark inputs spent
-    if (!tx.IsCoinBase()) {
+    if (!tx.IsCoinBase() || tx.IsZerocoinSpend()) {
         txundo.vprevout.reserve(tx.vin.size());
         BOOST_FOREACH(const CTxIn &txin, tx.vin) {
             if (txin.scriptSig.IsZerocoinSpend()) {
@@ -2160,7 +2160,7 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
         }
     }
     // add outputs
-    inputs.ModifyNewCoins(tx.GetHash(), tx.IsCoinBase())->FromTx(tx, nHeight);
+    inputs.ModifyNewCoins(tx.GetHash(), tx.IsCoinBase() && !tx.IsZerocoinSpend())->FromTx(tx, nHeight);
 }
 
 void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, int nHeight)
@@ -3202,7 +3202,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
         txdata.emplace_back(tx);
 
-        if (!tx.IsCoinBase())
+        if (!tx.IsCoinBase() && !tx.IsZerocoinSpend())
         {
 
             if (!tx.IsCoinStake())
@@ -3260,7 +3260,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     tx.GetHash().ToString(), FormatStateMessage(state));
             control.Add(vChecks);
 
-        } else {
+        } else if(!tx.IsZerocoinSpend()){
             if (tx.nTime < block.nTime && pindex->nHeight > Params().GetConsensus().nCoinbaseTimeActivationHeight)
                 return error("ConnectBlock(): Coinbase timestamp doesn't meet protocol (tx=%d vs block=%d)",
                              tx.nTime, block.nTime);
@@ -3433,8 +3433,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (block.IsProofOfStake())
     {
         // ppcoin: coin stake tx earns reward instead of paying fee
-        uint64_t nCoinAge;
-        if (!TransactionGetCoinAge(const_cast<CTransaction&>(block.vtx[1]), nCoinAge, view))
+        uint64_t nCoinAge = 0;
+        if (!(block.vtx[1].IsZerocoinSpend()) && !TransactionGetCoinAge(const_cast<CTransaction&>(block.vtx[1]), nCoinAge, view))
             return error("ConnectBlock() : %s unable to get coin age for coinstake", block.vtx[1].GetHash().ToString());
 
         int64_t nCalculatedStakeReward = GetProofOfStakeReward(pindex->nHeight, nCoinAge, nFees, pindex->pprev);
@@ -3857,7 +3857,7 @@ bool static DisconnectTip(CValidationState& state, const CChainParams& chainpara
             // ignore validation errors in resurrected transactions
             list<CTransaction> removed;
             CValidationState stateDummy;
-            if (!(tx.IsCoinBase() || tx.IsCoinStake()) || !AcceptToMemoryPool(mempool, stateDummy, tx, false, NULL, true)) {
+            if (!((tx.IsCoinBase() && !tx.IsZerocoinSpend())|| tx.IsCoinStake()) || !AcceptToMemoryPool(mempool, stateDummy, tx, false, NULL, true)) {
                 mempool.removeRecursive(tx, removed);
             } else if (mempool.exists(tx.GetHash())) {
                 vHashUpdate.push_back(tx.GetHash());
@@ -3881,46 +3881,25 @@ bool static DisconnectTip(CValidationState& state, const CChainParams& chainpara
         if(!pblocktree->WriteFirstZerocoinBlock(make_pair(0, uint256())))
             return AbortNode(state, "Failed to write height of first Zerocoin block");
 
-    CBlockIndex* prevChecksum = chainActive[pindexDelete->nHeight - Params().GetConsensus().nRecalculateAccumulatorChecksum];
-
-    if((pindexDelete->nHeight % Params().GetConsensus().nRecalculateAccumulatorChecksum) == 0 &&
-            pindexDelete->nAccumulatorChecksum != uint256() && prevChecksum &&
-            prevChecksum->nAccumulatorChecksum != pindexDelete->nAccumulatorChecksum) {
+    if(pindexDelete->nAccumulatorChecksum != uint256() && (block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN) {
         if(!pblocktree->EraseZerocoinAccumulator(pindexDelete->nAccumulatorChecksum))
             return AbortNode(state, "Failed to remove zerocoin accumulator checksum");
 
         std::vector<std::pair<CBigNum, uint256>> vAccumulatedMints;
-        CBlockIndex* pindexcursor = chainActive[max((unsigned int)firstZero.first,
-                                                  pindexDelete->nHeight - Params().GetConsensus().nAccumulatorChecksumBlockDelay)];
 
-        while (pindexcursor) {
-            CBlock block;
+        for (auto& tx : block.vtx) {
+            for (auto& out : tx.vout) {
+                if (!out.IsZerocoinMint())
+                    continue;
 
-            if (!ReadBlockFromDisk(block, pindexcursor, Params().GetConsensus()))
-                return AbortNode(state, "Failed to read block");
+                libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
 
-            if ((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) != VERSIONBITS_TOP_BITS_ZEROCOIN)
-                break;
+                std::vector<unsigned char> c; CPubKey p;
+                if(!out.scriptPubKey.ExtractZerocoinMintData(p, c))
+                    continue;
 
-            for (auto& tx : block.vtx) {
-                for (auto& out : tx.vout) {
-                    if (!out.IsZerocoinMint())
-                        continue;
-
-                    libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
-
-                    std::vector<unsigned char> c; CPubKey p;
-                    if(!out.scriptPubKey.ExtractZerocoinMintData(p, c))
-                        continue;
-
-                    vAccumulatedMints.push_back(make_pair(CBigNum(c), uint256()));
-                }
+                vAccumulatedMints.push_back(make_pair(CBigNum(c), uint256()));
             }
-
-            pindexcursor = pindexcursor->pprev;
-
-            if ((pindexcursor->nHeight % Params().GetConsensus().nRecalculateAccumulatorChecksum) == 0)
-                break;
         }
 
         if(!pblocktree->UpdateAccMintIndex(vAccumulatedMints))
@@ -4968,7 +4947,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
     if (block.vtx.empty() || !block.vtx[0].IsCoinBase())
         return state.DoS(100, false, REJECT_INVALID, "bad-cb-missing", false, "first tx is not coinbase");
     for (unsigned int i = 1; i < block.vtx.size(); i++)
-        if (block.vtx[i].IsCoinBase())
+        if (block.vtx[i].IsCoinBase() && !block.vtx[i].IsZerocoinSpend())
             return state.DoS(100, false, REJECT_INVALID, "bad-cb-multiple", false, "more than one coinbase");
 
     // Check proof-of-stake block signature
@@ -5007,6 +4986,24 @@ bool CheckBlockSignature(const CBlock& block)
     {
         return error("CheckBlockSignature: Bad Block - vchBlockSig empty\n");
     }
+
+    if (block.vtx[1].vin[0].scriptSig.IsZerocoinSpend())
+    {
+        CDataStream ss(block.vchBlockSig, SER_NETWORK, PROTOCOL_VERSION);
+        libzerocoin::SerialNumberProofOfKnowledge snpok(&Params().GetConsensus().Zerocoin_Params.coinCommitmentGroup);
+        CoinSpend coinSpend(&Params().GetConsensus().Zerocoin_Params);
+
+        ss >> snpok;
+
+        if(block.vtx[1].vin.size() > 1)
+            return error("%s: More than one zerocoin input found", __func__);
+
+        if(!TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, block.vtx[1].vin[0], coinSpend, NULL))
+            return error("%s: Could not get coin spend from tx in", __func__);
+
+        return snpok.Verify(coinSpend.getCoinSerialNumber(), block.GetHash());
+    }
+
 
     vector<std::vector<unsigned char>> vSolutions;
     txnouttype whichType;
@@ -5364,7 +5361,11 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
     {
         AccumulatorMap mapAccumulators(&Params().GetConsensus().Zerocoin_Params);
         std::vector<std::pair<CBigNum, uint256>> vAccumulatedMints;
-        if(!CalculateAccumulatorChecksum(pindexPrev->nHeight+1, mapAccumulators, block.GetHash(), vAccumulatedMints))
+
+        if (pindexPrev->nAccumulatorChecksum != uint256())
+            mapAccumulators.Load(pindexPrev->nAccumulatorChecksum);
+
+        if(!CalculateAccumulatorChecksum(&block, mapAccumulators, vAccumulatedMints))
             return state.DoS(10, error("ConnectBlock(): could not verify zerocoin accumulator checksum."),
                              REJECT_INVALID, "bad-zero-accumulator-checksum");
 
@@ -9047,13 +9048,10 @@ bool ComputeNextStakeModifier(const CBlockIndex* pindexPrev, uint64_t& nStakeMod
     return true;
 }
 
-
 static bool CheckStakeKernelHashV2(CBlockIndex* pindexPrev, unsigned int nBits, unsigned int nTimeBlockFrom, const CTransaction& txPrev, const COutPoint& prevout, unsigned int nTimeTx, uint256& hashProofOfStake, uint256& targetProofOfStake, bool fPrintProofOfStake)
 {
-
     if (nTimeTx < txPrev.nTime)  // Transaction timestamp violation
         return error("CheckStakeKernelHash() : nTime violation");
-
 
     if (nTimeBlockFrom + Params().GetConsensus().nStakeMinAge > nTimeTx) // Min age requirement
         return error("CheckStakeKernelHash() : min age violation");
@@ -9126,6 +9124,18 @@ bool CheckProofOfStake(CBlockIndex* pindexPrev, const CTransaction& tx, const CC
     if (!tx.IsCoinStake())
         return error("CheckProofOfStake() : called on non-coinstake %s", tx.GetHash().ToString());
 
+    if (tx.IsZerocoinSpend()) {
+        CoinSpend coinSpend(&Params().GetConsensus().Zerocoin_Params);
+
+        if(tx.vin.size() > 1)
+            return error("CheckProofOfStake: More than one zerocoin input found");
+
+        if(!TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, tx.vin[0], coinSpend, NULL))
+            return error("CheckProofOfStake: Could not convert tx in to Coinspend");
+
+        return CheckZeroStakeKernelHash(pindexPrev, nBits, tx.nTime, coinSpend.getCoinSerialNumber(), libzerocoin::ZerocoinDenominationToAmount(coinSpend.getDenomination()), hashProofOfStake, targetProofOfStake);
+    }
+
     // Kernel (input 0) must match the stake hash target per coin age (nBits)
     const CTxIn& txin = tx.vin[0];
 
@@ -9192,13 +9202,11 @@ bool CheckKernel(CBlockIndex* pindexPrev, const CCoinsViewCache& view, unsigned 
     uint256 hashBlock = uint256();
 
     if (!GetTransaction(prevout.hash, txPrev, view, Params().GetConsensus(), hashBlock, true)){
-        LogPrintf("CheckKernel : Could not find previous transaction %s\n",prevout.hash.ToString());
-        return false;
+        return error("CheckKernel : Could not find previous transaction %s\n",prevout.hash.ToString());
     }
 
     if (mapBlockIndex.count(hashBlock) == 0){
-        LogPrintf("CheckKernel : Could not find block of previous transaction %s\n",hashBlock.ToString());
-        return false;
+        return error("CheckKernel : Could not find block of previous transaction %s\n",hashBlock.ToString());
     }
 
     CBlockIndex* pblockindex = mapBlockIndex[hashBlock];

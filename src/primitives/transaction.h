@@ -464,13 +464,13 @@ public:
 
     bool IsCoinBase() const
     {
-        return (vin.size() == 1 && vin[0].prevout.IsNull());
+        return (vin.size() == 1 && vin[0].prevout.IsNull() && !vin[0].scriptSig.IsZerocoinSpend());
     }
 
     bool IsCoinStake() const
     {
         // ppcoin: the coin stake transaction is marked with the first output empty
-        return (vin.size() > 0 && (!vin[0].prevout.IsNull()) && vout.size() >= 2 && vout[0].IsEmpty());
+        return (vin.size() > 0 && (!vin[0].prevout.IsNull() || vin[0].scriptSig.IsZerocoinSpend()) && vout.size() >= 2 && vout[0].IsEmpty());
     }
 
     bool IsZerocoinSpend() const

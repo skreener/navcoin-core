@@ -157,6 +157,7 @@ NAVCOIN_CORE_H = \
   wallet/rpcwallet.h \
   wallet/wallet.h \
   wallet/walletdb.h \
+  wallet/zeropos.h \
   zeroaccumulators.h \
   zerochain.h \
   zerowallet.h \
@@ -242,6 +243,7 @@ libnavcoin_wallet_a_SOURCES = \
   wallet/rpcwallet.cpp \
   wallet/wallet.cpp \
   wallet/walletdb.cpp \
+  wallet/zeropos.cpp \
   policy/rbf.cpp \
   $(NAVCOIN_CORE_H)
 
