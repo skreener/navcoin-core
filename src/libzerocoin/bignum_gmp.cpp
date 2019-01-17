@@ -173,6 +173,36 @@ std::vector<unsigned char> CBigNum::getvch() const
     return v;
 }
 
+CBigNum CBigNum::Xor(const CBigNum& m) const
+{
+    if (mpz_cmp(bn, CBigNum(0).bn) == 0)
+        return CBigNum(0);
+
+    std::vector<unsigned char> vch = getvch();
+    std::vector<unsigned char> key = m.getvch();
+
+    if (key.size() == 0)
+        return CBigNum(0);
+
+    for (size_t i = 0, j = 0; i != vch.size(); i++)
+    {
+        vch[i] ^= key[j++];
+
+        // This potentially acts on very many bytes of data, so it's
+        // important that we calculate `j`, i.e. the `key` index in this
+        // way instead of doing a %, which would effectively be a division
+        // for each byte Xor'd -- much slower than need be.
+        if (j == key.size())
+            j = 0;
+    }
+
+    CBigNum ret;
+
+    ret.setvch(vch);
+
+    return ret;
+}
+
 void CBigNum::SetDec(const std::string& str)
 {
     const char* psz = str.c_str();

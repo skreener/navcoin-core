@@ -175,6 +175,13 @@ public:
     CBigNum gcd( const CBigNum& b) const;
 
     /**
+     * Performs binary EXCLUSIVE OR operation.
+     * @param m the obfuscation number
+     * @return the obfuscated number
+     */
+    CBigNum Xor(const CBigNum& m) const;
+
+    /**
     * Miller-Rabin primality test on this element
     * @param checks: optional, the number of Miller-Rabin tests to run
     *                          default causes error rate of 2^-80.
