@@ -26,7 +26,7 @@
 #include "wallet/walletdb.h"
 #include "txdb.h"
 #include "consensus/consensus.h"
-
+#include "wallet/zeropos.h"
 
 #include <algorithm>
 #include <exception>

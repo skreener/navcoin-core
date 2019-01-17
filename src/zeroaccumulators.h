@@ -10,6 +10,7 @@
 #include "libzerocoin/Coin.h"
 
 class CBlock;
+class CBlockIndex;
 class CChain;
 
 //A map with an accumulator for each denomination
@@ -30,5 +31,5 @@ public:
     bool Save();
 };
 
-bool CalculateAccumulatorChecksum(int nHeight, AccumulatorMap& mapAccumulators, uint256 blockHash, std::vector<std::pair<CBigNum, uint256>>& vPubCoins);
+bool CalculateAccumulatorChecksum(const CBlock* block, AccumulatorMap& mapAccumulators, std::vector<std::pair<CBigNum, uint256>>& vPubCoins);
 #endif //NAV_ACCUMULATORMAP_H

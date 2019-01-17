@@ -172,7 +172,7 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
     UniValue vin(UniValue::VARR);
     BOOST_FOREACH(const CTxIn& txin, tx.vin) {
         UniValue in(UniValue::VOBJ);
-        if (tx.IsCoinBase())
+        if (tx.IsCoinBase() && !tx.IsZerocoinSpend())
             in.pushKV("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
         else if(txin.scriptSig.IsZerocoinSpend()) {
             in.pushKV("zerocoinspend", "HexStr(txin.scriptSig.begin(), txin.scriptSig.end())");

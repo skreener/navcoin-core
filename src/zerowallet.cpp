@@ -85,7 +85,7 @@ bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, v
     return true;
 }
 
-bool MintVecRecipients(const std::string &strAddress, vector<CRecipient> &vecSend)
+bool MintVecRecipients(const std::string &strAddress, vector<CRecipient> &vecSend, bool fShowDialog)
 {
     CNavCoinAddress a(strAddress);
 
@@ -94,14 +94,15 @@ bool MintVecRecipients(const std::string &strAddress, vector<CRecipient> &vecSen
 
     CTxDestination address = a.Get();
 
-    return MintVecRecipients(address, vecSend);
+    return MintVecRecipients(address, vecSend, fShowDialog);
 }
 
-bool MintVecRecipients(const CTxDestination &address, vector<CRecipient> &vecSend)
+bool MintVecRecipients(const CTxDestination &address, vector<CRecipient> &vecSend, bool fShowDialog)
 {
     unsigned int i = 0;
 
-    uiInterface.ShowProgress(_("Constructing transaction..."), 0);
+    if (fShowDialog)
+        uiInterface.ShowProgress(_("Constructing transaction..."), 0);
 
     for(auto& it: vecSend)
     {
@@ -109,14 +110,15 @@ bool MintVecRecipients(const CTxDestination &address, vector<CRecipient> &vecSen
 
         unsigned int nProgress = (i++)*100/vecSend.size();
 
-        if (nProgress > 0)
+        if (nProgress > 0 && fShowDialog)
             uiInterface.ShowProgress(_("Constructing transaction..."), nProgress);
 
         CScript vMintScript = GetScriptForDestination(address);
         it.scriptPubKey = vMintScript;
     }
 
-    uiInterface.ShowProgress(_("Constructing transaction..."), 100);
+    if (fShowDialog)
+        uiInterface.ShowProgress(_("Constructing transaction..."), 100);
 
     return true;
 }

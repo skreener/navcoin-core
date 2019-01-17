@@ -192,6 +192,9 @@ bool CWalletDB::WriteZerocoinValues(const CWallet* pwallet)
     } else if (!WriteZerocoinValues(oj, vchCOk, bc, zk))
         return false;
 
+    ok.first.Nullify();
+    ok.second.Nullify();
+
     return true;
 
 }
@@ -396,7 +399,7 @@ public:
 
 bool
 ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
-             CWalletScanState &wss, string& strType, string& strErr)
+             CWalletScanState &wss, string& strType, string& strErr, CWalletTx& pwtx)
 {
     try {
         // Unserialize
@@ -456,7 +459,7 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
             if (wtx.nOrderPos == -1)
                 wss.fAnyUnordered = true;
 
-            pwallet->AddToWallet(wtx, true, NULL);
+            pwtx = wtx;
         }
         else if (strType == "acentry")
         {
@@ -735,6 +738,8 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
             return DB_CORRUPT;
         }
 
+        std::vector<CWalletTx> vTx;
+
         while (true)
         {
             // Read next record
@@ -751,7 +756,8 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
 
             // Try to be tolerant of single corrupt records:
             string strType, strErr;
-            if (!ReadKeyValue(pwallet, ssKey, ssValue, wss, strType, strErr))
+            CWalletTx pwtx;
+            if (!ReadKeyValue(pwallet, ssKey, ssValue, wss, strType, strErr, pwtx))
             {
                 // losing keys is considered a catastrophic error, anything else
                 // we assume the user can live with:
@@ -765,9 +771,14 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
                         // Rescan if there is a bad transaction record:
                         SoftSetBoolArg("-rescan", true);
                 }
+            } else if (strType == "tx"){;
+                vTx.push_back(pwtx);
             }
             if (!strErr.empty())
                 LogPrintf("%s\n", strErr);
+        }
+        for (auto &it: vTx) {
+            pwallet->AddToWallet(it, true, NULL);
         }
         pcursor->close();
     }
@@ -1093,10 +1104,11 @@ bool CWalletDB::Recover(CDBEnv& dbenv, const std::string& filename, bool fOnlyKe
             string strType, strErr;
             bool fReadOK;
             {
+                CWalletTx dummywtx;
                 // Required in LoadKeyMetadata():
                 LOCK(dummyWallet.cs_wallet);
                 fReadOK = ReadKeyValue(&dummyWallet, ssKey, ssValue,
-                                        wss, strType, strErr);
+                                        wss, strType, strErr, dummywtx);
             }
             if (!IsKeyType(strType) && strType != "hdchain")
                 continue;

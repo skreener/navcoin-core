@@ -17,7 +17,7 @@
 // NEEDS UNIT TEST
 bool DestinationToVecRecipients(CAmount nValue, const std::string &address, vector<CRecipient> &vecSend,  bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate = false, bool fReduceOutputs = false);
 bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate = false, bool fReduceOutputs = false);
-bool MintVecRecipients(const std::string &strAddress, vector<CRecipient> &vecSend);
-bool MintVecRecipients(const CTxDestination &address, vector<CRecipient> &vecSend);
+bool MintVecRecipients(const std::string &strAddress, vector<CRecipient> &vecSend, bool fShowDialog = true);
+bool MintVecRecipients(const CTxDestination &address, vector<CRecipient> &vecSend, bool fShowDialog = true);
 bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript& scriptPubKey, const CAmount& amount, CScript& ret);
 #endif // ZEROWALLET_H

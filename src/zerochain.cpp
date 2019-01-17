@@ -188,10 +188,7 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
 
     CBlockIndex* pindex = mapBlockIndex[blockHash];
 
-    pindex = chainActive[pindex->nHeight -
-            (pindex->nHeight % Params().GetConsensus().nRecalculateAccumulatorChecksum) -
-            Params().GetConsensus().nAccumulatorChecksumBlockDelay -
-            1];
+    pindex = chainActive[pindex->nHeight - 1];
 
     if(!pindex) {
         strError = strprintf("Could not move back to a block index previous to the coin mint");
@@ -211,7 +208,6 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
 
     if (chainActive.Next(pindex)) {
         pindex = chainActive.Next(pindex);
-
         while (pindex) {
             CBlock block;
 
@@ -242,12 +238,14 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
 
                     accumulatorWitness.AddElement(pubCoinOut);
                     accumulator.accumulate(pubCoinOut);
+
+                    if (!accumulatorMap.Load(pindex->nAccumulatorChecksum)) {
+                        return false;
+                    }
                 }
             }
 
-            if(((pindex->nHeight % Params().GetConsensus().nRecalculateAccumulatorChecksum) == 0
-                && (chainActive.Tip()->nHeight - pindex->nHeight) < (int)Params().GetConsensus().nRecalculateAccumulatorChecksum)
-                    || !chainActive.Next(pindex))
+            if(!chainActive.Next(pindex))
                 break;
 
             pindex = chainActive.Next(pindex);
@@ -261,9 +259,9 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
 
     accumulatorChecksum = pindex->nAccumulatorChecksum;
 
-    if (!accumulatorMap.Load(pindex->nAccumulatorChecksum)) {
+    if (!accumulatorMap.Load(accumulatorChecksum)) {
         strError = strprintf("Could not load Accumulators data from checksum %s of last block index",
-                             pindex->nAccumulatorChecksum.GetHex());
+                             accumulatorChecksum.GetHex());
         return false;
     }
 

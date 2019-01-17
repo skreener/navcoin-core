@@ -584,7 +584,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
         uint256 txHash = tx.GetHash();
         setTxIndex[txHash] = i++;
 
-        if (tx.IsCoinBase())
+        if (tx.IsCoinBase() && !tx.IsZerocoinSpend())
             continue;
 
         UniValue entry(UniValue::VOBJ);

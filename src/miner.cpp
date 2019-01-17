@@ -311,11 +311,13 @@ CBlockTemplate* BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bo
     pblock->nNonce         = 0;
     pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(pblock->vtx[0]);
 
-    if(IsZerocoinEnabled(pindexPrev, chainparams.GetConsensus()))
+    if(!fProofOfStake && IsZerocoinEnabled(pindexPrev, Params().GetConsensus()))
     {
         AccumulatorMap mapAccumulators(&Params().GetConsensus().Zerocoin_Params);
         std::vector<std::pair<CBigNum, uint256>> vDummy;
-        CalculateAccumulatorChecksum(nHeight, mapAccumulators, uint256(), vDummy);
+        if (pindexPrev->nAccumulatorChecksum != uint256())
+            mapAccumulators.Load(pindexPrev->nAccumulatorChecksum);
+        CalculateAccumulatorChecksum(pblock, mapAccumulators, vDummy);
         pblock->nAccumulatorChecksum = mapAccumulators.GetChecksum();
     }
 
@@ -883,9 +885,9 @@ bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees)
 
   if (nSearchTime > nLastCoinStakeSearchTime)
   {
-
       int64_t nSearchInterval = nBestHeight+1 > 0 ? 1 : nSearchTime - nLastCoinStakeSearchTime;
-      if (wallet.CreateCoinStake(wallet, pblock->nBits, nSearchInterval, nFees, txCoinStake, key))
+      CBigNum zerokey;
+      if (wallet.CreateCoinStake(wallet, pblock->nBits, nSearchInterval, nFees, txCoinStake, key, zerokey))
       {
 
           if (txCoinStake.nTime >= chainActive.Tip()->GetPastTimeLimit()+1)
@@ -923,10 +925,15 @@ bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees)
               }
 
               // After the changes, we need to resign inputs.
+              bool fZeroStake = false;
 
               CTransaction txNewConst(txCoinStake);
               for(unsigned int i = 0; i < txCoinStake.vin.size(); i++)
               {
+                  if (txCoinStake.vin[i].scriptSig.IsZerocoinSpend())
+                      fZeroStake = true;
+                  if (fZeroStake)
+                      continue;
                   bool signSuccess;
                   uint256 prevHash = txCoinStake.vin[i].prevout.hash;
                   uint32_t n = txCoinStake.vin[i].prevout.n;
@@ -955,10 +962,26 @@ bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees)
                       pblock->vtx.insert(pblock->vtx.begin() + 2, forcedTx);
               }
 
+              if(IsZerocoinEnabled(chainActive.Tip(), Params().GetConsensus()))
+              {
+                  AccumulatorMap mapAccumulators(&Params().GetConsensus().Zerocoin_Params);
+                  if (chainActive.Tip()->nAccumulatorChecksum != uint256())
+                      mapAccumulators.Load(chainActive.Tip()->nAccumulatorChecksum);
+                  std::vector<std::pair<CBigNum, uint256>> vDummy;
+                  CalculateAccumulatorChecksum(pblock, mapAccumulators, vDummy);
+                  pblock->nAccumulatorChecksum = mapAccumulators.GetChecksum();
+              }
 
               pblock->vtx[0].UpdateHash();
               pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
-              return key.Sign(pblock->GetHash(), pblock->vchBlockSig);
+              if (fZeroStake) {
+                  libzerocoin::SerialNumberProofOfKnowledge serialNumberPoK = SerialNumberProofOfKnowledge(&Params().GetConsensus().Zerocoin_Params.coinCommitmentGroup, zerokey, pblock->GetHash());
+                  CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+                  ss << serialNumberPoK;
+                  pblock->vchBlockSig = std::vector<unsigned char>(ss.begin(), ss.end());
+                  return true;
+              } else
+                  return key.Sign(pblock->GetHash(), pblock->vchBlockSig);
           }
       }
       nLastCoinStakeSearchInterval = nSearchTime - nLastCoinStakeSearchTime;
@@ -975,7 +998,7 @@ bool CheckStake(CBlock* pblock, CWallet& wallet, const CChainParams& chainparams
     uint256 hashBlock = pblock->GetHash();
 
     if(!pblock->IsProofOfStake())
-        return error("CheckStake() : %s is not a proof-of-stake block", hashBlock.GetHex());
+        return error("CheckStake() : %s is not a proof-of-stake block.", hashBlock.GetHex());
 
     if (mapBlockIndex.count(pblock->hashPrevBlock) == 0)
         return error("CheckStake(): could not find previous block");

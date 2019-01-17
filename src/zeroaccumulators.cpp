@@ -126,71 +126,22 @@ bool AccumulatorMap::Save()
     return true;
 }
 
-bool CalculateAccumulatorChecksum(int nHeight, AccumulatorMap& mapAccumulators, uint256 blockHash, std::vector<std::pair<CBigNum, uint256>>& vPubCoins)
+bool CalculateAccumulatorChecksum(const CBlock* block, AccumulatorMap& mapAccumulators, std::vector<std::pair<CBigNum, uint256>>& vPubCoins)
 {
-    AssertLockHeld(cs_main);
+    for (auto& tx : block->vtx) {
+        for (auto& out : tx.vout) {
+            if (!out.IsZerocoinMint())
+                continue;
 
-    std::pair<int, uint256> firstZero = make_pair(0, uint256());
+            libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
 
-    pblocktree->ReadFirstZerocoinBlock(firstZero);
+            if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, out, pubCoin))
+                return false;
 
-    if (firstZero.second == uint256())
-        return true;
+            if (!mapAccumulators.Increment(pubCoin.getDenomination(), pubCoin.getValue()))
+                return false;
 
-    if (nHeight < (int)(firstZero.first + Params().GetConsensus().nRecalculateAccumulatorChecksum + Params().GetConsensus().nAccumulatorChecksumBlockDelay))
-        return true;
-
-    CBlockIndex* pLastChecksum = (nHeight % Params().GetConsensus().nRecalculateAccumulatorChecksum) == 0 ?
-                chainActive[max((unsigned int)firstZero.first,nHeight - Params().GetConsensus().nRecalculateAccumulatorChecksum)] :
-                chainActive[max((unsigned int)firstZero.first,nHeight - (nHeight % Params().GetConsensus().nRecalculateAccumulatorChecksum))];
-
-    if (pLastChecksum)
-    {
-        if (pLastChecksum->nAccumulatorChecksum != uint256())
-            mapAccumulators.Load(pLastChecksum->nAccumulatorChecksum);
-
-        if ((nHeight % Params().GetConsensus().nRecalculateAccumulatorChecksum) == 0)
-        {
-            CBlockIndex* pLastAccumulated = chainActive[max((unsigned int)firstZero.first,
-                                                      nHeight - Params().GetConsensus().nAccumulatorChecksumBlockDelay)];
-
-            if (pLastAccumulated)
-            {
-                unsigned int nCount = 0;
-
-                while (pLastAccumulated && nCount < Params().GetConsensus().nRecalculateAccumulatorChecksum)
-                {
-                    if ((pLastAccumulated->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) != VERSIONBITS_TOP_BITS_ZEROCOIN ||
-                            pLastAccumulated->nHeight < firstZero.first)
-                        break;
-
-                    CBlock block;
-
-                    if (!ReadBlockFromDisk(block, pLastAccumulated, Params().GetConsensus()))
-                        return false;
-
-                    for (auto& tx : block.vtx) {
-                        for (auto& out : tx.vout) {
-                            if (!out.IsZerocoinMint())
-                                continue;
-
-                            libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
-
-                            if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, out, pubCoin))
-                                return false;
-
-                            if (!mapAccumulators.Increment(pubCoin.getDenomination(), pubCoin.getValue()))
-                                return false;
-                            else
-                                vPubCoins.push_back(make_pair(pubCoin.getValue(), blockHash));
-                        }
-                    }
-
-                    pLastAccumulated = chainActive[pLastAccumulated->nHeight - 1];
-
-                    nCount++;
-                }
-            }
+            vPubCoins.push_back(make_pair(pubCoin.getValue(), block->GetHash()));
         }
     }
 
