@@ -596,6 +596,9 @@ UniValue dumpprivateparameters(const UniValue& params, bool fHelp)
     ret.push_back(Pair("blindingCommitment2", bc.second.GetHex()));
     ret.push_back(Pair("zeroPrivKey", HexStr(std::vector<unsigned char>(zk.begin(), zk.end()))));
 
+    ok.first.Nullify();
+    ok.second.Nullify();
+
     return ret;
 }
 
