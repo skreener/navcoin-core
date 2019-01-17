@@ -55,7 +55,6 @@ SendCoinsEntry::SendCoinsEntry(const PlatformStyle *platformStyle, QWidget *pare
     connect(ui->addressBookCheckBox, SIGNAL(clicked()), this, SLOT(updateAddressBook()));
     connect(ui->sendPublic, SIGNAL(clicked()), this, SLOT(sendPublicChanged()));
     connect(ui->sendPrivate, SIGNAL(clicked()), this, SLOT(sendPrivateChanged()));
-    connect(ui->securityLevel, SIGNAL(valueChanged(int)), this, SLOT(securityLevelChanged(int)));
 
     QSettings settings;
 
@@ -63,12 +62,11 @@ SendCoinsEntry::SendCoinsEntry(const PlatformStyle *platformStyle, QWidget *pare
 
     nSecurityLevel = settings.value("securitylevel", pwalletMain->GetSecurityLevel()).toInt() - 1;
     pwalletMain->SetSecurityLevel(nSecurityLevel);
-    ui->securityLevel->setValue(nSecurityLevel);
 
     ui->sendPublic->setChecked(!fDefaultPrivate);
     ui->sendPrivate->setChecked(fDefaultPrivate);
-    ui->securityLevel->setVisible(fDefaultPrivate);
-    ui->securityLevelLabel->setVisible(fDefaultPrivate);
+    ui->paymentID->setVisible(fDefaultPrivate);
+    ui->paymentIDLabel->setVisible(fDefaultPrivate);
     fPrivate = fDefaultPrivate;
 
     ui->labellLabel->setVisible(ui->addressBookCheckBox->isChecked());
@@ -85,8 +83,8 @@ void SendCoinsEntry::sendPublicChanged()
     fPrivate = !((bool)ui->sendPublic->isChecked() && ui->sendPublic->isCheckable());
     QSettings settings;
     settings.setValue("defaultprivate", !ui->sendPublic->isChecked());
-    ui->securityLevel->setVisible(fPrivate);
-    ui->securityLevelLabel->setVisible(fPrivate);
+    ui->paymentID->setVisible(fPrivate);
+    ui->paymentIDLabel->setVisible(fPrivate);
 }
 
 void SendCoinsEntry::sendPrivateChanged()
@@ -94,8 +92,8 @@ void SendCoinsEntry::sendPrivateChanged()
     fPrivate = (bool)ui->sendPrivate->isChecked() && ui->sendPrivate->isCheckable();
     QSettings settings;
     settings.setValue("defaultprivate", ui->sendPrivate->isChecked());
-    ui->securityLevel->setVisible(fPrivate);
-    ui->securityLevelLabel->setVisible(fPrivate);
+    ui->paymentID->setVisible(fPrivate);
+    ui->paymentIDLabel->setVisible(fPrivate);
 }
 
 void SendCoinsEntry::securityLevelChanged(int level)
@@ -124,8 +122,8 @@ void SendCoinsEntry::useFullAmount()
     ui->sendPublic->setChecked(true);
     ui->sendPrivate->setChecked(false);
     fPrivate = false;
-    ui->securityLevel->setVisible(fPrivate);
-    ui->securityLevelLabel->setVisible(fPrivate);
+    ui->paymentID->setVisible(fPrivate);
+    ui->paymentIDLabel->setVisible(fPrivate);
 }
 
 void SendCoinsEntry::useFullPrivateAmount()
@@ -134,8 +132,8 @@ void SendCoinsEntry::useFullPrivateAmount()
     ui->sendPublic->setChecked(false);
     ui->sendPrivate->setChecked(true);
     fPrivate = true;
-    ui->securityLevel->setVisible(fPrivate);
-    ui->securityLevelLabel->setVisible(fPrivate);
+    ui->paymentID->setVisible(fPrivate);
+    ui->paymentIDLabel->setVisible(fPrivate);
 }
 
 void SendCoinsEntry::updateAddressBook()
@@ -190,6 +188,7 @@ void SendCoinsEntry::clear()
     ui->payTo_s->clear();
     ui->memoTextLabel_s->clear();
     ui->payAmount_s->clear();
+    ui->paymentID->clear();
 
     // update the display unit, to not use the default ("NAV")
     updateDisplayUnit();
@@ -270,7 +269,7 @@ SendCoinsRecipient SendCoinsEntry::getValue()
     recipient.address = ui->payTo->text();
     recipient.label = ui->addAsLabel->text();
     recipient.amount = ui->payAmount->value();
-    recipient.message = ui->messageTextLabel->text();
+    recipient.message = ui->paymentID->text();
     recipient.fSubtractFeeFromAmount = (ui->checkboxSubtractFeeFromAmount->checkState() == Qt::Checked);
     recipient.isanon = ui->sendPrivate->isChecked();
 
@@ -297,6 +296,7 @@ void SendCoinsEntry::setValue(const SendCoinsRecipient &value)
         {
             ui->payTo_is->setText(recipient.address);
             ui->memoTextLabel_is->setText(recipient.message);
+            ui->paymentID->setText(recipient.message);
             ui->payAmount_is->setValue(recipient.amount);
             ui->payAmount_is->setReadOnly(true);
             setCurrentWidget(ui->SendCoins_UnauthenticatedPaymentRequest);
@@ -305,6 +305,7 @@ void SendCoinsEntry::setValue(const SendCoinsRecipient &value)
         {
             ui->payTo_s->setText(recipient.authenticatedMerchant);
             ui->memoTextLabel_s->setText(recipient.message);
+            ui->paymentID->setText(recipient.message);
             ui->payAmount_s->setValue(recipient.amount);
             ui->payAmount_s->setReadOnly(true);
             setCurrentWidget(ui->SendCoins_AuthenticatedPaymentRequest);
@@ -314,6 +315,7 @@ void SendCoinsEntry::setValue(const SendCoinsRecipient &value)
     {
         // message
         ui->messageTextLabel->setText(recipient.message);
+        ui->paymentID->setText(recipient.message);
         ui->messageTextLabel->setVisible(!recipient.message.isEmpty());
         ui->messageLabel->setVisible(!recipient.message.isEmpty());
 
