@@ -71,8 +71,6 @@ bool CheckZeroStakeKernelHash(CBlockIndex* pindexPrev, unsigned int nBits, int64
     // We need to convert type so it can be compared to target
     base_uint<512> hashProofOfStake512(hashProofOfStake.GetHex());
 
-    LogPrintf("CheckZeroStakeKernelHash: \nHash:   %s \nTarget: %s \nPass? (hash > target)? %b\n", hashProofOfStake512.ToString(), targetProofOfStake512.ToString(), !(hashProofOfStake512 > targetProofOfStake512));
-
     // Now check if proof-of-stake hash meets target protocol
     if (hashProofOfStake512 > targetProofOfStake512)
       return false;
