@@ -520,3 +520,30 @@ void CBigNum::Nullify()
     const std::vector<unsigned char> vNull(nSize, 0);
     setvch(vNull);
 }
+
+CBigNum CBigNum::Xor(const CBigNum& m) const
+{
+    std::vector<unsigned char> vch = getvch();
+    std::vector<unsigned char> key = m.getvch();
+
+    if (key.size() == 0)
+        return CBigNum(0);
+
+    for (size_t i = 0, j = 0; i != vch.size(); i++)
+    {
+        vch[i] ^= key[j++];
+
+        // This potentially acts on very many bytes of data, so it's
+        // important that we calculate `j`, i.e. the `key` index in this
+        // way instead of doing a %, which would effectively be a division
+        // for each byte Xor'd -- much slower than need be.
+        if (j == key.size())
+            j = 0;
+    }
+
+    CBigNum ret;
+
+    ret.setvch(vch);
+
+    return ret;
+}
