@@ -338,8 +338,8 @@ Test_MintCoin()
     try {
         // Generate a list of coins
         for (uint32_t i = 0; i < TESTS_COINS_TO_ACCUMULATE; i++) {
-            PublicCoin pubCoin(g_Params,libzerocoin::CoinDenomination::ZQ_ONE,pubKey,blindingCommitment);
-            gCoins[i] = new PrivateCoin(g_Params,pubCoin.getDenomination(),privKey,pubCoin.getPubKey(),blindingCommitment,pubCoin.getValue());
+            PublicCoin pubCoin(g_Params,libzerocoin::CoinDenomination::ZQ_ONE,pubKey,blindingCommitment, "");
+            gCoins[i] = new PrivateCoin(g_Params,pubCoin.getDenomination(),privKey,pubCoin.getPubKey(),blindingCommitment,pubCoin.getValue(), pubCoin.getPaymentId());
             PublicCoin pc = gCoins[i]->getPublicCoin();
             CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
             ss << pc;
@@ -374,7 +374,7 @@ bool Test_InvalidCoin()
             return false;
         }
 
-        PublicCoin pubCoin2(g_Params, ZQ_ONE, coinValue, pubKey);
+        PublicCoin pubCoin2(g_Params, ZQ_ONE, coinValue, pubKey, CBigNum(1));
         if (pubCoin2.isValid()) {
             // A non-prime coin should not be valid!
             return false;

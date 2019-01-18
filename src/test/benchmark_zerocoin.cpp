@@ -301,8 +301,8 @@ Testb_MintCoin()
         timer.start();
         for (uint32_t i = 0; i < TESTS_COINS_TO_ACCUMULATE; i++) {
 
-            PublicCoin pubCoin(gg_Params,libzerocoin::CoinDenomination::ZQ_ONE,pubKey_,blindingCommitment_);
-            ggCoins[i] = new PrivateCoin(gg_Params,pubCoin.getDenomination(),privKey_,pubCoin.getPubKey(),blindingCommitment_,pubCoin.getValue());
+            PublicCoin pubCoin(gg_Params,libzerocoin::CoinDenomination::ZQ_ONE,pubKey_,blindingCommitment_, "test");
+            ggCoins[i] = new PrivateCoin(gg_Params,pubCoin.getDenomination(),privKey_,pubCoin.getPubKey(),blindingCommitment_,pubCoin.getValue(), pubCoin.getPaymentId());
         }
         timer.stop();
     } catch (exception &e) {

@@ -702,7 +702,7 @@ public:
 
     bool IsZerocoinMint() const;
     bool IsZerocoinSpend() const;
-    bool ExtractZerocoinMintData(CPubKey &zkey, std::vector<unsigned char> &commitment) const;
+    bool ExtractZerocoinMintData(CPubKey &zkey, std::vector<unsigned char> &commitment, std::vector<unsigned char> &paymentid) const;
 
     /** Called by IsStandardTx and P2SH/BIP62 VerifyScript (which makes it consensus-critical). */
     bool IsPushOnly(const_iterator pc) const;

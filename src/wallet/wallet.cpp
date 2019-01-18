@@ -732,7 +732,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
             if (!GetObfuscationJ(oj))
                 return error("%s: Could not read obfuscation value j from wallet", __func__);
 
-            libzerocoin::PrivateCoin privateCoin(&Params().GetConsensus().Zerocoin_Params, pubCoin.getDenomination(), zk, pubCoin.getPubKey(), bc, pubCoin.getValue());
+            libzerocoin::PrivateCoin privateCoin(&Params().GetConsensus().Zerocoin_Params, pubCoin.getDenomination(), zk, pubCoin.getPubKey(), bc, pubCoin.getValue(), pubCoin.getPaymentId());
 
             if (!privateCoin.isValid()) {
                 return error("%s: The private coin did not validate", __func__);
@@ -1517,7 +1517,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletD
                 if (!GetBlindingCommitment(bc))
                     break;
 
-                libzerocoin::PrivateCoin privateCoin(&Params().GetConsensus().Zerocoin_Params, pubCoin.getDenomination(), zk, pubCoin.getPubKey(), bc, pubCoin.getValue());
+                libzerocoin::PrivateCoin privateCoin(&Params().GetConsensus().Zerocoin_Params, pubCoin.getDenomination(), zk, pubCoin.getPubKey(), bc, pubCoin.getValue(), pubCoin.getPaymentId());
 
                 if (!privateCoin.isValid())
                     continue;
@@ -2387,8 +2387,8 @@ CAmount CWalletTx::GetImmatureCredit(bool fUseCache) const
     for (unsigned int i = 0; i < vout.size(); i++) {
         if (!vout[i].IsZerocoinMint())
             continue;
-        std::vector<unsigned char> c; CPubKey p;
-        if (!vout[i].scriptPubKey.ExtractZerocoinMintData(p, c))
+        std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> id;
+        if (!vout[i].scriptPubKey.ExtractZerocoinMintData(p, c, id))
             continue;
         uint256 blockhash;
         bool fAccumulated = true;
@@ -2432,8 +2432,8 @@ CAmount CWalletTx::GetAvailableCredit(bool fUseCache) const
             if (vout[i].scriptPubKey.IsZerocoinMint()) {
                 if (!out.IsZerocoinMint())
                     continue;
-                std::vector<unsigned char> c; CPubKey p;
-                if(!out.scriptPubKey.ExtractZerocoinMintData(p, c))
+                std::vector<unsigned char> c; CPubKey p;  std::vector<unsigned char> i;
+                if(!out.scriptPubKey.ExtractZerocoinMintData(p, c, i))
                     continue;
                 uint256 blockhash;
                 if (!pblocktree->ReadAccMint(CBigNum(c), blockhash) || blockhash == uint256())
@@ -2493,8 +2493,8 @@ CAmount CWalletTx::GetAvailablePrivateCredit() const
     {
         if (!vout[i].IsZerocoinMint())
             continue;
-        std::vector<unsigned char> c; CPubKey p;
-        if(!vout[i].scriptPubKey.ExtractZerocoinMintData(p, c))
+        std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> id;
+        if(!vout[i].scriptPubKey.ExtractZerocoinMintData(p, c, id))
             continue;
         uint256 blockhash;
         if (!pblocktree->ReadAccMint(CBigNum(c), blockhash) || blockhash == uint256())
@@ -2618,8 +2618,8 @@ bool CWalletTx::IsTrusted() const
         for (const CTxOut& out: vout) {
             if (!out.IsZerocoinMint())
                 continue;
-            std::vector<unsigned char> c; CPubKey p;
-            if(!out.scriptPubKey.ExtractZerocoinMintData(p, c))
+            std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> i;
+            if(!out.scriptPubKey.ExtractZerocoinMintData(p, c, i))
                 continue;
             uint256 blockhash;
             if (!pblocktree->ReadAccMint(CBigNum(c), blockhash) || blockhash == uint256())
@@ -2908,8 +2908,8 @@ void CWallet::AvailablePrivateCoins(vector<COutput>& vCoins, bool fOnlyConfirmed
                 unsigned int nCount = 0;
                 if (!pcoin->vout[i].IsZerocoinMint())
                     continue;
-                std::vector<unsigned char> c; CPubKey p;
-                if(!pcoin->vout[i].scriptPubKey.ExtractZerocoinMintData(p, c))
+                std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> id;
+                if(!pcoin->vout[i].scriptPubKey.ExtractZerocoinMintData(p, c, id))
                     continue;
                 uint256 blockhash;
                 if (!pblocktree->ReadAccMint(CBigNum(c), blockhash) || blockhash == uint256())

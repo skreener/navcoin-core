@@ -96,7 +96,7 @@ isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
             break;
         if(!keystore.GetBlindingCommitment(bc))
             break;
-        libzerocoin::PrivateCoin pc(&Params().GetConsensus().Zerocoin_Params, libzerocoin::IntToZerocoinDenomination(1), zk, p, bc, c);
+        libzerocoin::PrivateCoin pc(&Params().GetConsensus().Zerocoin_Params, libzerocoin::IntToZerocoinDenomination(1), zk, p, bc, c, CBigNum(1));
         if(pc.isValid()) {
             vMyMints.push_back(scriptHash);
             return ISMINE_SPENDABLE_PRIVATE;
