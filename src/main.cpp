@@ -42,6 +42,7 @@
 #include "versionbits.h"
 #include "wallet/wallet.h"
 #include "zerochain.h"
+#include "zerotx.h"
 
 #include <atomic>
 #include <sstream>

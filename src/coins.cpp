@@ -9,6 +9,7 @@
 #include "memusage.h"
 #include "random.h"
 #include "zerochain.h"
+#include "zerotx.h"
 
 #include <assert.h>
 

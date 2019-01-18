@@ -33,6 +33,7 @@
 #include "zerochain.h"
 #include "zerowallet.h"
 #include "zeropos.h"
+#include "zerotx.h"
 
 #include <assert.h>
 

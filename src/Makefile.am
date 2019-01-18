@@ -218,6 +218,7 @@ libnavcoin_server_a_SOURCES = \
   versionbits.cpp \
   zeroaccumulators.cpp \
   zerochain.cpp \
+  zerotx.cpp \
   zerowallet.cpp \
   $(NAVCOIN_CORE_H)
 
@@ -245,6 +246,10 @@ libnavcoin_wallet_a_SOURCES = \
   wallet/walletdb.cpp \
   wallet/zeropos.cpp \
   policy/rbf.cpp \
+  zeroaccumulators.cpp \
+  zerochain.cpp \
+  zerotx.cpp \
+  zerowallet.cpp \
   $(NAVCOIN_CORE_H)
 
 # crypto primitives library
@@ -349,6 +354,7 @@ libnavcoin_common_a_SOURCES = \
   scheduler.cpp \
   script/sign.cpp \
   script/standard.cpp \
+  zerotx.cpp \
   $(NAVCOIN_CORE_H)
 
 # util: shared between all executables.
@@ -419,6 +425,8 @@ endif
 
 libzerocoin_libnavcoin_zerocoin_a_LIBADD = $(LIBSECP256K1)
 libzerocoin_libnavcoin_zerocoin_a_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/secp256k1/include $(SSL_CFLAGS)
+libzerocoin_libnavcoin_zerocoin_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libzerocoin_libnavcoin_zerocoin_a_CFLAGS = $(AM_CFLAGS)
 
 if GLIBC_BACK_COMPAT
 libnavcoin_util_a_SOURCES += compat/glibc_compat.cpp
