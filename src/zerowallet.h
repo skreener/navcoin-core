@@ -20,4 +20,6 @@ bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, v
 bool MintVecRecipients(const std::string &strAddress, vector<CRecipient> &vecSend, bool fShowDialog = true);
 bool MintVecRecipients(const CTxDestination &address, vector<CRecipient> &vecSend, bool fShowDialog = true);
 bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript& scriptPubKey, const CAmount& amount, CScript& ret);
+bool ProduceCoinSpend(const BaseSignatureCreator& creator, const CScript& fromPubKey, SignatureData& sigdata, bool fCoinStake, CAmount amount);
+
 #endif // ZEROWALLET_H

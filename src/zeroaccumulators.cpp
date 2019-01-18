@@ -9,6 +9,7 @@
 #include "txdb.h"
 #include "libzerocoin/Denominations.h"
 #include "zerochain.h"
+#include "zerotx.h"
 
 using namespace libzerocoin;
 using namespace std;

@@ -3,6 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "zerowallet.h"
+#include "zerotx.h"
 
 bool DestinationToVecRecipients(CAmount nValue, const std::string &strAddress, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate, bool fReduceOutputs)
 {
@@ -148,4 +149,17 @@ bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript&
         return error(strprintf("Error creating coin spend: %s", strError));
 
     return true;
+}
+
+bool ProduceCoinSpend(const BaseSignatureCreator& creator, const CScript& fromPubKey, SignatureData& sigdata, bool fCoinStake, CAmount amount)
+{
+    CScript script = fromPubKey;
+    bool solved = true;
+    CScript result;
+    solved = PrepareAndSignCoinSpend(creator, script, amount, result);
+    sigdata.scriptWitness.stack.clear();
+    sigdata.scriptSig = result;
+
+    // Test solution
+    return solved;
 }

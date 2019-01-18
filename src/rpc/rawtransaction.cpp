@@ -26,6 +26,8 @@
 #include "timedata.h"
 #include "utilstrencodings.h"
 #include "zerochain.h"
+#include "zerotx.h"
+
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 #endif
