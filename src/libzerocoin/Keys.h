@@ -25,13 +25,13 @@ typedef std::pair<CBigNum,CBigNum> BlindingCommitment;
 class CPrivateAddress
 {
 public:
-    CPrivateAddress(const ZerocoinParams* p) : params(p) { }
-    CPrivateAddress(const ZerocoinParams* p, BlindingCommitment blindingCommitment, CPubKey zeroKey) : params(p), bc1(blindingCommitment.first.getvch()), bc2(blindingCommitment.second.getvch()), zpk(zeroKey) {
+    CPrivateAddress(const ZerocoinParams* p, std::string pid = "") : params(p), strPid(pid) { }
+    CPrivateAddress(const ZerocoinParams* p, BlindingCommitment blindingCommitment, CPubKey zeroKey, std::string pid = "") : params(p), bc1(blindingCommitment.first.getvch()), bc2(blindingCommitment.second.getvch()), zpk(zeroKey), strPid(pid) {
         unsigned int vectorSize = (params->coinCommitmentGroup.modulus.bitSize()/8)+1;
         bc1.resize(vectorSize);
         bc2.resize(vectorSize);
     }
-    CPrivateAddress(const ZerocoinParams* p, BlindingCommitment blindingCommitment, CKey zeroKey) : params(p), bc1(blindingCommitment.first.getvch()), bc2(blindingCommitment.second.getvch()), zpk(zeroKey.GetPubKey()) {
+    CPrivateAddress(const ZerocoinParams* p, BlindingCommitment blindingCommitment, CKey zeroKey, std::string pid = "") : params(p), bc1(blindingCommitment.first.getvch()), bc2(blindingCommitment.second.getvch()), zpk(zeroKey.GetPubKey()), strPid(pid) {
         unsigned int vectorSize = (params->coinCommitmentGroup.modulus.bitSize()/8)+1;
         bc1.resize(vectorSize);
         bc2.resize(vectorSize);
@@ -39,6 +39,14 @@ public:
 
     bool GetBlindingCommitment(BlindingCommitment& blindingCommitment) const;
     bool GetPubKey(CPubKey& zerokey) const;
+
+    void SetPaymentId(std::string pid) {
+        strPid = pid;
+    }
+
+    std::string GetPaymentId() const {
+        return strPid;
+    }
 
     const ZerocoinParams* GetParams() const { return params; }
 
@@ -64,6 +72,7 @@ private:
     std::vector<unsigned char> bc1;
     std::vector<unsigned char> bc2;
     CPubKey zpk;
+    std::string strPid;
 };
 class CPrivateViewKey
 {

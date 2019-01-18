@@ -73,7 +73,8 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
         typeRet = TX_ZEROCOIN;
         CPubKey p;
         vector<unsigned char> c;
-        if(!scriptPubKey.ExtractZerocoinMintData(p, c))
+        vector<unsigned char> i;
+        if(!scriptPubKey.ExtractZerocoinMintData(p, c, i))
             return false;
         vector<unsigned char> vp(p.begin(), p.end());
         vSolutionsRet.push_back(vp);
@@ -388,7 +389,7 @@ public:
             return false;
         if(!dest.GetBlindingCommitment(bc))
             return false;
-        libzerocoin::PublicCoin pc(dest.GetParams(), libzerocoin::IntToZerocoinDenomination(1), zpk, bc);
+        libzerocoin::PublicCoin pc(dest.GetParams(), libzerocoin::IntToZerocoinDenomination(1), zpk, bc, dest.GetPaymentId());
         script->clear();
         *script << OP_ZEROCOINMINT << pc.getPubKey() << pc.getValue().getvch();
         return true;

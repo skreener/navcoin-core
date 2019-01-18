@@ -2133,7 +2133,7 @@ void static InvalidBlockFound(CBlockIndex *pindex, const CValidationState &state
 void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txundo, int nHeight)
 {
     // mark inputs spent
-    if (!tx.IsCoinBase() || tx.IsZerocoinSpend()) {
+    if (!tx.IsCoinBase()) {
         txundo.vprevout.reserve(tx.vin.size());
         BOOST_FOREACH(const CTxIn &txin, tx.vin) {
             if (txin.scriptSig.IsZerocoinSpend()) {
@@ -3894,8 +3894,8 @@ bool static DisconnectTip(CValidationState& state, const CChainParams& chainpara
 
                 libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
 
-                std::vector<unsigned char> c; CPubKey p;
-                if(!out.scriptPubKey.ExtractZerocoinMintData(p, c))
+                std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> i;
+                if(!out.scriptPubKey.ExtractZerocoinMintData(p, c, i))
                     continue;
 
                 vAccumulatedMints.push_back(make_pair(CBigNum(c), uint256()));

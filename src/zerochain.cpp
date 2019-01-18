@@ -15,11 +15,14 @@ bool TxOutToPublicCoin(const ZerocoinParams *params, const CTxOut& txout, Public
     if (denomination == ZQ_ERROR)
         return state != NULL ? state->DoS(100, error("TxOutToPublicCoin(): txout.nValue is not a valid denomination value")) : false;
 
-    std::vector<unsigned char> c; CPubKey p;
-    if(!txout.scriptPubKey.ExtractZerocoinMintData(p, c))
+    std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> i;
+    if(!txout.scriptPubKey.ExtractZerocoinMintData(p, c, i))
         return state != NULL ? state->DoS(100, error("TxOutToPublicCoin(): could not read mint data from txout.scriptPubKey")) : false;
 
-    PublicCoin checkPubCoin(params, denomination, CBigNum(c), p);
+    CBigNum pid;
+    pid.setvch(i);
+
+    PublicCoin checkPubCoin(params, denomination, CBigNum(c), p, pid);
     pubCoin = checkPubCoin;
 
     return true;
@@ -38,11 +41,14 @@ bool BlockToZerocoinMints(const ZerocoinParams *params, const CBlock* block, std
             if (denomination == ZQ_ERROR)
                 return error("BlockToZerocoinMints(): txout.nValue is not a valid denomination value");
 
-            std::vector<unsigned char> c; CPubKey p;
-            if(!out.scriptPubKey.ExtractZerocoinMintData(p, c))
+            std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> i;
+            if(!out.scriptPubKey.ExtractZerocoinMintData(p, c, i))
                 return error("BlockToZerocoinMints(): Could not extract Zerocoin mint data");
 
-            PublicCoin checkPubCoin(params, denomination, CBigNum(c), p);
+            CBigNum pid;
+            pid.setvch(i);
+
+            PublicCoin checkPubCoin(params, denomination, CBigNum(c), p, pid);
             vPubCoins.push_back(checkPubCoin);
         }
     }

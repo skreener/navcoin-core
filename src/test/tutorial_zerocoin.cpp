@@ -118,7 +118,7 @@ ZerocoinTutorial()
         // The following constructor does all the work of minting a brand
         // new zerocoin. You should embed this into a Zerocoin 'MINT' transaction
         // along with a series of currency inputs totaling the assigned value of one zerocoin.
-        libzerocoin::PublicCoin pubCoin(params,libzerocoin::CoinDenomination::ZQ_ONE, pubKey, blindingCommitment);
+        libzerocoin::PublicCoin pubCoin(params,libzerocoin::CoinDenomination::ZQ_ONE, pubKey, blindingCommitment, "test_payment_id");
 
 //        cout << "Successfully minted a zerocoin (Public Part):"
 //             << "\n   Commitment Value: " << pubCoin.getValue()
@@ -127,7 +127,7 @@ ZerocoinTutorial()
         // Use the public coin to construct the Private Coin as we own the private part of the key
         // the coin was created with. This object will include all the secret values to
         // later be able to generate the proof and spend the coin.
-        libzerocoin::PrivateCoin newCoin(params,libzerocoin::CoinDenomination::ZQ_ONE, privKey, pubCoin.getPubKey(), blindingCommitment, pubCoin.getValue());
+        libzerocoin::PrivateCoin newCoin(params,libzerocoin::CoinDenomination::ZQ_ONE, privKey, pubCoin.getPubKey(), blindingCommitment, pubCoin.getValue(), pubCoin.getPaymentId());
 
 //        cout << "Successfully minted a zerocoin (Private Part):"
 //             << "\n   Serial Number: " << newCoin.getObfuscationValue()
@@ -146,7 +146,10 @@ ZerocoinTutorial()
             return false;
         }
 
-
+        if(newCoin.getPaymentId() != "test_payment_id") {
+            cout << "The private coin and the public coin do not share the same payment id. " << newCoin.getPaymentId() << endl;
+            return false;
+        }
 
         // Serialize the public coin to a CDataStream object.
         CDataStream serializedCoin(SER_NETWORK, PROTOCOL_VERSION);
@@ -198,7 +201,7 @@ ZerocoinTutorial()
 
         // Add several coins to it (we'll generate them here on the fly).
         for (uint32_t i = 0; i < COINS_TO_ACCUMULATE; i++) {
-            libzerocoin::PublicCoin testCoin(params,libzerocoin::CoinDenomination::ZQ_ONE, pubKey, blindingCommitment);
+            libzerocoin::PublicCoin testCoin(params,libzerocoin::CoinDenomination::ZQ_ONE, pubKey, blindingCommitment, "");
             accumulator += testCoin;
         }
 
