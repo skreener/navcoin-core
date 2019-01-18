@@ -347,7 +347,7 @@ bool CScript::ExtractZerocoinMintData(CPubKey &zkey, std::vector<unsigned char> 
         return false;
     zkey = key;
     commitment = std::vector<unsigned char>(this->begin()+4+(*this)[1],this->begin()+4+(*this)[1]+(*this)[3+(*this)[1]]);
-    paymentid = std::vector<unsigned char>(this->begin()+6+(*this)[1]+(*this)[3+(*this)[1]],this->end());
+    paymentid = std::vector<unsigned char>(this->begin()+5+(*this)[1]+(*this)[3+(*this)[1]],this->end());
     return true;
 }
 

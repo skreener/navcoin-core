@@ -96,7 +96,12 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 }
                 if(wtx.fAnon || txout.scriptPubKey.IsZerocoinMint())
                 {
-                    sub.type = TransactionRecord::AnonTx;
+                    sub.type = TransactionRecord::AnonTxRecv;
+                    for (auto &it: wtx.vOrderForm)
+                        if (it.first == "Message") {
+                            sub.paymentId = it.second;
+                            break;
+                        }
                 }
                 if(txout.scriptPubKey.IsCommunityFundContribution())
                 {
@@ -173,7 +178,12 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
 
                 if(txout.scriptPubKey.IsZerocoinMint())
                 {
-                    sub.type = TransactionRecord::AnonTx;
+                    sub.type = TransactionRecord::AnonTxSend;
+                    for (auto &it: wtx.vOrderForm)
+                        if (it.first == "Message") {
+                            sub.paymentId = it.second;
+                            break;
+                        }
                 }
 
                 if(txout.scriptPubKey.IsCommunityFundContribution())
