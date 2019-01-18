@@ -445,6 +445,10 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
+
+    if (address.type() == typeid(libzerocoin::CPrivateAddress))
+        wtxNew.vOrderForm.push_back(make_pair("Message", boost::get<libzerocoin::CPrivateAddress>(address).GetPaymentId()));
+
     if (!pwalletMain->CommitTransaction(wtxNew, reservekey))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of the wallet and coins were spent in the copy but not marked as spent here.");
 }
@@ -530,6 +534,12 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
     EnsureWalletIsUnlocked();
 
     wtx.strDZeel = strDZeel;
+
+    CTxDestination dest = address.Get();
+
+    if (dest.type() == typeid(libzerocoin::CPrivateAddress)) {
+        boost::get<libzerocoin::CPrivateAddress>(dest).SetPaymentId(wtx.mapValue["comment"]);
+    }
 
     SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, strDZeel, false);
 
@@ -617,6 +627,12 @@ UniValue privatesendtoaddress(const UniValue& params, bool fHelp)
     EnsureWalletIsUnlocked();
 
     wtx.strDZeel = strDZeel;
+
+    CTxDestination dest = address.Get();
+
+    if (dest.type() == typeid(libzerocoin::CPrivateAddress)) {
+        boost::get<libzerocoin::CPrivateAddress>(dest).SetPaymentId(wtx.mapValue["comment"]);
+    }
 
     SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, strDZeel, true);
 

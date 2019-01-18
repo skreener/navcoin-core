@@ -639,6 +639,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         vector<CRecipient> vecSend;
         bool fNeedsMinting = false;
 
+        pa.SetPaymentId("Staking Reward");
+
         // Parse NavCoin address
         if (!DestinationToVecRecipients(nReward, pa, vecSend, false, false, fNeedsMinting, true)) {
             return error("CreateCoinStake: could not convert to recipient's vector");
@@ -1524,6 +1526,12 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletD
 
                 if (!GetObfuscationJ(oj))
                     break;
+
+                if (wtx.vOrderForm.size() == 0) {
+                    std::string pi = privateCoin.getPaymentId();
+                    if (pi != "")
+                        wtx.vOrderForm.push_back(make_pair("Message", pi));
+                }
 
                 COutPoint outWrite(wtx.GetHash(),i);
                 WriteSerial(privateCoin.getPublicSerialNumber(oj), outWrite);
@@ -3367,12 +3375,14 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
                         bool fNeedsMinting;
 
-                        if (!DestinationToVecRecipients(nChange, CNavCoinAddress(pa).Get(), vecChange, false, false, fNeedsMinting, fPrivate)) {
+                        pa.SetPaymentId("Transaction Change");
+
+                        if (!DestinationToVecRecipients(nChange, pa, vecChange, false, false, fNeedsMinting, fPrivate)) {
                             strFailReason = _("The transaction failed while adding the change outputs.");
                             return false;
                         }
 
-                        if(fNeedsMinting && !MintVecRecipients(CNavCoinAddress(pa).Get(), vecChange)) {
+                        if(fNeedsMinting && !MintVecRecipients(pa, vecChange)) {
                             strFailReason = _("The transaction failed when adding the coin mint scripts to the change outputs.");
                             return false;
                         }
