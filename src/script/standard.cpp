@@ -391,7 +391,7 @@ public:
             return false;
         libzerocoin::PublicCoin pc(dest.GetParams(), libzerocoin::IntToZerocoinDenomination(1), zpk, bc, dest.GetPaymentId());
         script->clear();
-        *script << OP_ZEROCOINMINT << pc.getPubKey() << pc.getValue().getvch();
+        *script << OP_ZEROCOINMINT << pc.getPubKey() << pc.getValue().getvch() << pc.getPaymentId().getvch();
         return true;
     }
 };
