@@ -65,8 +65,8 @@ SendCoinsEntry::SendCoinsEntry(const PlatformStyle *platformStyle, QWidget *pare
 
     ui->sendPublic->setChecked(!fDefaultPrivate);
     ui->sendPrivate->setChecked(fDefaultPrivate);
-    ui->paymentID->setVisible(fDefaultPrivate);
-    ui->paymentIDLabel->setVisible(fDefaultPrivate);
+    ui->paymentID->setVisible(false);
+    ui->paymentIDLabel->setVisible(false);
     fPrivate = fDefaultPrivate;
 
     ui->labellLabel->setVisible(ui->addressBookCheckBox->isChecked());
@@ -83,8 +83,6 @@ void SendCoinsEntry::sendPublicChanged()
     fPrivate = !((bool)ui->sendPublic->isChecked() && ui->sendPublic->isCheckable());
     QSettings settings;
     settings.setValue("defaultprivate", !ui->sendPublic->isChecked());
-    ui->paymentID->setVisible(fPrivate);
-    ui->paymentIDLabel->setVisible(fPrivate);
 }
 
 void SendCoinsEntry::sendPrivateChanged()
@@ -92,8 +90,6 @@ void SendCoinsEntry::sendPrivateChanged()
     fPrivate = (bool)ui->sendPrivate->isChecked() && ui->sendPrivate->isCheckable();
     QSettings settings;
     settings.setValue("defaultprivate", ui->sendPrivate->isChecked());
-    ui->paymentID->setVisible(fPrivate);
-    ui->paymentIDLabel->setVisible(fPrivate);
 }
 
 void SendCoinsEntry::securityLevelChanged(int level)
@@ -122,8 +118,6 @@ void SendCoinsEntry::useFullAmount()
     ui->sendPublic->setChecked(true);
     ui->sendPrivate->setChecked(false);
     fPrivate = false;
-    ui->paymentID->setVisible(fPrivate);
-    ui->paymentIDLabel->setVisible(fPrivate);
 }
 
 void SendCoinsEntry::useFullPrivateAmount()
@@ -132,8 +126,6 @@ void SendCoinsEntry::useFullPrivateAmount()
     ui->sendPublic->setChecked(false);
     ui->sendPrivate->setChecked(true);
     fPrivate = true;
-    ui->paymentID->setVisible(fPrivate);
-    ui->paymentIDLabel->setVisible(fPrivate);
 }
 
 void SendCoinsEntry::updateAddressBook()
@@ -157,6 +149,14 @@ void SendCoinsEntry::on_addressBookButton_clicked()
 
 void SendCoinsEntry::on_payTo_textChanged(const QString &address)
 {
+
+    CNavCoinAddress a(address.toStdString());
+
+    bool fShowPaymentId = (a.IsPrivateAddress(Params()));
+
+    ui->paymentID->setVisible(fShowPaymentId);
+    ui->paymentIDLabel->setVisible(fShowPaymentId);
+
     updateLabel(address);
 }
 

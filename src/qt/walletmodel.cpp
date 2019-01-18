@@ -293,12 +293,23 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
             vector<CRecipient> vecSendTemp;
             bool fNeedsMinting = false;
 
+            CNavCoinAddress a(rcp.address.toStdString());
+
+            if(!a.IsValid())
+                return InvalidAddress;
+
+            CTxDestination address = a.Get();
+
+            if (address.type() == typeid(libzerocoin::CPrivateAddress)) {
+                boost::get<libzerocoin::CPrivateAddress>(address).SetPaymentId(rcp.message.toStdString());
+            }
+
             // Parse NavCoin address
-            if (!DestinationToVecRecipients(rcp.amount, rcp.address.toStdString(), vecSendTemp, rcp.fSubtractFeeFromAmount, false, fNeedsMinting, rcp.isanon)) {
+            if (!DestinationToVecRecipients(rcp.amount, address, vecSendTemp, rcp.fSubtractFeeFromAmount, false, fNeedsMinting, rcp.isanon)) {
                 return InvalidAddress;
             }
 
-            if(fNeedsMinting && !MintVecRecipients(rcp.address.toStdString(), vecSendTemp)) {
+            if(fNeedsMinting && !MintVecRecipients(address, vecSendTemp)) {
                 return TransactionCreationFailed;
             }
 
