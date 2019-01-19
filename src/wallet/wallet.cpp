@@ -2407,7 +2407,7 @@ CAmount CWalletTx::GetImmatureCredit(bool fUseCache) const
         if (blockhash != uint256() && mapBlockIndex.count(blockhash) && !CountMintsFromHeight(mapBlockIndex[blockhash]->nHeight+1,
             libzerocoin::AmountToZerocoinDenomination(vout[i].nValue), nCount))
             fAccumulated = false;
-        if (!fAccumulated || (!pwallet->IsSpent(hashTx, i) && nCount < pwalletMain->GetSecurityLevel()))
+        if (!fAccumulated || (!pwallet->IsSpent(hashTx, i)))
         {
             const CTxOut &txout = vout[i];
             nRet += pwallet->GetCredit(txout, ISMINE_SPENDABLE_PRIVATE);
@@ -2502,18 +2502,7 @@ CAmount CWalletTx::GetAvailablePrivateCredit() const
     {
         if (!vout[i].IsZerocoinMint())
             continue;
-        std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> id;
-        if(!vout[i].scriptPubKey.ExtractZerocoinMintData(p, c, id))
-            continue;
-        uint256 blockhash;
-        if (!pblocktree->ReadAccMint(CBigNum(c), blockhash) || blockhash == uint256())
-            continue;
-        if (!mapBlockIndex.count(blockhash))
-            continue;
-        unsigned int nCount = 0;
-        if (!CountMintsFromHeight(mapBlockIndex[blockhash]->nHeight+1, libzerocoin::AmountToZerocoinDenomination(vout[i].nValue), nCount))
-            continue;
-        if (!pwallet->IsSpent(hashTx, i) && nCount >= pwalletMain->GetSecurityLevel())
+        if (!pwallet->IsSpent(hashTx, i))
         {
             const CTxOut &txout = vout[i];
             nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE_PRIVATE);
@@ -2931,8 +2920,8 @@ void CWallet::AvailablePrivateCoins(vector<COutput>& vCoins, bool fOnlyConfirmed
                     !IsLockedCoin((*it).first, i) && (pcoin->vout[i].nValue > 0 || fIncludeZeroValue) &&
                     (!coinControl || !coinControl->HasSelected() || coinControl->fAllowOtherInputs || coinControl->IsSelected(COutPoint((*it).first, i))))
                         vCoins.push_back(COutput(pcoin, i, nDepth,
-                                                 ((mine & ISMINE_SPENDABLE_PRIVATE) != ISMINE_NO && nCount >= pwalletMain->GetSecurityLevel()),
-                                                 ((mine & ISMINE_SPENDABLE_PRIVATE) != ISMINE_NO && nCount >= pwalletMain->GetSecurityLevel())));
+                                                 ((mine & ISMINE_SPENDABLE_PRIVATE) != ISMINE_NO),
+                                                 ((mine & ISMINE_SPENDABLE_PRIVATE) != ISMINE_NO)));
             }
         }
     }
