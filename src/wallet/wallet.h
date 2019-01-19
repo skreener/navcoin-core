@@ -664,7 +664,6 @@ private:
     int64_t nNextResend;
     int64_t nLastResend;
     bool fBroadcastTransactions;
-    unsigned int nSecurityLevel;
 
     /**
      * Used to keep track of spent outpoints, and
@@ -736,7 +735,6 @@ public:
         nNextResend = 0;
         nLastResend = 0;
         nTimeFirstKey = 0;
-        nSecurityLevel = 0;
         fBroadcastTransactions = false;
     }
 
@@ -794,9 +792,6 @@ public:
     bool CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64_t nSearchInterval, int64_t nFees, CMutableTransaction& txNew, CKey& key, CBigNum& serialNumberPrivKey);
     int64_t GetStake() const;
     int64_t GetNewMint() const;
-
-    void SetSecurityLevel(unsigned int nLevel) { nSecurityLevel = nLevel; }
-    unsigned int GetSecurityLevel() { return nSecurityLevel; }
 
     /**
      * keystore implementation

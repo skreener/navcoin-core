@@ -23,7 +23,6 @@ SendCoinsEntry::SendCoinsEntry(const PlatformStyle *platformStyle, QWidget *pare
     totalAmount(0),
     totalPrivateAmount(0),
     fPrivate(0),
-    nSecurityLevel(0),
     ui(new Ui::SendCoinsEntry),
     model(0),
     platformStyle(platformStyle)
@@ -60,9 +59,6 @@ SendCoinsEntry::SendCoinsEntry(const PlatformStyle *platformStyle, QWidget *pare
 
     bool fDefaultPrivate = settings.value("defaultprivate", false).toBool();
 
-    nSecurityLevel = settings.value("securitylevel", pwalletMain->GetSecurityLevel()).toInt() - 1;
-    pwalletMain->SetSecurityLevel(nSecurityLevel);
-
     ui->sendPublic->setChecked(!fDefaultPrivate);
     ui->sendPrivate->setChecked(fDefaultPrivate);
     ui->paymentID->setVisible(false);
@@ -90,16 +86,6 @@ void SendCoinsEntry::sendPrivateChanged()
     fPrivate = (bool)ui->sendPrivate->isChecked() && ui->sendPrivate->isCheckable();
     QSettings settings;
     settings.setValue("defaultprivate", ui->sendPrivate->isChecked());
-}
-
-void SendCoinsEntry::securityLevelChanged(int level)
-{
-    nSecurityLevel = level;
-    QSettings settings;
-    settings.setValue("securitylevel", level + 1);
-    pwalletMain->SetSecurityLevel(level);
-    if(model)
-        model->checkBalanceChanged();
 }
 
 void SendCoinsEntry::setTotalPrivateAmount(const CAmount& amount)

@@ -55,7 +55,6 @@ public:
     CAmount totalPrivateAmount;
 
     bool fPrivate;
-    unsigned int nSecurityLevel;
 
 public Q_SLOTS:
     void clear();
@@ -73,7 +72,6 @@ private Q_SLOTS:
     void updateAddressBook();
     void sendPrivateChanged();
     void sendPublicChanged();
-    void securityLevelChanged(int level);
 
 private:
     SendCoinsRecipient recipient;
