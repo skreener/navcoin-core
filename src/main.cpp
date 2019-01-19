@@ -2480,7 +2480,7 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
 
                 libzerocoin::CoinSpend coinSpend(&Params().GetConsensus().Zerocoin_Params);
 
-                if (!TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, in, coinSpend, &state))
+                if (!TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, in, coinSpend))
                     return error("%s: error disconnecting zerocoin spend from %s", __func__, hash.ToString());
                 uint256 txHash;
                 if (pblocktree->ReadCoinSpend(coinSpend.getCoinSerialNumber(), txHash) && txHash == hash)
@@ -5018,7 +5018,7 @@ bool CheckBlockSignature(const CBlock& block)
         if(block.vtx[1].vin.size() > 1)
             return error("%s: More than one zerocoin input found", __func__);
 
-        if(!TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, block.vtx[1].vin[0], coinSpend, NULL))
+        if(!TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, block.vtx[1].vin[0], coinSpend))
             return error("%s: Could not get coin spend from tx in", __func__);
 
         return snpok.Verify(coinSpend.getCoinSerialNumber(), block.GetHash());
@@ -9150,7 +9150,7 @@ bool CheckProofOfStake(CBlockIndex* pindexPrev, const CTransaction& tx, const CC
         if(tx.vin.size() > 1)
             return error("CheckProofOfStake: More than one zerocoin input found");
 
-        if(!TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, tx.vin[0], coinSpend, NULL))
+        if(!TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, tx.vin[0], coinSpend))
             return error("CheckProofOfStake: Could not convert tx in to Coinspend");
 
         return CheckZeroStakeKernelHash(pindexPrev, nBits, tx.nTime, coinSpend.getCoinSerialNumber(), libzerocoin::ZerocoinDenominationToAmount(coinSpend.getDenomination()), hashProofOfStake, targetProofOfStake);

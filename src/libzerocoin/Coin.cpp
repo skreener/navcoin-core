@@ -28,7 +28,7 @@ PublicCoin::PublicCoin(const ZerocoinParams* p):
     }
 };
 
-PublicCoin::PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CBigNum value, const CPubKey pubKey, const CBigNum pid) : params(p), value(value), denomination(d), pubKey(pubKey), paymentId(pid) {
+PublicCoin::PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CBigNum value, const CPubKey pubKey, const CBigNum pid, bool fCheck) : params(p), value(value), denomination(d), pubKey(pubKey), paymentId(pid) {
     if (this->params->initialized == false) {
         throw std::runtime_error("Params are not initialized");
     }
@@ -40,7 +40,7 @@ PublicCoin::PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const 
         throw std::runtime_error("Denomination does not exist");
     }
 
-    if(!isValid())
+    if(fCheck && !isValid())
         throw std::runtime_error("Commitment Value of Public Coin is invalid");
 }
 
@@ -153,7 +153,8 @@ bool PublicCoin::isValid() const
 }
 
 PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomination, const CKey privKey, const CPubKey mintPubKey,
-                         const BlindingCommitment blindingCommitment, const CBigNum commitment_value, const CBigNum obfuscatedPid) : params(p), publicCoin(p), randomness(0), serialNumber(0), fValid(false)
+                         const BlindingCommitment blindingCommitment, const CBigNum commitment_value, const CBigNum obfuscatedPid,
+                         bool fCheck) : params(p), publicCoin(p), randomness(0), serialNumber(0), fValid(false)
 {
     // Verify that the parameters are valid
     if(!this->params->initialized)
@@ -192,7 +193,7 @@ PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomin
 
         if(commitmentValue == commitment_value)
         {
-            this->publicCoin = PublicCoin(p, denomination, commitmentValue, mintPubKey, obfuscatedPid);
+            this->publicCoin = PublicCoin(p, denomination, commitmentValue, mintPubKey, obfuscatedPid, fCheck);
             fValid = true;
         }
 

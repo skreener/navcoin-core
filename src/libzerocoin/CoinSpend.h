@@ -28,6 +28,7 @@
 #include "bignum.h"
 #include "pubkey.h"
 #include "serialize.h"
+#include "streams.h"
 
 namespace libzerocoin
 {
@@ -120,6 +121,8 @@ public:
     bool HasValidSignature() const;
     CBigNum CalculateValidPublicSerial(ZerocoinParams* params);
     std::string ToString() const;
+
+    uint256 GetHash() const;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>

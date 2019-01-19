@@ -322,7 +322,16 @@ CBigNum CBigNum::gcd( const CBigNum& b) const
 */
 bool CBigNum::isPrime(const int checks) const
 {
+    if (mapCachePrimes.count(*this) != 0)
+        return mapCachePrimes[*this];
+
     int ret = mpz_probab_prime_p(bn, checks);
+
+    if (mapCachePrimes.size() > PRIME_CACHE_SIZE)
+        mapCachePrimes.clear();
+    else
+        mapCachePrimes[*this] = ret;
+
     return ret;
 }
 

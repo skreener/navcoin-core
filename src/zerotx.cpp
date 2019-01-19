@@ -6,7 +6,7 @@
 
 using namespace libzerocoin;
 
-bool TxOutToPublicCoin(const ZerocoinParams *params, const CTxOut& txout, PublicCoin& pubCoin, CValidationState* state)
+bool TxOutToPublicCoin(const ZerocoinParams *params, const CTxOut& txout, PublicCoin& pubCoin, CValidationState* state, bool fCheck)
 {
     if (!txout.scriptPubKey.IsZerocoinMint())
         return false;
@@ -22,18 +22,18 @@ bool TxOutToPublicCoin(const ZerocoinParams *params, const CTxOut& txout, Public
     CBigNum pid;
     pid.setvch(i);
 
-    PublicCoin checkPubCoin(params, denomination, CBigNum(c), p, pid);
+    PublicCoin checkPubCoin(params, denomination, CBigNum(c), p, pid, fCheck);
     pubCoin = checkPubCoin;
 
     return true;
 }
 
-bool TxInToCoinSpend(const ZerocoinParams *params, const CTxIn& txin, CoinSpend& coinSpend, CValidationState* state)
+bool TxInToCoinSpend(const ZerocoinParams *params, const CTxIn& txin, CoinSpend& coinSpend)
 {
-    return ScriptToCoinSpend(params, txin.scriptSig, coinSpend, state);
+    return ScriptToCoinSpend(params, txin.scriptSig, coinSpend);
 }
 
-bool ScriptToCoinSpend(const ZerocoinParams *params, const CScript& scriptSig, CoinSpend& coinSpend, CValidationState* state)
+bool ScriptToCoinSpend(const ZerocoinParams *params, const CScript& scriptSig, CoinSpend& coinSpend)
 {
     if (!scriptSig.IsZerocoinSpend())
         return false;

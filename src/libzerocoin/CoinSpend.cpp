@@ -129,6 +129,12 @@ std::string CoinSpend::ToString() const
     return ss.str();
 }
 
+uint256 CoinSpend::GetHash() const {
+    CHashWriter h(0, 0);
+    h << *this;
+    return h.GetHash();
+}
+
 bool CoinSpend::HasValidPublicSerial(ZerocoinParams* params) const
 {
     return IsValidPublicSerial(params, coinValuePublic);

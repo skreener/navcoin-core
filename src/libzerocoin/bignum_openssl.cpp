@@ -431,11 +431,21 @@ CBigNum CBigNum::gcd( const CBigNum& b) const
 */
 bool CBigNum::isPrime(const int checks) const
 {
+    if (mapCachePrimes.count(*this) != 0)
+        return mapCachePrimes[*this];
+
     CAutoBN_CTX pctx;
     int ret = BN_is_prime_ex(bn, checks, pctx, NULL);
+
     if(ret < 0){
         throw bignum_error("CBigNum::isPrime :BN_is_prime");
     }
+
+    if (mapCachePrimes.size() > PRIME_CACHE_SIZE)
+        mapCachePrimes.clear();
+    else
+        mapCachePrimes[*this] = ret;
+
     return ret;
 }
 
