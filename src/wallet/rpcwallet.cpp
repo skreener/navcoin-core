@@ -2766,6 +2766,7 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
             "  \"private_balance\": xxx,       (numeric) the total confirmed private balance of the wallet in " + CURRENCY_UNIT + "\n"
             "  \"coldstaking_balance\": xxx,   (numeric) the total confirmed cold staking balance of the wallet in " + CURRENCY_UNIT + "\n"
             "  \"unconfirmed_balance\": xxxxxx,(numeric) the total unconfirmed balance of the wallet in " + CURRENCY_UNIT + "\n"
+            "  \"immature_balance\": xxxxxx,   (numeric) the total immature balance of the wallet in " + CURRENCY_UNIT + "\n"
             "  \"txcount\": xxxxxxx,           (numeric) the total number of transactions in the wallet\n"
             "  \"keypoololdest\": xxxxxx,      (numeric) the timestamp (seconds since GMT epoch) of the oldest pre-generated key in the key pool\n"
             "  \"keypoolsize\": xxxx,          (numeric) how many new keys are pre-generated\n"
@@ -2786,6 +2787,7 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("public_balance",       ValueFromAmount(pwalletMain->GetBalance())));
     obj.push_back(Pair("private_balance", ValueFromAmount(pwalletMain->GetPrivateBalance())));
     obj.push_back(Pair("coldstaking_balance",       ValueFromAmount(pwalletMain->GetColdStakingBalance())));
+    obj.push_back(Pair("immature_balance", ValueFromAmount(pwalletMain->GetImmatureBalance())));
     obj.push_back(Pair("unconfirmed_balance", ValueFromAmount(pwalletMain->GetUnconfirmedBalance())));
     obj.push_back(Pair("txcount",       (int)pwalletMain->mapWallet.size()));
     obj.push_back(Pair("keypoololdest", pwalletMain->GetOldestKeyPoolTime()));
