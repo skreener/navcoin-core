@@ -206,7 +206,7 @@ PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomin
     this->version = CURRENT_VERSION;
 }
 
-bool PrivateCoin::QuickCheckIsMine(const ZerocoinParams* p, const CKey privKey, const CPubKey mintPubKey,
+static bool PrivateCoin::QuickCheckIsMine(const ZerocoinParams* p, const CKey privKey, const CPubKey mintPubKey,
                          const BlindingCommitment blindingCommitment, const CBigNum commitment_value)
 {
     // Verify that the parameters are valid
