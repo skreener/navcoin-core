@@ -634,7 +634,7 @@ UniValue privatesendtoaddress(const UniValue& params, bool fHelp)
         boost::get<libzerocoin::CPrivateAddress>(dest).SetPaymentId(wtx.mapValue["comment"]);
     }
 
-    SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, strDZeel, true);
+    SendMoney(dest, nAmount, fSubtractFeeFromAmount, wtx, strDZeel, true);
 
     return wtx.GetHash().GetHex();
 }
