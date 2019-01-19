@@ -206,11 +206,11 @@ PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomin
     this->version = CURRENT_VERSION;
 }
 
-static bool PrivateCoin::QuickCheckIsMine(const ZerocoinParams* p, const CKey privKey, const CPubKey mintPubKey,
+bool PrivateCoin::QuickCheckIsMine(const ZerocoinParams* p, const CKey privKey, const CPubKey mintPubKey,
                          const BlindingCommitment blindingCommitment, const CBigNum commitment_value)
 {
     // Verify that the parameters are valid
-    if(!this->params->initialized)
+    if(!p->initialized)
         throw std::runtime_error("PrivateCoin::PrivateCoin(): Params are not initialized");
 
     CPrivKey shared_secret;
@@ -220,12 +220,12 @@ static bool PrivateCoin::QuickCheckIsMine(const ZerocoinParams* p, const CKey pr
     uint256 pre_chi(std::vector<unsigned char>(shared_secret.begin(), shared_secret.end()));
     uint256 pre_sigma(Hash(pre_chi.begin(), pre_chi.end()));
 
-    CBigNum chi = CBigNum(pre_chi) % (this->params->coinCommitmentGroup.groupOrder);
-    CBigNum sigma = CBigNum(pre_sigma) % (this->params->coinCommitmentGroup.groupOrder);
+    CBigNum chi = CBigNum(pre_chi) % (p->coinCommitmentGroup.groupOrder);
+    CBigNum sigma = CBigNum(pre_sigma) % (p->coinCommitmentGroup.groupOrder);
 
     // C = bc2 * (bc1 ^ z) mod p
-    CBigNum commitmentValue = blindingCommitment.first.pow_mod(chi, this->params->coinCommitmentGroup.modulus).mul_mod(
-                              blindingCommitment.second, this->params->coinCommitmentGroup.modulus);
+    CBigNum commitmentValue = blindingCommitment.first.pow_mod(chi, p->coinCommitmentGroup.modulus).mul_mod(
+                              blindingCommitment.second, p->coinCommitmentGroup.modulus);
 
     return (commitmentValue == commitment_value);
 }
