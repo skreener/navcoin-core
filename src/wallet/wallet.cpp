@@ -2386,37 +2386,16 @@ CAmount CWalletTx::GetCredit(const isminefilter& filter) const
 
 CAmount CWalletTx::GetImmatureCredit(bool fUseCache) const
 {
-    CAmount nRet = 0;
-
-    if (!IsTrusted())
-        return nRet;
-
-    uint256 hashTx = GetHash();
-
-    for (unsigned int i = 0; i < vout.size(); i++) {
-        if (!vout[i].IsZerocoinMint())
-            continue;
-        std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> id;
-        if (!vout[i].scriptPubKey.ExtractZerocoinMintData(p, c, id))
-            continue;
-        uint256 blockhash;
-        bool fAccumulated = true;
-        if (!pblocktree->ReadAccMint(CBigNum(c), blockhash) || blockhash == uint256())
-            fAccumulated = false;
-        unsigned int nCount = 0;
-        if (blockhash != uint256() && mapBlockIndex.count(blockhash) && !CountMintsFromHeight(mapBlockIndex[blockhash]->nHeight+1,
-            libzerocoin::AmountToZerocoinDenomination(vout[i].nValue), nCount))
-            fAccumulated = false;
-        if (!fAccumulated || (!pwallet->IsSpent(hashTx, i)))
-        {
-            const CTxOut &txout = vout[i];
-            nRet += pwallet->GetCredit(txout, ISMINE_SPENDABLE_PRIVATE);
-            if (!MoneyRange(nRet))
-                throw std::runtime_error("CWalletTx::GetImmatureCredit() : value out of range");
-        }
+    if ((IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0 && IsInMainChain())
+    {
+        if (fUseCache && fImmatureCreditCached)
+            return nImmatureCreditCached;
+        nImmatureCreditCached = pwallet->GetCredit(*this, ISMINE_SPENDABLE);
+        fImmatureCreditCached = true;
+        return nImmatureCreditCached;
     }
 
-    return nRet;
+    return 0;
 }
 
 CAmount CWalletTx::GetAvailableCredit(bool fUseCache) const
