@@ -206,6 +206,30 @@ PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomin
     this->version = CURRENT_VERSION;
 }
 
+bool PrivateCoin::QuickCheckIsMine(const ZerocoinParams* p, const CKey privKey, const CPubKey mintPubKey,
+                         const BlindingCommitment blindingCommitment, const CBigNum commitment_value)
+{
+    // Verify that the parameters are valid
+    if(!this->params->initialized)
+        throw std::runtime_error("PrivateCoin::PrivateCoin(): Params are not initialized");
+
+    CPrivKey shared_secret;
+    if(!privKey.ECDHSecret(mintPubKey, shared_secret))
+        throw std::runtime_error("PrivateCoin::PrivateCoin(): Could not calculate ECDH Secret");
+
+    uint256 pre_chi(std::vector<unsigned char>(shared_secret.begin(), shared_secret.end()));
+    uint256 pre_sigma(Hash(pre_chi.begin(), pre_chi.end()));
+
+    CBigNum chi = CBigNum(pre_chi) % (this->params->coinCommitmentGroup.groupOrder);
+    CBigNum sigma = CBigNum(pre_sigma) % (this->params->coinCommitmentGroup.groupOrder);
+
+    // C = bc2 * (bc1 ^ z) mod p
+    CBigNum commitmentValue = blindingCommitment.first.pow_mod(chi, this->params->coinCommitmentGroup.modulus).mul_mod(
+                              blindingCommitment.second, this->params->coinCommitmentGroup.modulus);
+
+    return (commitmentValue == commitment_value);
+}
+
 const std::string PrivateCoin::getPaymentId() const {
     CBigNum bnPid = obfuscationPid.Xor(getPublicCoin().getPaymentId());
     std::vector<unsigned char> vPid = bnPid.getvch();

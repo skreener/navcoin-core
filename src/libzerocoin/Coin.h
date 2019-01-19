@@ -154,6 +154,7 @@ public:
     const std::string getPaymentId() const;
     const CBigNum& getRandomness() const { return this->randomness; }
     const uint8_t& getVersion() const { return this->version; }
+    bool QuickCheckIsMine(const ZerocoinParams* p, const CKey privKey, const CPubKey mintPubKey, const BlindingCommitment blindingCommitment, const CBigNum commitment_value);
 
     bool isValid();
 
