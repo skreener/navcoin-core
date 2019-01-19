@@ -186,16 +186,10 @@ void OverviewPage::setBalance(const CAmount& balance, const CAmount& unconfirmed
     currentPrivateBalance = privateBalance;
     ui->labelBalance->setText(NavCoinUnits::formatWithUnit(unit, balance, false, NavCoinUnits::separatorAlways));
     ui->labelUnconfirmed->setText(NavCoinUnits::formatWithUnit(unit, unconfirmedBalance, false, NavCoinUnits::separatorAlways));
-    ui->labelStaking->setText(NavCoinUnits::formatWithUnit(unit, stakingBalance, false, NavCoinUnits::separatorAlways));
     ui->labelColdStaking->setText(NavCoinUnits::formatWithUnit(unit, coldStakingBalance, false, NavCoinUnits::separatorAlways));
     ui->labelPrivate->setText(NavCoinUnits::formatWithUnit(unit, privateBalance, false, NavCoinUnits::separatorAlways));
     ui->labelImmature->setText(NavCoinUnits::formatWithUnit(unit, immatureBalance, false, NavCoinUnits::separatorAlways));
     ui->labelTotal->setText(NavCoinUnits::formatWithUnit(unit, balance + unconfirmedBalance + stakingBalance + privateBalance + immatureBalance, false, NavCoinUnits::separatorAlways));
-
-    bool showStaking = stakingBalance != 0;
-
-    ui->labelStaking->setVisible(showStaking);
-    ui->labelStakingText->setVisible(showStaking);
 
     bool showColdStaking = coldStakingBalance != 0;
 

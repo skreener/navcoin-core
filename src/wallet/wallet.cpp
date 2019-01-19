@@ -2390,7 +2390,7 @@ CAmount CWalletTx::GetImmatureCredit(bool fUseCache) const
     {
         if (fUseCache && fImmatureCreditCached)
             return nImmatureCreditCached;
-        nImmatureCreditCached = pwallet->GetCredit(*this, ISMINE_SPENDABLE);
+        nImmatureCreditCached = pwallet->GetCredit(*this, ISMINE_SPENDABLE|ISMINE_SPENDABLE_PRIVATE);
         fImmatureCreditCached = true;
         return nImmatureCreditCached;
     }
