@@ -218,10 +218,8 @@ bool PrivateCoin::QuickCheckIsMine(const ZerocoinParams* p, const CKey privKey, 
         throw std::runtime_error("PrivateCoin::PrivateCoin(): Could not calculate ECDH Secret");
 
     uint256 pre_chi(std::vector<unsigned char>(shared_secret.begin(), shared_secret.end()));
-    uint256 pre_sigma(Hash(pre_chi.begin(), pre_chi.end()));
 
     CBigNum chi = CBigNum(pre_chi) % (p->coinCommitmentGroup.groupOrder);
-    CBigNum sigma = CBigNum(pre_sigma) % (p->coinCommitmentGroup.groupOrder);
 
     // C = bc2 * (bc1 ^ z) mod p
     CBigNum commitmentValue = blindingCommitment.first.pow_mod(chi, p->coinCommitmentGroup.modulus).mul_mod(
