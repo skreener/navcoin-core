@@ -98,7 +98,7 @@ void TxToJSONExpanded(const CTransaction& tx, const uint256 hashBlock, UniValue&
             in.push_back(Pair("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
         else if (txin.scriptSig.IsZerocoinSpend()) {
             libzerocoin::CoinSpend coinSpend(&Params().GetConsensus().Zerocoin_Params);
-            if (TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, coinSpend, NULL))
+            if (TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, coinSpend))
                 in.push_back(Pair("zerocoinspend", coinSpend.getCoinSerialNumber().ToString(16)));
         }
         else {

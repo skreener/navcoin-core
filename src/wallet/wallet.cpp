@@ -647,7 +647,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
             return error("CreateCoinStake: could not convert to recipient's vector");
         }
 
-        if(fNeedsMinting && !MintVecRecipients(pa, vecSend, false)) {
+        if (fNeedsMinting && !MintVecRecipients(pa, vecSend, false)) {
             return error("CreateCoinStake: could not mint");
         }
 
@@ -1171,7 +1171,7 @@ void CWallet::AddToSpends(const uint256& wtxid)
         COutPoint prevout = txin.prevout;
         if (txin.scriptSig.IsZerocoinSpend()) {
             libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
-            assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
+            assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs));
             if(!mapSerial.count(zcs.getCoinSerialNumber()))
                 continue;
             prevout = mapSerial.at(zcs.getCoinSerialNumber());
@@ -1581,7 +1581,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pbl
                 COutPoint prevout = txin.prevout;
                 if (txin.scriptSig.IsZerocoinSpend()) {
                     libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
-                    assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
+                    assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs));
                     if(!mapSerial.count(zcs.getCoinSerialNumber()))
                         continue;
                     prevout = mapSerial.at(zcs.getCoinSerialNumber());
@@ -1767,7 +1767,7 @@ void CWallet::SyncTransaction(const CTransaction& tx, const CBlockIndex *pindex,
                     COutPoint prevout = txin.prevout;
                     if (txin.scriptSig.IsZerocoinSpend()) {
                         libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
-                        assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
+                        assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs));
                         if(!mapSerial.count(zcs.getCoinSerialNumber()))
                             continue;
                         prevout = mapSerial.at(zcs.getCoinSerialNumber());
@@ -1796,7 +1796,7 @@ void CWallet::SyncTransaction(const CTransaction& tx, const CBlockIndex *pindex,
             COutPoint prevout = txin.prevout;
             if (txin.scriptSig.IsZerocoinSpend()) {
                 libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
-                assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
+                assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs));
                 if(!mapSerial.count(zcs.getCoinSerialNumber()))
                     continue;
                 prevout = mapSerial.at(zcs.getCoinSerialNumber());
@@ -1815,7 +1815,7 @@ void CWallet::SyncTransaction(const CTransaction& tx, const CBlockIndex *pindex,
             COutPoint prevout = txin.prevout;
             if (txin.scriptSig.IsZerocoinSpend()) {
                 libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
-                assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
+                assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs));
                 if(!mapSerial.count(zcs.getCoinSerialNumber()))
                     continue;
                 prevout = mapSerial.at(zcs.getCoinSerialNumber());
@@ -1848,7 +1848,7 @@ CAmount CWallet::GetDebit(const CTxIn &txin, const isminefilter& filter) const
         COutPoint prevout = txin.prevout;
         if (txin.scriptSig.IsZerocoinSpend()) {
             libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
-            assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
+            assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs));
             if(!mapSerial.count(zcs.getCoinSerialNumber()))
                 return 0;
             prevout = mapSerial.at(zcs.getCoinSerialNumber());
@@ -2240,6 +2240,8 @@ void CWallet::ReacceptWalletTransactions()
 
 bool CWalletTx::RelayWalletTransaction()
 {
+    if (!pwallet)
+        return false;
     assert(pwallet->GetBroadcastTransactions());
     if (!(IsCoinBase() || IsCoinStake()))
     {
@@ -2577,7 +2579,7 @@ bool CWalletTx::IsTrusted() const
         COutPoint prevout = txin.prevout;
         if (txin.scriptSig.IsZerocoinSpend()) {
             libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
-            assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs, NULL));
+            assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs));
             if(!pwallet->mapSerial.count(zcs.getCoinSerialNumber()))
                 continue;
             prevout = pwallet->mapSerial.at(zcs.getCoinSerialNumber());

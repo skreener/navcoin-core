@@ -38,7 +38,7 @@ bool BlockToZerocoinMints(const ZerocoinParams *params, const CBlock* block, std
 bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen, PublicCoin* pPubCoin)
 {
     PublicCoin pubCoin(params);
-    if(!TxOutToPublicCoin(params, txout, pubCoin, &state))
+    if(!TxOutToPublicCoin(params, txout, pubCoin, &state, true))
         return state.DoS(100, error("CheckZerocoinMint(): TxOutToPublicCoin() failed"));
 
     if (pPubCoin)
@@ -69,7 +69,7 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const C
 {
     CoinSpend coinSpend(params);
 
-    if(!TxInToCoinSpend(params, txin, coinSpend, &state))
+    if(!TxInToCoinSpend(params, txin, coinSpend))
         return state.DoS(100, error("CheckZerocoinSpend() : TxInToCoinSpend() failed"));
 
     if (pCoinSpend)
@@ -84,8 +84,19 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const C
     Accumulator accumulator(params, coinSpend.getDenomination());
     accumulator.setValue(accumulatorMap.GetValue(coinSpend.getDenomination()));
 
-    if (!coinSpend.Verify(accumulator))
+    uint256 csHash = coinSpend.GetHash();
+
+    bool fCached = (mapCacheValidCoinSpends.count(csHash) != 0);
+
+    if ((!fCached && !coinSpend.Verify(accumulator)) || (fCached && mapCacheValidCoinSpends[csHash] == false)) {
+        mapCacheValidCoinSpends[csHash] = false;
         return state.DoS(100, error("CheckZerocoinSpend() : CoinSpend does not verify"));
+    }
+
+    mapCacheValidCoinSpends[csHash] = true;
+
+    if (mapCacheValidCoinSpends.size() > COINSPEND_CACHE_SIZE)
+        mapCacheValidCoinSpends.clear();
 
     uint256 txHash;
     int nHeight;

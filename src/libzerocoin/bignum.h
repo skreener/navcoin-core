@@ -26,6 +26,8 @@
 #include "version.h"
 #include "random.h"
 
+#define PRIME_CACHE_SIZE 255
+
 /** Errors thrown by the bignum class */
 class bignum_error : public std::runtime_error
 {
@@ -221,6 +223,8 @@ public:
     friend inline bool operator>=(const CBigNum& a, const CBigNum& b);
     friend inline bool operator<(const CBigNum& a, const CBigNum& b);
     friend inline bool operator>(const CBigNum& a, const CBigNum& b);
+
+    mutable std::map<const CBigNum, bool> mapCachePrimes;
 };
 
 #if defined(USE_NUM_OPENSSL)

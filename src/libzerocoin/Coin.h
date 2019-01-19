@@ -65,7 +65,7 @@ public:
    **/
 
     PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CPubKey destPubKey, const BlindingCommitment blindingCommitment, const std::string pid);
-    PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CBigNum value, const CPubKey pubKey, const CBigNum obfuscatedPid);
+    PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CBigNum value, const CPubKey pubKey, const CBigNum obfuscatedPid, bool fCheck = true);
 
     const CBigNum& getValue() const { return this->value; }
     const CPubKey& getPubKey() const { return this->pubKey; }
@@ -139,7 +139,9 @@ public:
    * @param commitment_value the commitment value specified on the mint
    **/
 
-    PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomination, const CKey privKey, const CPubKey mintPubKey, const BlindingCommitment blindingCommitment, const CBigNum commitment_value, const CBigNum obfuscatedPid);
+    PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomination, const CKey privKey, const CPubKey mintPubKey,
+                const BlindingCommitment blindingCommitment, const CBigNum commitment_value, const CBigNum obfuscatedPid,
+                bool fCheck = true);
 
     const PublicCoin& getPublicCoin() const { return this->publicCoin; }
     const CBigNum& getObfuscationValue() const { return this->serialNumber; }
