@@ -235,8 +235,8 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
     accumulatorChecksum = pindex->nAccumulatorChecksum;
 
     if (!accumulatorMap.Load(accumulatorChecksum)) {
-        strError = strprintf("Could not load Accumulators data from checksum %s of last block index",
-                             accumulatorChecksum.GetHex());
+        strError = strprintf("Could not load Accumulators data from checksum %s of last block index %d (%s)",
+                             accumulatorChecksum.GetHex(), pindex->nHeight, pindex->GetBlockHash().ToString().substr(0,8));
         return false;
     }
 

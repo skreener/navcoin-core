@@ -16,7 +16,7 @@
 
 using namespace libzerocoin;
 
-std::map<uint256, bool> mapCacheValidCoinSpends;
+static std::map<uint256, bool> mapCacheValidCoinSpends;
 
 bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen = std::vector<std::pair<CBigNum, uint256>>(), PublicCoin* pPubCoin = NULL);
 bool BlockToZerocoinMints(const ZerocoinParams *params, const CBlock* block, std::vector<PublicCoin> &vPubCoins);

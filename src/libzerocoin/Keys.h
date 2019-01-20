@@ -131,6 +131,6 @@ private:
     std::vector<unsigned char> ok2;
     CPrivKey zpk;
 };
-void GenerateParameters(const ZerocoinParams* params, libzerocoin::ObfuscationValue& oj, libzerocoin::ObfuscationValue& ok, libzerocoin::BlindingCommitment& bc, CKey& zk);
+void GenerateParameters(const ZerocoinParams* params, std::vector<unsigned char> seed, libzerocoin::ObfuscationValue& oj, libzerocoin::ObfuscationValue& ok, libzerocoin::BlindingCommitment& bc, CKey& zk);
 }
 #endif // KEYS_H
