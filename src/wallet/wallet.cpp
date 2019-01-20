@@ -3792,6 +3792,8 @@ bool CWallet::DelAddressBook(const CTxDestination& address)
 
 bool CWallet::SetZerocoinValues(const ObfuscationValue& obfuscationJ, const ObfuscationValue& obfuscationK, const BlindingCommitment& blindingCommitment, const CKey& zerokey)
 {
+    SetMinVersion(FEATURE_ZEROCT);
+
     if(!(this->SetObfuscationJ(obfuscationJ) &&
             this->SetObfuscationK(obfuscationK) &&
             this->SetBlindingCommitment(blindingCommitment) &&
@@ -4519,14 +4521,33 @@ bool CWallet::InitLoadWallet()
 
     if(fFirstZeroRun)
     {
-        ObfuscationValue obfuscationj; ObfuscationValue obfuscationk; BlindingCommitment blindingcommitment; CKey zeroKey;
-        libzerocoin::GenerateParameters(&Params().GetConsensus().Zerocoin_Params, obfuscationj, obfuscationk, blindingcommitment, zeroKey);
-        walletInstance->SetZerocoinValues(obfuscationj, obfuscationk, blindingcommitment, zeroKey);
-        obfuscationj.first.Nullify();
-        obfuscationj.second.Nullify();
-        obfuscationk.first.Nullify();
-        obfuscationk.second.Nullify();
-        LogPrintf("Generated zerocoin parameters.\n");
+        CKeyID masterKeyID = walletInstance->GetHDChain().masterKeyID;
+        CKey key;
+
+        if (!walletInstance->GetKey(masterKeyID, key))
+        {
+            InitWarning("Could not generate zerocoin parameters. If your wallet is encrypted, you must first unlock your wallet and then trigger manually the parameter generation before being able to use the ZeroCT functionality!");
+            LogPrintf("Could not generate zerocoin parameters. If your wallet is encrypted, you must first unlock your wallet and then trigger manually the parameter generation before being able to use the ZeroCT functionality!");
+        }
+        else
+        {
+            ObfuscationValue obfuscationj; ObfuscationValue obfuscationk; BlindingCommitment blindingcommitment; CKey zeroKey;
+            CHashWriter1024 h(0, 0);
+            std::vector<unsigned char> vKey(key.begin(), key.end());
+
+            h << vKey;
+
+            libzerocoin::GenerateParameters(&Params().GetConsensus().Zerocoin_Params, h.GetHash(), obfuscationj, obfuscationk, blindingcommitment, zeroKey);
+
+            walletInstance->SetZerocoinValues(obfuscationj, obfuscationk, blindingcommitment, zeroKey);
+
+            obfuscationj.first.Nullify();
+            obfuscationj.second.Nullify();
+            obfuscationk.first.Nullify();
+            obfuscationk.second.Nullify();
+
+            LogPrintf("Generated zerocoin parameters.\n");
+        }
     }
 
     LogPrintf(" wallet      %15dms\n", GetTimeMillis() - nStart);
