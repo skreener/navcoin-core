@@ -33,15 +33,17 @@ PublicCoin::PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const 
         throw std::runtime_error("Params are not initialized");
     }
 
-    std::vector<CoinDenomination>::const_iterator it;
+    if (fCheck) {
+        std::vector<CoinDenomination>::const_iterator it;
 
-    it = find (zerocoinDenomList.begin(), zerocoinDenomList.end(), denomination);
-    if(it == zerocoinDenomList.end()){
-        throw std::runtime_error("Denomination does not exist");
+        it = find (zerocoinDenomList.begin(), zerocoinDenomList.end(), denomination);
+        if(it == zerocoinDenomList.end()){
+            throw std::runtime_error("Denomination does not exist");
+        }
+
+        if(!isValid())
+            throw std::runtime_error("Commitment Value of Public Coin is invalid");
     }
-
-    if(fCheck && !isValid())
-        throw std::runtime_error("Commitment Value of Public Coin is invalid");
 }
 
 PublicCoin::PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CPubKey destPubKey, const BlindingCommitment blindingCommitment, const std::string pid): params(p), denomination(d) {

@@ -9,14 +9,13 @@
 * @copyright  Copyright 2018 alex v
 * @license    This project is released under the MIT license.
 **/
-// Copyright (c) 2018 The NavCoin Core developers
+// Copyright (c) 2019 The NavCoin Core developers
 
 #include "Keys.h"
 
 namespace libzerocoin {
-void GenerateParameters(const ZerocoinParams* params, std::vector<unsigned char> seed, libzerocoin::ObfuscationValue& oj, libzerocoin::ObfuscationValue& ok, libzerocoin::BlindingCommitment& bc, CKey& zk) {
-    int byteSize = params->coinCommitmentGroup.groupOrder.bitSize()/8;
-
+void GenerateParameters(const ZerocoinParams* params, std::vector<unsigned char> seed, libzerocoin::ObfuscationValue& oj, libzerocoin::ObfuscationValue& ok, libzerocoin::BlindingCommitment& bc, CKey& zk)
+{
     CBigNum bnSeed(seed);
 
     CBigNum oj1 = bnSeed % params->coinCommitmentGroup.groupOrder;

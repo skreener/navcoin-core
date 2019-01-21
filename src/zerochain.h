@@ -1,4 +1,4 @@
-// Copyright (c) 2018 The NavCoin Core developers
+// Copyright (c) 2019 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -11,6 +11,7 @@
 #include "libzerocoin/CoinSpend.h"
 #include "main.h"
 #include "primitives/transaction.h"
+#include "zeromint.h"
 
 #define COINSPEND_CACHE_SIZE 255
 
@@ -18,7 +19,7 @@ using namespace libzerocoin;
 
 static std::map<uint256, bool> mapCacheValidCoinSpends;
 
-bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen = std::vector<std::pair<CBigNum, uint256>>(), PublicCoin* pPubCoin = NULL);
+bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, PublicMintChainData>> vSeen = std::vector<std::pair<CBigNum, PublicMintChainData>>(), PublicCoin* pPubCoin = NULL);
 bool BlockToZerocoinMints(const ZerocoinParams *params, const CBlock* block, std::vector<PublicCoin> &vPubCoins);
 bool CountMintsFromHeight(unsigned int nInitialHeight, CoinDenomination denom, unsigned int& nRet);
 bool CalculateWitnessForMint(const CTxOut& txout, const PublicCoin& pubCoin, Accumulator& accumulator, AccumulatorWitness& AccumulatorWitness, uint256& AccumulatorChecksum, std::string& strError);

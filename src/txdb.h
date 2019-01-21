@@ -13,6 +13,7 @@
 #include "addressindex.h"
 #include "spentindex.h"
 #include "timestampindex.h"
+#include "zeromint.h"
 
 #include <functional>
 #include <map>
@@ -172,20 +173,13 @@ public:
     bool UpdatePaymentRequestIndex(const std::vector<std::pair<uint256, CFund::CPaymentRequest> >&vect);
     bool ReadFirstZerocoinBlock(std::pair<int, uint256> &firstZero);
     bool WriteFirstZerocoinBlock(std::pair<int, uint256> firstZero);
-    bool ReadCoinMint(CBigNum coinValue, uint256 &txHash);
-    bool ReadCoinMint(uint256 coinValueHash, uint256 &txHash);
-    bool WriteCoinMint(CBigNum coinValue, uint256 txHash);
-    bool WriteCoinMint(uint256 coinValueHash, uint256 txHash);
+    bool ReadCoinMint(CBigNum coinValue, PublicMintChainData &zeroMint);
+    bool ReadCoinMint(uint256 coinValueHash, PublicMintChainData &zeroMint);
+    bool WriteCoinMint(CBigNum coinValue, PublicMintChainData zeroMint);
+    bool WriteCoinMint(uint256 coinValueHash, PublicMintChainData zeroMint);
     bool EraseCoinMint(CBigNum coinValue);
     bool EraseCoinMint(uint256 coinValueHash);
-    bool UpdateCoinMintIndex(const std::vector<std::pair<CBigNum, uint256> >&vect);
-    bool ReadAccMint(CBigNum coinValue, uint256 &txHash);
-    bool ReadAccMint(uint256 coinValueHash, uint256 &txHash);
-    bool WriteAccMint(CBigNum coinValue, uint256 txHash);
-    bool WriteAccMint(uint256 coinValueHash, uint256 txHash);
-    bool EraseAccMint(CBigNum coinValue);
-    bool EraseAccMint(uint256 coinValueHash);
-    bool UpdateAccMintIndex(const std::vector<std::pair<CBigNum, uint256> >&vect);
+    bool UpdateCoinMintIndex(const std::vector<std::pair<CBigNum, PublicMintChainData> >&vect);
     bool ReadCoinSpend(CBigNum coinSerial, uint256 &txHash);
     bool ReadCoinSpend(uint256 coinSerialHash, uint256 &txHash);
     bool WriteCoinSpend(CBigNum coinSerial, uint256 txHash);

@@ -2450,7 +2450,7 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
     std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
     std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > addressUnspentIndex;
     std::vector<std::pair<CSpentIndexKey, CSpentIndexValue> > spentIndex;
-    std::vector<std::pair<CBigNum, uint256> > vZeroMints;
+    std::vector<std::pair<CBigNum, PublicMintChainData> > vZeroMints;
     std::vector<std::pair<CBigNum, uint256> > vZeroSpents;
 
     // undo transactions in reverse order
@@ -2467,9 +2467,9 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
 
                 if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, out, pubCoin, &state))
                     return error("%s: error disconnecting zerocoin mint from %s", __func__, hash.ToString());
-                uint256 txHash;
-                if (pblocktree->ReadCoinMint(pubCoin.getValue(), txHash) && txHash == hash)
-                    vZeroMints.push_back(make_pair(pubCoin.getValue(), uint256()));
+                PublicMintChainData zeroMint;
+                if (pblocktree->ReadCoinMint(pubCoin.getValue(), zeroMint) && zeroMint.GetTxHash() == hash)
+                    vZeroMints.push_back(make_pair(pubCoin.getValue(), PublicMintChainData()));
             }
         }
 
@@ -3026,7 +3026,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
     std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > addressUnspentIndex;
     std::vector<std::pair<CSpentIndexKey, CSpentIndexValue> > spentIndex;
-    std::vector<std::pair<CBigNum, uint256> > vZeroMints;
+    std::vector<std::pair<CBigNum, PublicMintChainData> > vZeroMints;
     std::vector<std::pair<CBigNum, uint256> > vZeroSpents;
 
     CCheckQueueControl<CScriptCheck> control(fScriptChecks && nScriptCheckThreads ? &scriptcheckqueue : NULL);
@@ -3095,7 +3095,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
                 nZeroCreated += out.nValue;
 
-                vZeroMints.push_back(make_pair(pubCoin.getValue(), tx.GetHash()));
+                vZeroMints.push_back(make_pair(pubCoin.getValue(), PublicMintChainData(tx.GetHash(), pindex->GetBlockHash())));
             }
         }
 
@@ -3885,26 +3885,6 @@ bool static DisconnectTip(CValidationState& state, const CChainParams& chainpara
     if(pindexDelete->nAccumulatorChecksum != uint256() && (block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN) {
         if(!pblocktree->EraseZerocoinAccumulator(pindexDelete->nAccumulatorChecksum))
             return AbortNode(state, "Failed to remove zerocoin accumulator checksum");
-
-        std::vector<std::pair<CBigNum, uint256>> vAccumulatedMints;
-
-        for (auto& tx : block.vtx) {
-            for (auto& out : tx.vout) {
-                if (!out.IsZerocoinMint())
-                    continue;
-
-                libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
-
-                std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> i;
-                if(!out.scriptPubKey.ExtractZerocoinMintData(p, c, i))
-                    continue;
-
-                vAccumulatedMints.push_back(make_pair(CBigNum(c), uint256()));
-            }
-        }
-
-        if(!pblocktree->UpdateAccMintIndex(vAccumulatedMints))
-            return AbortNode(state, "Failed to remove accumulated mints from index");
     }
 
     std::vector<CFund::CPaymentRequest> vecPaymentRequest;
@@ -5398,10 +5378,6 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
         else if(!mapAccumulators.Save())
         {
             return AbortNode(state, "Failed to write zerocoin accumulator checksum");
-        }
-        if(!pblocktree->UpdateAccMintIndex(vAccumulatedMints))
-        {
-            return AbortNode(state, "Failed to write zerocoin accumulated mints history");
         }
     }
 

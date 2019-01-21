@@ -46,6 +46,7 @@ public:
         strm >> *this;
     }
 
+    PublicCoin();
     PublicCoin(const ZerocoinParams* p);
 
     /**Generates a new Zerocoin by (a) selecting a random key pair,

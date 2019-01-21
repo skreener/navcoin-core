@@ -118,11 +118,11 @@ OverviewPage::OverviewPage(const PlatformStyle *platformStyle, QWidget *parent) 
     currentUnconfirmedBalance(-1),
     currentStakingBalance(-1),
     currentColdStakingBalance(-1),
+    currentPrivateBalance(-1),
     currentImmatureBalance(-1),
     currentWatchOnlyBalance(-1),
     currentWatchUnconfBalance(-1),
     currentWatchImmatureBalance(-1),
-    currentPrivateBalance(-1),
     txdelegate(new TxViewDelegate(platformStyle)),
     filter(0)
 {
