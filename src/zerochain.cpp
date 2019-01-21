@@ -1,4 +1,4 @@
-// Copyright (c) 2018 The NavCoin Core developers
+// Copyright (c) 2019 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -35,7 +35,7 @@ bool BlockToZerocoinMints(const ZerocoinParams *params, const CBlock* block, std
     return true;
 }
 
-bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen, PublicCoin* pPubCoin)
+bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, PublicMintChainData>> vSeen, PublicCoin* pPubCoin)
 {
     PublicCoin pubCoin(params);
     if(!TxOutToPublicCoin(params, txout, pubCoin, &state, true))
@@ -54,13 +54,13 @@ bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, const 
                          pubCoin.getValue().GetHex().substr(0, 10));
     }
 
-    uint256 txid;
+    PublicMintChainData zeroMint;
     int nHeight;
 
-    if (pblocktree->ReadCoinMint(pubCoin.getValue(), txid) && IsTransactionInChain(txid, view, nHeight))
+    if (pblocktree->ReadCoinMint(pubCoin.getValue(), zeroMint) && zeroMint.GetTxHash() != 0 && IsTransactionInChain(zeroMint.GetTxHash(), view, nHeight))
         return error("%s: pubcoin %s was already accumulated in tx %s from block %d", __func__,
                      pubCoin.getValue().GetHex().substr(0, 10),
-                     txid.GetHex(), nHeight);
+                     zeroMint.GetTxHash().GetHex(), nHeight);
 
     return true;
 }
@@ -149,12 +149,14 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
         return false;
     }
 
-    uint256 blockHash;
+    PublicMintChainData zeroMint;
 
-    if (!pblocktree->ReadAccMint(pubCoin.getValue(), blockHash)) {
+    if (!pblocktree->ReadCoinMint(pubCoin.getValue(), zeroMint)) {
         strError = strprintf("Could not read mint with value %s from the db", pubCoin.getValue().GetHex());
         return false;
     }
+
+    uint256 blockHash = zeroMint.GetBlockHash();
 
     if (!mapBlockIndex.count(blockHash)) {
         strError = strprintf("Could not find block hash %s", blockHash.ToString());
@@ -162,6 +164,11 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
     }
 
     CBlockIndex* pindex = mapBlockIndex[blockHash];
+
+    if (!chainActive.Contains(pindex)) {
+        strError = strprintf("Block %s is not part of the active chain", blockHash.ToString());
+        return false;
+    }
 
     pindex = chainActive[pindex->nHeight - 1];
 
@@ -180,6 +187,9 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
 
     accumulator.setValue(accumulatorMap.GetValue(pubCoin.getDenomination()));
     accumulatorWitness.resetValue(accumulator, pubCoin);
+
+    int nCount = 0;
+    uint64_t nTimeStart = GetTimeMicros();
 
     if (chainActive.Next(pindex)) {
         pindex = chainActive.Next(pindex);
@@ -211,6 +221,8 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
                     if (pubCoinOut.getDenomination() != pubCoin.getDenomination())
                         continue;
 
+                    nCount++;
+
                     accumulatorWitness.AddElement(pubCoinOut);
                     accumulator.accumulate(pubCoinOut);
 
@@ -226,6 +238,10 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
             pindex = chainActive.Next(pindex);
         }
     }
+
+    uint64_t nTimeEnd = GetTimeMicros();
+
+    LogPrintf("Accumulated %d times and took %.2fms\n", nCount, (nTimeEnd-nTimeStart)*0.001);
 
     if (!pindex) {
         strError = strprintf("Last block index is null");

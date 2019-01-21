@@ -111,33 +111,33 @@ bool CBlockTreeDB::WriteFirstZerocoinBlock(std::pair<int, uint256> firstZero) {
     return Write(DB_ZEROCOIN_BLOCK, firstZero);
 }
 
-bool CBlockTreeDB::ReadCoinMint(uint256 coinValueHash, uint256 &txHash) {
-    return Read(make_pair(DB_ZEROCOIN_MINTINDEX, coinValueHash), txHash);
+bool CBlockTreeDB::ReadCoinMint(uint256 coinValueHash, PublicMintChainData &zeroMint) {
+    return Read(make_pair(DB_ZEROCOIN_MINTINDEX, coinValueHash), zeroMint);
 }
 
-bool CBlockTreeDB::ReadCoinMint(CBigNum coinValue, uint256 &txHash) {
+bool CBlockTreeDB::ReadCoinMint(CBigNum coinValue, PublicMintChainData &zeroMint) {
     CDataStream ss(SER_GETHASH, 0);
     ss << coinValue;
     uint256 hash = Hash(ss.begin(), ss.end());
 
-    return Read(make_pair(DB_ZEROCOIN_MINTINDEX, hash), txHash);
+    return Read(make_pair(DB_ZEROCOIN_MINTINDEX, hash), zeroMint);
 }
 
-bool CBlockTreeDB::WriteCoinMint(uint256 coinValueHash, uint256 txHash) {
-    return Write(make_pair(DB_ZEROCOIN_MINTINDEX, coinValueHash), txHash);
+bool CBlockTreeDB::WriteCoinMint(uint256 coinValueHash, PublicMintChainData zeroMint) {
+    return Write(make_pair(DB_ZEROCOIN_MINTINDEX, coinValueHash), zeroMint);
 }
 
-bool CBlockTreeDB::WriteCoinMint(CBigNum coinValue, uint256 txHash) {
+bool CBlockTreeDB::WriteCoinMint(CBigNum coinValue, PublicMintChainData zeroMint) {
     CDataStream ss(SER_GETHASH, 0);
     ss << coinValue;
     uint256 hash = Hash(ss.begin(), ss.end());
 
-    return Write(make_pair(DB_ZEROCOIN_MINTINDEX, hash), txHash);
+    return Write(make_pair(DB_ZEROCOIN_MINTINDEX, hash), zeroMint);
 }
 
-bool CBlockTreeDB::UpdateCoinMintIndex(const std::vector<std::pair<CBigNum, uint256> >&vect) {
+bool CBlockTreeDB::UpdateCoinMintIndex(const std::vector<std::pair<CBigNum, PublicMintChainData> >&vect) {
     CDBBatch batch(*this);
-    for (std::vector<std::pair<CBigNum, uint256> >::const_iterator it=vect.begin(); it!=vect.end(); it++) {
+    for (std::vector<std::pair<CBigNum, PublicMintChainData> >::const_iterator it=vect.begin(); it!=vect.end(); it++) {
         CDataStream ss(SER_GETHASH, 0);
         ss << it->first;
         uint256 hash = Hash(ss.begin(), ss.end());
@@ -160,57 +160,6 @@ bool CBlockTreeDB::EraseCoinMint(CBigNum coinValue) {
     uint256 hash = Hash(ss.begin(), ss.end());
 
     return Erase(make_pair(DB_ZEROCOIN_MINTINDEX, hash));
-}
-
-bool CBlockTreeDB::ReadAccMint(uint256 coinValueHash, uint256 &blockHash) {
-    return Read(make_pair(DB_ZEROCOIN_ACCMINTINDEX, coinValueHash), blockHash);
-}
-
-bool CBlockTreeDB::ReadAccMint(CBigNum coinValue, uint256 &blockHash) {
-    CDataStream ss(SER_GETHASH, 0);
-    ss << coinValue;
-    uint256 hash = Hash(ss.begin(), ss.end());
-
-    return Read(make_pair(DB_ZEROCOIN_ACCMINTINDEX, hash), blockHash);
-}
-
-bool CBlockTreeDB::WriteAccMint(uint256 coinValueHash, uint256 blockHash) {
-    return Write(make_pair(DB_ZEROCOIN_ACCMINTINDEX, coinValueHash), blockHash);
-}
-
-bool CBlockTreeDB::WriteAccMint(CBigNum coinValue, uint256 blockHash) {
-    CDataStream ss(SER_GETHASH, 0);
-    ss << coinValue;
-    uint256 hash = Hash(ss.begin(), ss.end());
-
-    return Write(make_pair(DB_ZEROCOIN_ACCMINTINDEX, hash), blockHash);
-}
-
-bool CBlockTreeDB::UpdateAccMintIndex(const std::vector<std::pair<CBigNum, uint256> >&vect) {
-    CDBBatch batch(*this);
-    for (std::vector<std::pair<CBigNum, uint256> >::const_iterator it=vect.begin(); it!=vect.end(); it++) {
-        CDataStream ss(SER_GETHASH, 0);
-        ss << it->first;
-        uint256 hash = Hash(ss.begin(), ss.end());
-        if (it->second.IsNull()) {
-            batch.Erase(make_pair(DB_ZEROCOIN_ACCMINTINDEX, hash));
-        } else {
-            batch.Write(make_pair(DB_ZEROCOIN_ACCMINTINDEX, hash), it->second);
-        }
-    }
-    return WriteBatch(batch, true);
-}
-
-bool CBlockTreeDB::EraseAccMint(uint256 coinValueHash) {
-    return Erase(make_pair(DB_ZEROCOIN_ACCMINTINDEX, coinValueHash));
-}
-
-bool CBlockTreeDB::EraseAccMint(CBigNum coinValue) {
-    CDataStream ss(SER_GETHASH, 0);
-    ss << coinValue;
-    uint256 hash = Hash(ss.begin(), ss.end());
-
-    return Erase(make_pair(DB_ZEROCOIN_ACCMINTINDEX, hash));
 }
 
 bool CBlockTreeDB::ReadCoinSpend(CBigNum coinSerial, uint256 &txHash) {

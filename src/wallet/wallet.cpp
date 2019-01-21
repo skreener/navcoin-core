@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
-// Copyright (c) 2018 The NavCoin Core developers
+// Copyright (c) 2019 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -315,8 +315,8 @@ void CWallet::AvailableZeroCoinsForStaking(vector<COutput>& vCoins, unsigned int
                 if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, pcoin->vout[i], pubCoin, NULL))
                     continue;
 
-                uint256 blockHash;
-                if (!pblocktree->ReadAccMint(pubCoin.getValue(), blockHash))
+                PublicMintChainData zeroMint;
+                if (!pblocktree->ReadCoinMint(pubCoin.getValue(), zeroMint))
                     continue;
 
                 if (!(IsSpent(wtxid,i)) && IsMine(pcoin->vout[i]) && pcoin->vout[i].nValue >= nMinimumInputValue && pcoin->vout[i].IsZerocoinMint()){
@@ -1806,10 +1806,10 @@ void CWallet::SyncTransaction(const CTransaction& tx, const CBlockIndex *pindex,
         }
     }
 
-    if (!fConnect && tx.IsCoinStake() && IsFromMe(tx))
+    if (!fConnect)
     {
-        AbandonTransaction(tx.hash);
-        LogPrintf("SyncTransaction : Removing tx %s from mapTxSpends\n",tx.hash.ToString());
+        if (tx.IsCoinStake() && IsFromMe(tx))
+            AbandonTransaction(tx.hash);
         BOOST_FOREACH(const CTxIn& txin, tx.vin)
         {
             COutPoint prevout = txin.prevout;
@@ -1819,8 +1819,10 @@ void CWallet::SyncTransaction(const CTransaction& tx, const CBlockIndex *pindex,
                 if(!mapSerial.count(zcs.getCoinSerialNumber()))
                     continue;
                 prevout = mapSerial.at(zcs.getCoinSerialNumber());
+                mapSerial.erase(zcs.getCoinSerialNumber());
             }
-            mapTxSpends.erase(prevout);
+            if (tx.IsCoinStake() && IsFromMe(tx))
+                mapTxSpends.erase(prevout);
         }
     }
 }
@@ -2419,22 +2421,9 @@ CAmount CWalletTx::GetAvailableCredit(bool fUseCache) const
         if (!pwallet->IsSpent(hashTx, i))
         {
             CTxOut out = vout[i];
-            if (vout[i].scriptPubKey.IsZerocoinMint()) {
-                if (!out.IsZerocoinMint())
-                    continue;
-                std::vector<unsigned char> c; CPubKey p;  std::vector<unsigned char> i;
-                if(!out.scriptPubKey.ExtractZerocoinMintData(p, c, i))
-                    continue;
-                uint256 blockhash;
-                if (!pblocktree->ReadAccMint(CBigNum(c), blockhash) || blockhash == uint256())
-                    nCredit += pwallet->GetCredit(out, ISMINE_SPENDABLE_PRIVATE);
-                if (!MoneyRange(nCredit))
-                    throw std::runtime_error("CWalletTx::GetAvailableCredit() : value out of range");
-            } else {
-                nCredit += pwallet->GetCredit(out, ISMINE_SPENDABLE);
-                if (!MoneyRange(nCredit))
-                    throw std::runtime_error("CWalletTx::GetAvailableCredit() : value out of range");
-            }
+            nCredit += pwallet->GetCredit(out, ISMINE_SPENDABLE);
+            if (!MoneyRange(nCredit))
+                throw std::runtime_error("CWalletTx::GetAvailableCredit() : value out of range");
         }
     }
 
@@ -2600,8 +2589,8 @@ bool CWalletTx::IsTrusted() const
             std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> i;
             if(!out.scriptPubKey.ExtractZerocoinMintData(p, c, i))
                 continue;
-            uint256 blockhash;
-            if (!pblocktree->ReadAccMint(CBigNum(c), blockhash) || blockhash == uint256())
+            PublicMintChainData zeroMint;
+            if (!pblocktree->ReadCoinMint(CBigNum(c), zeroMint) || zeroMint.GetTxHash() == uint256())
                 return false;
         }
     }
@@ -2890,12 +2879,8 @@ void CWallet::AvailablePrivateCoins(vector<COutput>& vCoins, bool fOnlyConfirmed
                 std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> id;
                 if(!pcoin->vout[i].scriptPubKey.ExtractZerocoinMintData(p, c, id))
                     continue;
-                uint256 blockhash;
-                if (!pblocktree->ReadAccMint(CBigNum(c), blockhash) || blockhash == uint256())
-                    continue;
-                if (!mapBlockIndex.count(blockhash))
-                    continue;
-                if (!CountMintsFromHeight(mapBlockIndex[blockhash]->nHeight+1, libzerocoin::AmountToZerocoinDenomination(pcoin->vout[i].nValue), nCount))
+                PublicMintChainData zeroMint;
+                if (!pblocktree->ReadCoinMint(CBigNum(c), zeroMint) || zeroMint.GetTxHash() == uint256() || zeroMint.GetBlockHash() == uint256())
                     continue;
                 if (!(IsSpent(wtxid, i)) && mine != ISMINE_NO &&
                     !IsLockedCoin((*it).first, i) && (pcoin->vout[i].nValue > 0 || fIncludeZeroValue) &&
