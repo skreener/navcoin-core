@@ -23,6 +23,8 @@ namespace libzerocoin {
 class Accumulator {
 public:
 
+    Accumulator(const AccumulatorAndProofParams* p): params(p) { }
+
     /**
      * @brief      Construct an Accumulator from a stream.
      * @param p    An AccumulatorAndProofParams object containing global parameters
@@ -105,6 +107,8 @@ private:
  */
 class AccumulatorWitness {
 public:
+    AccumulatorWitness(const ZerocoinParams* p) : witness(&p->accumulatorParams), element(p) { }
+
     template<typename Stream>
     AccumulatorWitness(const ZerocoinParams* p, Stream& strm) {
         strm >> *this;
@@ -122,6 +126,7 @@ public:
      * @param c the coin to add
      */
     void AddElement(const PublicCoin& c);
+    void AddElement(const CBigNum& bnValue);
 
     /** Adds element to the set whose's accumulation we are proving coin is a member of. No checks performed!
      *
@@ -151,6 +156,12 @@ public:
     AccumulatorWitness& operator +=(const PublicCoin& rhs);
 
     AccumulatorWitness& operator =(AccumulatorWitness rhs);
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
+        READWRITE(witness);
+        READWRITE(element);
+    }
 private:
     Accumulator witness;
     PublicCoin element; // was const but changed to use setting in assignment

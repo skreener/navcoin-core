@@ -1389,6 +1389,23 @@ bool CWallet::WriteSerial(const CBigNum& bnSerialNumber, COutPoint& out)
     return walletdb.WriteSerialNumber(bnSerialNumber, out);
 }
 
+bool CWallet::WriteWitness(const CBigNum& bnCoinValue, PublicMintWitnessData& witness)
+{
+    AssertLockHeld(cs_wallet);
+
+    std::pair<std::map<CBigNum, PublicMintWitnessData>::iterator, bool> ret = mapWitness.insert(std::make_pair(bnCoinValue, witness));
+
+    if (!ret.second) {
+        mapWitness.erase(bnCoinValue);
+        ret = mapWitness.insert(std::make_pair(bnCoinValue, witness));
+        assert(ret.second);
+    }
+
+    CWalletDB walletdb(strWalletFile);
+
+    return walletdb.WriteWitnessData(bnCoinValue, witness);
+}
+
 bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletDB* pwalletdb)
 {
     uint256 hash = wtxIn.GetHash();
@@ -2873,7 +2890,6 @@ void CWallet::AvailablePrivateCoins(vector<COutput>& vCoins, bool fOnlyConfirmed
 
             for (unsigned int i = 0; i < pcoin->vout.size(); i++) {
                 isminetype mine = IsMine(pcoin->vout[i]);
-                unsigned int nCount = 0;
                 if (!pcoin->vout[i].IsZerocoinMint())
                     continue;
                 std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> id;
@@ -3717,6 +3733,7 @@ DBErrors CWallet::ZapWalletTx(std::vector<CWalletTx>& vWtx)
             LOCK(cs_wallet);
             setKeyPool.clear();
             mapSerial.clear();
+            mapWitness.clear();
             // Note: can't top-up keypool here, because wallet is locked.
             // User will be prompted to unlock wallet the next operation
             // that requires a new key.
