@@ -105,6 +105,11 @@ void AccumulatorWitness::AddElement(const PublicCoin& c) {
         witness += c;
 }
 
+void AccumulatorWitness::AddElement(const CBigNum& bnValue) {
+    if(element.getValue() != bnValue)
+        witness.increment(bnValue);
+}
+
 //warning check pubcoin value & denom outside of this function!
 void AccumulatorWitness::addRawValue(const CBigNum& bnValue) {
     witness.increment(bnValue);

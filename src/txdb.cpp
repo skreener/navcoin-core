@@ -36,7 +36,6 @@ static const char DB_ZEROCOIN_BLOCK = 'y';
 static const char DB_ZEROCOIN_MINTINDEX = 'M';
 static const char DB_ZEROCOIN_SPENDINDEX = 'S';
 static const char DB_ZEROCOIN_ACCUMULATOR = 'K';
-static const char DB_ZEROCOIN_ACCMINTINDEX = 'm';
 
 CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true, false, 64)
 {

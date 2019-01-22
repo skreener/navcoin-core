@@ -20,6 +20,7 @@
 #include "wallet/walletdb.h"
 #include "wallet/rpcwallet.h"
 #include "primitives/transaction.h"
+#include "zeromint.h"
 
 #include <algorithm>
 #include <map>
@@ -745,6 +746,7 @@ public:
 
     std::map<uint256, CWalletTx> mapWallet;
     std::map<CBigNum, COutPoint> mapSerial;
+    std::map<CBigNum, PublicMintWitnessData> mapWitness;
     std::list<CAccountingEntry> laccentries;
 
     typedef std::pair<CWalletTx*, CAccountingEntry*> TxPair;
@@ -763,6 +765,8 @@ public:
     int64_t nTimeFirstKey;
 
     bool WriteSerial(const CBigNum& bnSerialNumber, COutPoint& out);
+
+    bool WriteWitness(const CBigNum& bnSerialNumber, PublicMintWitnessData& witness);
 
     const CWalletTx* GetWalletTx(const uint256& hash) const;
 

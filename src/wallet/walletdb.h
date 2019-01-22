@@ -13,6 +13,7 @@
 #include "primitives/transaction.h"
 #include "wallet/db.h"
 #include "key.h"
+#include "zeromint.h"
 
 #include <list>
 #include <stdint.h>
@@ -161,6 +162,9 @@ public:
 
     bool WriteSerialNumber(const CBigNum& bnSerialNumber, const COutPoint& out);
     bool EraseSerialNumber(const CBigNum& bnSerialNumber);
+
+    bool WriteWitnessData(const CBigNum& bnSerialNumber, const PublicMintWitnessData& witness);
+    bool EraseWitnessData(const CBigNum& bnSerialNumber);
 
     bool WriteMinVersion(int nVersion);
 

@@ -426,6 +426,20 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
             ssValue >> out;
             pwallet->mapSerial[bnSerial] = out;
         }
+        else if (strType == "witness")
+        {
+            CBigNum bnCoinValue;
+            PublicMintWitnessData witness(&Params().GetConsensus().Zerocoin_Params, ssValue);
+            ssKey >> bnCoinValue;
+
+            std::pair<std::map<CBigNum, PublicMintWitnessData>::iterator, bool> ret = pwallet->mapWitness.insert(std::make_pair(bnCoinValue, witness));
+
+            if (!ret.second) {
+                pwallet->mapWitness.erase(bnCoinValue);
+                ret = pwallet->mapWitness.insert(std::make_pair(bnCoinValue, witness));
+                assert(ret.second);
+            }
+        }
         else if (strType == "tx")
         {
             uint256 hash;
@@ -838,6 +852,18 @@ bool CWalletDB::EraseSerialNumber(const CBigNum& bnSerialNumber)
 {
     nWalletDBUpdated++;
     return Erase(std::make_pair(std::string("serial"), bnSerialNumber));
+}
+
+bool CWalletDB::WriteWitnessData(const CBigNum& bnSerialNumber, const PublicMintWitnessData& witness)
+{
+    nWalletDBUpdated++;
+    return Write(std::make_pair(std::string("witness"), bnSerialNumber), witness);
+}
+
+bool CWalletDB::EraseWitnessData(const CBigNum& bnSerialNumber)
+{
+    nWalletDBUpdated++;
+    return Erase(std::make_pair(std::string("witness"), bnSerialNumber));
 }
 
 DBErrors CWalletDB::FindWalletTx(CWallet* pwallet, vector<uint256>& vTxHash, vector<CBigNum>& vSerial, vector<CWalletTx>& vWtx)

@@ -46,8 +46,9 @@ public:
         strm >> *this;
     }
 
-    PublicCoin();
     PublicCoin(const ZerocoinParams* p);
+    PublicCoin(const PublicCoin& pc) : params(pc.params), version(pc.version), value(pc.value), denomination(pc.denomination),
+                                       pubKey(pc.pubKey), paymentId(pc.paymentId) {}
 
     /**Generates a new Zerocoin by (a) selecting a random key pair,
    * (b) deriving a secret using DH with the destination pub key,
@@ -67,6 +68,11 @@ public:
 
     PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CPubKey destPubKey, const BlindingCommitment blindingCommitment, const std::string pid);
     PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CBigNum value, const CPubKey pubKey, const CBigNum obfuscatedPid, bool fCheck = true);
+
+    PublicCoin& operator=(PublicCoin rhs) {
+        if (this != &rhs) std::swap(*this, rhs);
+        return *this;
+    }
 
     const CBigNum& getValue() const { return this->value; }
     const CPubKey& getPubKey() const { return this->pubKey; }

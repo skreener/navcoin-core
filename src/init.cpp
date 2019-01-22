@@ -1765,6 +1765,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     LogPrintf("setKeyPool.size() = %u\n",      pwalletMain ? pwalletMain->setKeyPool.size() : 0);
     LogPrintf("mapWallet.size() = %u\n",       pwalletMain ? pwalletMain->mapWallet.size() : 0);
     LogPrintf("mapSerial.size() = %u\n",       pwalletMain ? pwalletMain->mapSerial.size() : 0);
+    LogPrintf("mapWitness.size() = %u\n",      pwalletMain ? pwalletMain->mapWitness.size() : 0);
     LogPrintf("mapAddressBook.size() = %u\n",  pwalletMain ? pwalletMain->mapAddressBook.size() : 0);
 #endif
 
