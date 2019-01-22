@@ -119,10 +119,8 @@ bool AccumulatorWitness::VerifyWitness(const Accumulator& a, const PublicCoin &p
     temp.setValue(witness.getValue());
     temp += element;
     if (!(temp == a)) {
-        std::cout << "VerifyWitness: failed verify temp does not equal a\n";
         return false;
     } else if (this->element != publicCoin) {
-        std::cout << "VerifyWitness: failed verify pubcoins not equal\n";
         return false;
     }
 

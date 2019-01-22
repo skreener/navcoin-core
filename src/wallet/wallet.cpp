@@ -446,6 +446,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     // Choose coins to use
     int64_t nBalance = GetBalance() + GetColdStakingBalance();
+    int64_t nPrivateBalance = GetPrivateBalance();
 
     if (nBalance <= nReserveBalance)
         return false;
@@ -596,8 +597,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         }
     }
 
-    if (nCredit == 0 || nCredit > nBalance - nReserveBalance)
-        return false;
+    if (nCredit == 0 || (fKernelFound && nCredit > nBalance - nReserveBalance) || (fZeroKernelFound && nCredit > nPrivateBalance - nReserveBalance))
+        return error("CreateCoinStake : not enough balance");
 
     if (fKernelFound) {
         BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
@@ -641,7 +642,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
         nReward = GetProofOfStakeReward(pindexPrev->nHeight + 1, nCoinAge, nFees, pindexBestHeader);
         if (nReward <= 0)
-            return false;
+            return error("CreateCoinStake : no reward");
 
         nCredit += nReward;
     }
@@ -769,6 +770,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         }
         else
         {
+            LogPrintf("%s: Coinstake signed\n", __func__);
             UpdateTransaction(txNew, nIn, sigdata);
         }
 
