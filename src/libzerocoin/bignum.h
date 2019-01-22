@@ -21,6 +21,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "hash.h"
 #include "serialize.h"
 #include "uint256.h"
 #include "version.h"
@@ -226,7 +227,7 @@ public:
     friend inline bool operator>(const CBigNum& a, const CBigNum& b);
 
     mutable std::map<const CBigNum, bool> mapCachePrimes;
-    mutable std::map<std::pair<CBigNum, std::pair<CBigNum, CBigNum>>, CBigNum> mapCachePowMod;
+    mutable std::map<uint256, CBigNum> mapCachePowMod;
 };
 
 #if defined(USE_NUM_OPENSSL)

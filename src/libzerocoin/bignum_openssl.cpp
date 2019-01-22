@@ -365,8 +365,14 @@ CBigNum CBigNum::div(const CBigNum& d) const {
  */
 CBigNum CBigNum::pow_mod(const CBigNum& e, const CBigNum& m, bool fCache) const
 {
-    if (mapCachePowMod.count(std::make_pair(*this,std::make_pair(e,m))) != 0)
-        return mapCachePowMod[std::make_pair(*this,std::make_pair(e,m))];
+    CHashWriter hasher(0,0);
+    hasher << *this;
+    hasher << e;
+    hasher << m;
+    uint256 hashKey = hasher.GetHash();
+
+    if (mapCachePowMod.count(hashKey) != 0)
+        return mapCachePowMod[hashKey];
 
     CAutoBN_CTX pctx;
     CBigNum ret;
@@ -383,7 +389,7 @@ CBigNum CBigNum::pow_mod(const CBigNum& e, const CBigNum& m, bool fCache) const
     if (mapCachePowMod.size() > POW_MOD_CACHE_SIZE)
         mapCachePowMod.clear();
     else if (fCache)
-        mapCachePowMod[std::make_pair(*this,std::make_pair(e,m))] = ret;
+        mapCachePowMod[hashKey] = ret;
 
     return ret;
 }

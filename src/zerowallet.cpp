@@ -171,9 +171,6 @@ bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript&
         }
     }
 
-    if (fFoundWitness)
-        LogPrintf("Found witness from witnesser\n");
-
     if (!fFoundWitness && !CalculateWitnessForMint(txout, pubCoin, a, aw, ac, strError, MIN_MINT_SECURITY + nEntropy))
         return error(strprintf("Error calculating witness for mint: %s", strError));
 
