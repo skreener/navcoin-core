@@ -465,6 +465,7 @@ public:
     CAmount GetAvailableCredit(bool fUseCache=true) const;
     CAmount GetAvailableStakableCredit() const;
     CAmount GetAvailablePrivateCredit() const;
+    CAmount GetImmaturePrivateCredit() const;
     CAmount GetImmatureWatchOnlyCredit(const bool& fUseCache=true) const;
     CAmount GetAvailableWatchOnlyCredit(const bool& fUseCache=true) const;
     CAmount GetChange() const;
@@ -695,6 +696,7 @@ public:
      *      strWalletFile (immutable after instantiation)
      */
     mutable CCriticalSection cs_wallet;
+    mutable CCriticalSection cs_witnesser;
 
     bool fFileBacked;
     std::string strWalletFile;

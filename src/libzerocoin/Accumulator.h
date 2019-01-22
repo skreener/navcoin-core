@@ -89,7 +89,6 @@ public:
      * @return a refrence to the updated accumulator.
      */
     Accumulator& operator +=(const PublicCoin& c);
-    Accumulator& operator =(Accumulator rhs);
     bool operator==(const Accumulator rhs) const;
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
@@ -154,8 +153,6 @@ public:
      * @return
      */
     AccumulatorWitness& operator +=(const PublicCoin& rhs);
-
-    AccumulatorWitness& operator =(AccumulatorWitness rhs);
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
