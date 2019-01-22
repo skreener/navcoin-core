@@ -81,6 +81,17 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const C
     if (!accumulatorMap.Load(accumulatorChecksum))
         return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Wrong accumulator checksum %s", accumulatorChecksum.ToString())));
 
+    {
+        AssertLockHeld(cs_main);
+        if (!mapBlockIndex.count(accumulatorMap.GetBlockHash()))
+            return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Internal error: Unknown block hash %s", accumulatorMap.GetBlockHash())));
+
+        CBlockIndex* pindex = mapBlockIndex[accumulatorMap.GetBlockHash()];
+
+        if (!chainActive.Contains(pindex))
+            return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Internal error: Block %s is not part of the active chain", accumulatorMap.GetBlockHash())));
+    }
+
     Accumulator accumulator(params, coinSpend.getDenomination());
     accumulator.setValue(accumulatorMap.GetValue(coinSpend.getDenomination()));
 
@@ -142,7 +153,7 @@ bool CountMintsFromHeight(unsigned int nInitialHeight, CoinDenomination denom, u
     return true;
 }
 
-bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin& pubCoin, Accumulator& accumulator, AccumulatorWitness& accumulatorWitness, uint256& accumulatorChecksum, std::string& strError)
+bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin& pubCoin, Accumulator& accumulator, AccumulatorWitness& accumulatorWitness, uint256& accumulatorChecksum, std::string& strError, int nRequiredMints)
 {
     if (!txout.IsZerocoinMint()) {
         strError = "Transaction output script is not a zerocoin mint.";
@@ -232,7 +243,7 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
                 }
             }
 
-            if(!chainActive.Next(pindex))
+            if(!chainActive.Next(pindex) || (nRequiredMints > 0 && nCount >= nRequiredMints))
                 break;
 
             pindex = chainActive.Next(pindex);
