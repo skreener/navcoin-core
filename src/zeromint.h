@@ -4,6 +4,7 @@
 
 #include "libzerocoin/Accumulator.h"
 #include "libzerocoin/Coin.h"
+#include "primitives/transaction.h"
 #include "serialize.h"
 #include "uint256.h"
 
@@ -13,30 +14,38 @@
 class PublicMintChainData
 {
 public:
-    PublicMintChainData() : txHash(0), blockHash(0) {}
-    PublicMintChainData(uint256 txHashIn, uint256 blockHashIn) : txHash(txHashIn), blockHash(blockHashIn) {}
+    PublicMintChainData() : outPoint(), blockHash(0) {}
+    PublicMintChainData(COutPoint outPointIn, uint256 blockHashIn) : outPoint(outPointIn), blockHash(blockHashIn) {}
 
     uint256 GetBlockHash() const {
         return blockHash;
     }
 
     uint256 GetTxHash() const {
-        return txHash;
+        return outPoint.hash;
+    }
+
+    int GetOutput() const {
+        return outPoint.n;
+    }
+
+    COutPoint GetOutpoint() const {
+        return outPoint;
     }
 
     bool IsNull() const {
-        return txHash == 0 && blockHash == 0;
+        return outPoint.IsNull() && blockHash == 0;
     }
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
-        READWRITE(txHash);
+        READWRITE(outPoint);
         READWRITE(blockHash);
     }
 
 private:
-    uint256 txHash;
+    COutPoint outPoint;
     uint256 blockHash;
 };
 
@@ -62,10 +71,6 @@ public:
                 int nCountIn) : accumulator(accumulatorIn), accumulatorWitness(accumulatorWitnessIn),
                 accumulatorChecksum(accumulatorChecksumIn), nCount(nCountIn) {}
 
-    WitnessData(const WitnessData& witness) : accumulator(witness.accumulator),
-                accumulatorWitness(witness.accumulatorWitness), accumulatorChecksum(witness.accumulatorChecksum),
-                nCount(witness.nCount) { }
-
     void SetChecksum(uint256 checksum) {
         accumulatorChecksum = checksum;
     }
@@ -84,11 +89,11 @@ public:
 
     void Accumulate(CBigNum coinValue) {
         accumulator.increment(coinValue);
-        accumulatorWitness.addRawValue(coinValue);
+        accumulatorWitness.AddElement(coinValue);
         nCount++;
     }
 
-    int GetCount() {
+    int GetCount() const {
         return nCount;
     }
 
@@ -140,13 +145,23 @@ public:
         currentData.SetChecksum(checksum);
     }
 
-    void Backup() {
+    void Backup() const {
         WitnessData copy(params, currentData.GetAccumulator(), currentData.GetAccumulatorWitness(),
                          currentData.GetChecksum(), currentData.GetCount());
         prevData = copy;
     }
 
-    void Reset() {
+    void Recover() const {
+        WitnessData copy(params, prevData.GetAccumulator(), prevData.GetAccumulatorWitness(),
+                         prevData.GetChecksum(), prevData.GetCount());
+        currentData = copy;
+    }
+
+    bool Verify() const {
+        return currentData.GetAccumulatorWitness().VerifyWitness(currentData.GetAccumulator(), pubCoin);
+    }
+
+    void Reset() const {
         WitnessData copy(params, initialData.GetAccumulator(), initialData.GetAccumulatorWitness(),
                          initialData.GetChecksum(), initialData.GetCount());
         currentData = copy;
@@ -157,12 +172,28 @@ public:
         return currentData.GetChecksum();
     }
 
+    uint256 GetPrevChecksum() const {
+        return prevData.GetChecksum();
+    }
+
     libzerocoin::Accumulator GetAccumulator() const {
         return currentData.GetAccumulator();
     }
 
     libzerocoin::AccumulatorWitness GetAccumulatorWitness() const {
         return currentData.GetAccumulatorWitness();
+    }
+
+    libzerocoin::PublicCoin GetPublicCoin() const {
+        return pubCoin;
+    }
+
+    PublicMintChainData GetChainData() const {
+        return chainData;
+    }
+
+    int GetCount() const {
+        return currentData.GetCount();
     }
 
     ADD_SERIALIZE_METHODS;
@@ -179,8 +210,8 @@ private:
     const libzerocoin::ZerocoinParams* params;
     libzerocoin::PublicCoin pubCoin;
     PublicMintChainData chainData;
-    WitnessData currentData;
-    WitnessData prevData;
+    mutable WitnessData currentData;
+    mutable WitnessData prevData;
     WitnessData initialData;
 
 };

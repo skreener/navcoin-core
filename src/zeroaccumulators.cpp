@@ -85,7 +85,7 @@ bool AccumulatorMap::Get(CoinDenomination denom, libzerocoin::Accumulator& accum
 {
     if (denom == CoinDenomination::ZQ_ERROR)
         return false;
-    accumulator = libzerocoin::Accumulator(&Params().GetConsensus().Zerocoin_Params, denom, mapAccumulators.at(denom)->getValue());
+    accumulator.setValue(mapAccumulators.at(denom)->getValue());
     return true;
 }
 
