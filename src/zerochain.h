@@ -17,6 +17,7 @@
 
 using namespace libzerocoin;
 
+// consider moving to unordered map
 static std::map<uint256, bool> mapCacheValidCoinSpends;
 
 bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, PublicMintChainData>> vSeen = std::vector<std::pair<CBigNum, PublicMintChainData>>(), PublicCoin* pPubCoin = NULL);
