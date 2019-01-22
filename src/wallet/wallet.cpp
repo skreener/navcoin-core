@@ -1439,10 +1439,16 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletD
         wtxOrdered.insert(make_pair(wtx.nOrderPos, TxPair(&wtx, (CAccountingEntry*)0)));
         AddToSpends(hash);
         BOOST_FOREACH(const CTxIn& txin, wtx.vin) {
-            if (txin.scriptSig.IsZerocoinSpend())
-                continue;
-            if (mapWallet.count(txin.prevout.hash)) {
-                CWalletTx& prevtx = mapWallet[txin.prevout.hash];
+            COutPoint prevout = txin.prevout;
+            if (txin.scriptSig.IsZerocoinSpend()) {
+                libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
+                assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs));
+                if(!mapSerial.count(zcs.getCoinSerialNumber()))
+                    continue;
+                prevout = mapSerial.at(zcs.getCoinSerialNumber());
+            }
+            if (mapWallet.count(prevout.hash)) {
+                CWalletTx& prevtx = mapWallet[prevout.hash];
                 if (prevtx.nIndex == -1 && !prevtx.hashUnset()) {
                     MarkConflicted(prevtx.hashBlock, wtx.GetHash());
                 }
@@ -1751,8 +1757,16 @@ bool CWallet::AbandonTransaction(const uint256& hashTx)
             // available of the outputs it spends. So force those to be recomputed
             BOOST_FOREACH(const CTxIn& txin, wtx.vin)
             {
-                if (mapWallet.count(txin.prevout.hash))
-                    mapWallet[txin.prevout.hash].MarkDirty();
+                COutPoint prevout = txin.prevout;
+                if (txin.scriptSig.IsZerocoinSpend()) {
+                    libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
+                    assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs));
+                    if(!mapSerial.count(zcs.getCoinSerialNumber()))
+                        continue;
+                    prevout = mapSerial.at(zcs.getCoinSerialNumber());
+                }
+                if (mapWallet.count(prevout.hash))
+                    mapWallet[prevout.hash].MarkDirty();
             }
         }
     }
@@ -1812,8 +1826,16 @@ void CWallet::MarkConflicted(const uint256& hashBlock, const uint256& hashTx)
             // available of the outputs it spends. So force those to be recomputed
             BOOST_FOREACH(const CTxIn& txin, wtx.vin)
             {
-                if (mapWallet.count(txin.prevout.hash))
-                    mapWallet[txin.prevout.hash].MarkDirty();
+                COutPoint prevout = txin.prevout;
+                if (txin.scriptSig.IsZerocoinSpend()) {
+                    libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
+                    assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs));
+                    if(!mapSerial.count(zcs.getCoinSerialNumber()))
+                        continue;
+                    prevout = mapSerial.at(zcs.getCoinSerialNumber());
+                }
+                if (mapWallet.count(prevout.hash))
+                    mapWallet[prevout.hash].MarkDirty();
             }
         }
     }
@@ -3764,7 +3786,15 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
             set<CWalletTx*> setCoins;
             BOOST_FOREACH(const CTxIn& txin, wtxNew.vin)
             {
-                CWalletTx &coin = mapWallet[txin.prevout.hash];
+                COutPoint prevout = txin.prevout;
+                if (txin.scriptSig.IsZerocoinSpend()) {
+                    libzerocoin::CoinSpend zcs(&Params().GetConsensus().Zerocoin_Params);
+                    assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, zcs));
+                    if(!mapSerial.count(zcs.getCoinSerialNumber()))
+                        continue;
+                    prevout = mapSerial.at(zcs.getCoinSerialNumber());
+                }
+                CWalletTx &coin = mapWallet[prevout.hash];
                 coin.BindWallet(this);
                 NotifyTransactionChanged(this, coin.GetHash(), CT_UPDATED);
             }
@@ -4190,6 +4220,8 @@ set< set<CTxDestination> > CWallet::GetAddressGroupings()
             {
                 CTxDestination address;
                 if(!IsMine(txin)) /* If this input isn't mine, ignore it */
+                    continue;
+                if(!mapWallet.count(txin.prevout.hash))
                     continue;
                 if(!ExtractDestination(mapWallet[txin.prevout.hash].vout[txin.prevout.n].scriptPubKey, address))
                     continue;
