@@ -21,7 +21,6 @@
 #include <stdexcept>
 #include <vector>
 
-#include "hash.h"
 #include "serialize.h"
 #include "uint256.h"
 #include "version.h"
@@ -228,7 +227,7 @@ public:
 
     // consider moving to unordered map
     mutable std::map<const CBigNum, bool> mapCachePrimes;
-    mutable std::map<uint256, CBigNum> mapCachePowMod;
+    mutable std::map<std::pair<CBigNum, std::pair<CBigNum, CBigNum>>, CBigNum> mapCachePowMod;
 };
 
 #if defined(USE_NUM_OPENSSL)
