@@ -187,8 +187,8 @@ public:
     bool EraseCoinSpend(CBigNum coinSerial);
     bool EraseCoinSpend(uint256 coinSerialHash);
     bool UpdateCoinSpendIndex(const std::vector<std::pair<CBigNum, uint256> >&vect);
-    bool ReadZerocoinAccumulator(uint256 accumulatorChecksum, std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> &accumulatorMap);
-    bool WriteZerocoinAccumulator(uint256 accumulatorChecksum, std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> accumulatorMap);
+    bool ReadZerocoinAccumulator(uint256 accumulatorChecksum, std::pair<uint256,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>> &accumulatorMap);
+    bool WriteZerocoinAccumulator(uint256 accumulatorChecksum, std::pair<uint256,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>> accumulatorMap);
     bool EraseZerocoinAccumulator(uint256 accumulatorChecksum);
 };
 
