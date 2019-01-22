@@ -162,6 +162,7 @@ NAVCOIN_CORE_H = \
   zerochain.h \
   zeromint.h \
   zerowallet.h \
+  zerowitnesser.h \
   zmq/zmqabstractnotifier.h \
   zmq/zmqconfig.h\
   zmq/zmqnotificationinterface.h \
@@ -221,6 +222,7 @@ libnavcoin_server_a_SOURCES = \
   zerochain.cpp \
   zerotx.cpp \
   zerowallet.cpp \
+  zerowitnesser.cpp \
   $(NAVCOIN_CORE_H)
 
 if ENABLE_ZMQ
