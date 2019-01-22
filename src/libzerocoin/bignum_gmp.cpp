@@ -266,17 +266,11 @@ CBigNum CBigNum::div(const CBigNum& d) const
  * @param m modulus
  */
 CBigNum CBigNum::pow_mod(const CBigNum& e, const CBigNum& m, bool fCache) const
-{    
-    CHashWriter hasher(0,0);
-    hasher << *this;
-    hasher << e;
-    hasher << m;
-    uint256 hashKey = hasher.GetHash();
-
-    if (mapCachePowMod.count(hashKey) != 0)
-        return mapCachePowMod[hashKey];
-
+{
     CBigNum ret;
+
+    if (mapCachePowMod.count(std::make_pair(*this,std::make_pair(e,m))) != 0)
+        return mapCachePowMod[std::make_pair(*this,std::make_pair(e,m))];
 
     if (e > CBigNum(0) && mpz_odd_p(m.bn))
         mpz_powm_sec (ret.bn, bn, e.bn, m.bn);
@@ -286,7 +280,7 @@ CBigNum CBigNum::pow_mod(const CBigNum& e, const CBigNum& m, bool fCache) const
     if (mapCachePowMod.size() > POW_MOD_CACHE_SIZE)
         mapCachePowMod.clear();
     else if (fCache)
-        mapCachePowMod[hashKey] = ret;
+        mapCachePowMod[std::make_pair(*this,std::make_pair(e,m))] = ret;
 
     return ret;
 }

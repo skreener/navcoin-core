@@ -226,6 +226,7 @@ public:
     friend inline bool operator<(const CBigNum& a, const CBigNum& b);
     friend inline bool operator>(const CBigNum& a, const CBigNum& b);
 
+    // consider moving to unordered map
     mutable std::map<const CBigNum, bool> mapCachePrimes;
     mutable std::map<uint256, CBigNum> mapCachePowMod;
 };
