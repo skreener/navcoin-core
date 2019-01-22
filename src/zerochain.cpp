@@ -84,12 +84,7 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const C
     {
         AssertLockHeld(cs_main);
         if (!mapBlockIndex.count(accumulatorMap.GetBlockHash()))
-            return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Internal error: Unknown block hash %s", accumulatorMap.GetBlockHash())));
-
-        CBlockIndex* pindex = mapBlockIndex[accumulatorMap.GetBlockHash()];
-
-        if (!chainActive.Contains(pindex))
-            return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Internal error: Block %s is not part of the active chain", accumulatorMap.GetBlockHash())));
+            return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Internal error: Unknown block hash %s", accumulatorMap.GetBlockHash().GetHex())));
     }
 
     Accumulator accumulator(params, coinSpend.getDenomination());
@@ -251,8 +246,6 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
     }
 
     uint64_t nTimeEnd = GetTimeMicros();
-
-    LogPrintf("Accumulated %d times and took %.2fms\n", nCount, (nTimeEnd-nTimeStart)*0.001);
 
     if (!pindex) {
         strError = strprintf("Last block index is null");

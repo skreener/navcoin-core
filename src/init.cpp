@@ -44,6 +44,7 @@
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 #include "zerowallet.h"
+#include "zerowitnesser.h"
 #endif
 #include <stdint.h>
 #include <stdio.h>
@@ -380,6 +381,7 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-reindex", _("Rebuild chain state and block index from the blk*.dat files on disk"));
 #ifdef ENABLE_WALLET
     strUsage += HelpMessageOpt("-staking=<bool>", _("Enables or disables the staking thread."));
+    strUsage += HelpMessageOpt("-enablewitnesser=<bool>", _("Enables or disables the witnesser thread."));
 #endif
 #ifndef WIN32
     strUsage += HelpMessageOpt("-sysperms", _("Create new files with system default permissions, instead of umask 077 (only effective with disabled wallet functionality)"));
@@ -446,6 +448,9 @@ std::string HelpMessage(HelpMessageMode mode)
 
 #ifdef ENABLE_WALLET
     strUsage += CWallet::GetWalletHelpString(showDebug);
+    strUsage += HelpMessageGroup(_("Witnesser thread options:"));
+    strUsage += HelpMessageOpt("-witnesser_block_snapshot=<count>", strprintf(_("Snapshot for recovery purposes in case of block reorg every <count> blocks. (default: %d)"), DEFAULT_BLOCK_SNAPSHOT));
+    strUsage += HelpMessageOpt("-witnesser_blocks_per_round=<count>", strprintf(_("Precompute witness for <count> blocks in each round to prevent main thread locking. (default: %d)"), DEFAULT_BLOCKS_PER_ROUND));
 #endif
 
 #if ENABLE_ZMQ
@@ -1782,6 +1787,10 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     SetStaking(GetBoolArg("-staking", true));
     uiInterface.InitMessage(_("Starting staker thread..."));
     threadGroup.create_thread(boost::bind(&NavCoinStaker, boost::cref(chainparams)));
+    if(GetBoolArg("-enablewitnesser", true)) {
+        uiInterface.InitMessage(_("Starting witnesser thread..."));
+        threadGroup.create_thread(boost::bind(&NavCoinWitnesser, boost::cref(chainparams)));
+    }
 #endif
 
     uiInterface.InitMessage(_("Done loading"));
