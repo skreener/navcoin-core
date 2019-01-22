@@ -31,6 +31,7 @@ AccumulatorMap::AccumulatorMap(const libzerocoin::ZerocoinParams* params)
         unique_ptr<Accumulator> uptr(new Accumulator(params, denom));
         mapAccumulators.insert(make_pair(denom, std::move(uptr)));
     }
+    blockHash = uint256(0);
 }
 
 //Reset each accumulator to its default state
@@ -79,6 +80,15 @@ CBigNum AccumulatorMap::GetValue(CoinDenomination denom)
     return mapAccumulators.at(denom)->getValue();
 }
 
+//Returns a specific accumulator
+bool AccumulatorMap::Get(CoinDenomination denom, libzerocoin::Accumulator& accumulator)
+{
+    if (denom == CoinDenomination::ZQ_ERROR)
+        return false;
+    accumulator = libzerocoin::Accumulator(&Params().GetConsensus().Zerocoin_Params, denom, mapAccumulators.at(denom)->getValue());
+    return true;
+}
+
 //Calculate a 32bit checksum of each accumulator value. Concatenate checksums into uint256
 uint256 AccumulatorMap::GetChecksum()
 {
@@ -100,19 +110,21 @@ uint256 AccumulatorMap::GetChecksum()
 //Load a checkpoint containing 8 32bit checksums of accumulator values.
 bool AccumulatorMap::Load(uint256 nChecksum)
 {
-    std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> toRead;
+    std::pair<uint256,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>> toRead;
     if (!pblocktree->ReadZerocoinAccumulator(nChecksum, toRead))
         return error("%s : cannot read zerocoin accumulator checksum %s", __func__, nChecksum.ToString());
 
-    for(auto& it : toRead)
+    for(auto& it : toRead.second)
     {
         mapAccumulators.at(it.first)->setValue(it.second);
     }
 
+    blockHash = toRead.first;
+
     return true;
 }
 
-bool AccumulatorMap::Save()
+bool AccumulatorMap::Save(const CBlock& block)
 {
     std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> vAcc;
 
@@ -121,8 +133,10 @@ bool AccumulatorMap::Save()
         vAcc.push_back(std::make_pair(it.first, it.second->getValue()));
     }
 
-    if (!pblocktree->WriteZerocoinAccumulator(GetChecksum(), vAcc))
+    if (!pblocktree->WriteZerocoinAccumulator(GetChecksum(), std::make_pair(block.GetHash(), vAcc)))
         return error("%s : cannot write zerocoin accumulator checksum %s", __func__, GetChecksum().ToString());
+
+    blockHash = block.GetHash();
 
     return true;
 }
