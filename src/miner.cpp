@@ -983,6 +983,10 @@ bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees)
               } else
                   return key.Sign(pblock->GetHash(), pblock->vchBlockSig);
           }
+          else
+          {
+              LogPrintf("%s: Timestamp protocol not met (%d < %d)\n", __func__, txCoinStake.nTime, chainActive.Tip()->GetPastTimeLimit()+1);
+          }
       }
       nLastCoinStakeSearchInterval = nSearchTime - nLastCoinStakeSearchTime;
       nLastCoinStakeSearchTime = nSearchTime;
