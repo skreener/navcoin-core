@@ -319,6 +319,24 @@ void CWallet::AvailableZeroCoinsForStaking(vector<COutput>& vCoins, unsigned int
                 if (!pblocktree->ReadCoinMint(pubCoin.getValue(), zeroMint))
                     continue;
 
+                bool fFoundWitness = false;
+
+                {
+                    LOCK(cs_witnesser);
+                    if (mapWitness.count(pubCoin.getValue())) {
+                        PublicMintWitnessData witnessData = mapWitness.at(pubCoin.getValue());
+                        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
+
+                        uint256 ac = witnessData.GetChecksum();
+
+                        if (witnessData.Verify() && accumulatorMap.Load(ac))
+                            fFoundWitness = true;
+                    }
+                }
+
+                if (!fFoundWitness)
+                    continue;
+
                 if (!(IsSpent(wtxid,i)) && IsMine(pcoin->vout[i]) && pcoin->vout[i].nValue >= nMinimumInputValue && pcoin->vout[i].IsZerocoinMint()){
                     vCoins.push_back(COutput(pcoin, i, nDepth, true,
                                            ((IsMine(pcoin->vout[i]) & (ISMINE_SPENDABLE_PRIVATE)) != ISMINE_NO &&
@@ -1392,6 +1410,7 @@ bool CWallet::WriteSerial(const CBigNum& bnSerialNumber, COutPoint& out)
 bool CWallet::WriteWitness(const CBigNum& bnCoinValue, PublicMintWitnessData& witness)
 {
     AssertLockHeld(cs_wallet);
+    AssertLockHeld(cs_witnesser);
 
     std::pair<std::map<CBigNum, PublicMintWitnessData>::iterator, bool> ret = mapWitness.insert(std::make_pair(bnCoinValue, witness));
 
@@ -1516,6 +1535,9 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletD
             }
         }
 
+        std::vector<std::pair<const CBigNum, COutPoint>> serialToWrite;
+        std::vector<std::pair<const CBigNum, PublicMintWitnessData>> witnessToWrite;
+
         for(unsigned int i = 0; i < wtx.vout.size(); i++)
         {
             CTxOut out = wtx.vout[i];
@@ -1537,7 +1559,8 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletD
                 if (!GetBlindingCommitment(bc))
                     break;
 
-                libzerocoin::PrivateCoin privateCoin(&Params().GetConsensus().Zerocoin_Params, pubCoin.getDenomination(), zk, pubCoin.getPubKey(), bc, pubCoin.getValue(), pubCoin.getPaymentId());
+                libzerocoin::PrivateCoin privateCoin(&Params().GetConsensus().Zerocoin_Params, pubCoin.getDenomination(), zk, pubCoin.getPubKey(), bc, pubCoin.getValue(),
+                                                     pubCoin.getPaymentId());
 
                 if (!privateCoin.isValid())
                     continue;
@@ -1552,12 +1575,54 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletD
                 }
 
                 COutPoint outWrite(wtx.GetHash(),i);
-                WriteSerial(privateCoin.getPublicSerialNumber(oj), outWrite);
+
+                serialToWrite.push_back(std::make_pair(privateCoin.getPublicSerialNumber(oj), outWrite));
+
+                {
+                    LOCK(cs_witnesser);
+                    if (!mapWitness.count(pubCoin.getValue()))
+                    {
+
+                        if (!mapBlockIndex.count(wtx.hashBlock))
+                            continue;
+
+                        CBlockIndex* pindex = mapBlockIndex[wtx.hashBlock];
+
+                        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
+
+                        if(!pindex->pprev)
+                            continue;
+
+                        if(!accumulatorMap.Load(pindex->pprev->nAccumulatorChecksum))
+                            continue;
+
+                        Accumulator accumulator(&Params().GetConsensus().Zerocoin_Params.accumulatorParams, pubCoin.getDenomination());
+
+                        if (!accumulatorMap.Get(pubCoin.getDenomination(), accumulator))
+                            continue;
+
+                        assert(accumulator.getDenomination() == pubCoin.getDenomination());
+
+                        witnessToWrite.push_back(std::make_pair(pubCoin.getValue(),
+                                                                PublicMintWitnessData(&Params().GetConsensus().Zerocoin_Params,
+                                                                                      pubCoin, PublicMintChainData(outWrite, wtx.hashBlock),
+                                                                                      accumulator, accumulatorMap.GetChecksum())));
+                    }
+                }
             }
         }
 
         //// debug print
         LogPrintf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+
+        for(auto& it: serialToWrite)
+            WriteSerial(it.first, it.second);
+
+        {
+            LOCK(cs_witnesser);
+            for(auto& it: witnessToWrite)
+                WriteWitness(it.first, it.second);
+        }
 
         // Write to disk
         if (fInsertedNew || fUpdated)
@@ -2411,7 +2476,7 @@ CAmount CWalletTx::GetImmatureCredit(bool fUseCache) const
     {
         if (fUseCache && fImmatureCreditCached)
             return nImmatureCreditCached;
-        nImmatureCreditCached = pwallet->GetCredit(*this, ISMINE_SPENDABLE|ISMINE_SPENDABLE_PRIVATE);
+        nImmatureCreditCached = pwallet->GetCredit(*this, ISMINE_SPENDABLE);
         fImmatureCreditCached = true;
         return nImmatureCreditCached;
     }
@@ -2476,7 +2541,7 @@ CAmount CWalletTx::GetAvailableStakableCredit() const
 
 CAmount CWalletTx::GetAvailablePrivateCredit() const
 {
-    if (pwallet == 0)
+    if (pwallet == 0 || !IsInMainChain())
         return 0;
 
     // Must wait until coinbase is safely deep enough in the chain before valuing it
@@ -2489,12 +2554,87 @@ CAmount CWalletTx::GetAvailablePrivateCredit() const
     {
         if (!vout[i].IsZerocoinMint())
             continue;
+
+        libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
+
+        if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, vout[i], pubCoin, NULL))
+            continue;
+
+        bool fFoundWitness = false;
+
+        {
+            LOCK(pwalletMain->cs_witnesser);
+            if (pwalletMain->mapWitness.count(pubCoin.getValue())) {
+                PublicMintWitnessData witnessData = pwalletMain->mapWitness.at(pubCoin.getValue());
+                AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
+
+                uint256 ac = witnessData.GetChecksum();
+
+                if (witnessData.Verify() && accumulatorMap.Load(ac))
+                    fFoundWitness = true;
+            }
+        }
+
+        if (!fFoundWitness)
+            continue;
+
         if (!pwallet->IsSpent(hashTx, i))
         {
             const CTxOut &txout = vout[i];
             nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE_PRIVATE);
             if (!MoneyRange(nCredit))
                 throw std::runtime_error("CWalletTx::GetAvailableCredit() : value out of range");
+        }
+    }
+
+    return nCredit;
+}
+
+CAmount CWalletTx::GetImmaturePrivateCredit() const
+{
+    if (pwallet == 0 || !IsInMainChain())
+        return 0;
+
+    // Must wait until coinbase is safely deep enough in the chain before valuing it
+    if ((IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0 && IsInMainChain())
+        return pwallet->GetCredit(*this, ISMINE_SPENDABLE_PRIVATE);
+
+    CAmount nCredit = 0;
+    uint256 hashTx = GetHash();
+    for (unsigned int i = 0; i < vout.size(); i++)
+    {
+        if (!vout[i].IsZerocoinMint())
+            continue;
+
+        if (!pwallet->IsSpent(hashTx, i))
+        {
+            libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
+
+            if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, vout[i], pubCoin, NULL))
+                continue;
+
+            bool fFoundWitness = false;
+
+            {
+                LOCK(pwalletMain->cs_witnesser);
+                if ((pwalletMain->mapWitness.count(pubCoin.getValue()))) {
+                    PublicMintWitnessData witnessData = pwalletMain->mapWitness.at(pubCoin.getValue());
+                    AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
+
+                    uint256 ac = witnessData.GetChecksum();
+
+                    if (witnessData.Verify() && accumulatorMap.Load(ac))
+                        fFoundWitness = true;
+                }
+            }
+
+            if (fFoundWitness)
+                continue;
+
+            const CTxOut &txout = vout[i];
+            nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE_PRIVATE);
+            if (!MoneyRange(nCredit))
+                throw std::runtime_error("CWalletTx::GetImmaturePrivateCredit() : value out of range");
         }
     }
 
@@ -2756,6 +2896,7 @@ CAmount CWallet::GetImmatureBalance() const
         {
             const CWalletTx* pcoin = &(*it).second;
             nTotal += pcoin->GetImmatureCredit();
+            nTotal += pcoin->GetImmaturePrivateCredit();
         }
     }
     return nTotal;
@@ -2895,9 +3036,33 @@ void CWallet::AvailablePrivateCoins(vector<COutput>& vCoins, bool fOnlyConfirmed
                 std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> id;
                 if(!pcoin->vout[i].scriptPubKey.ExtractZerocoinMintData(p, c, id))
                     continue;
-                PublicMintChainData zeroMint;
-                if (!pblocktree->ReadCoinMint(CBigNum(c), zeroMint) || zeroMint.GetTxHash() == uint256() || zeroMint.GetBlockHash() == uint256())
+                libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
+
+                if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, pcoin->vout[i], pubCoin, NULL))
                     continue;
+
+                PublicMintChainData zeroMint;
+                if (!pblocktree->ReadCoinMint(pubCoin.getValue(), zeroMint) || zeroMint.GetTxHash() == uint256() || zeroMint.GetBlockHash() == uint256())
+                    continue;
+
+                bool fFoundWitness = false;
+
+                {
+                    LOCK(cs_witnesser);
+                    if (mapWitness.count(pubCoin.getValue())) {
+                        PublicMintWitnessData witnessData = mapWitness.at(pubCoin.getValue());
+                        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
+
+                        uint256 ac = witnessData.GetChecksum();
+
+                        if (witnessData.Verify() && accumulatorMap.Load(ac))
+                            fFoundWitness = true;
+                    }
+                }
+
+                if (!fFoundWitness)
+                    continue;
+
                 if (!(IsSpent(wtxid, i)) && mine != ISMINE_NO &&
                     !IsLockedCoin((*it).first, i) && (pcoin->vout[i].nValue > 0 || fIncludeZeroValue) &&
                     (!coinControl || !coinControl->HasSelected() || coinControl->fAllowOtherInputs || coinControl->IsSelected(COutPoint((*it).first, i))))

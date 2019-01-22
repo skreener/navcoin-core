@@ -142,7 +142,36 @@ bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript&
     if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, txout, pubCoin, NULL))
         return error(strprintf("Could not convert transaction otuput to public coin"));
 
-    if (!CalculateWitnessForMint(txout, pubCoin, a, aw, ac, strError))
+    bool fFoundWitness = false;
+    int nEntropy = rand() % WITNESS_ADDED_ENTROPY;
+
+    {
+        LOCK(pwalletMain->cs_witnesser);
+        if (pwalletMain->mapWitness.count(pubCoin.getValue())) {
+            PublicMintWitnessData witnessData = pwalletMain->mapWitness.at(pubCoin.getValue());
+            AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
+            uint256 blockHash = accumulatorMap.GetBlockHash();
+            int nCalculatedBlocksAgo = std::numeric_limits<unsigned int>::max();
+
+            ac = witnessData.GetChecksum();
+            aw = witnessData.GetAccumulatorWitness();
+            a = witnessData.GetAccumulator();
+
+            if (mapBlockIndex.count(blockHash))
+            {
+                CBlockIndex* pindex = mapBlockIndex[blockHash];
+                if (chainActive.Contains(pindex))
+                    nCalculatedBlocksAgo = chainActive.Height() - pindex->nHeight;
+            }
+
+            if (witnessData.Verify() && accumulatorMap.Load(ac) &&
+               (witnessData.GetCount() > (MIN_MINT_SECURITY + nEntropy) || nCalculatedBlocksAgo < (MIN_MINT_SECURITY/2)))
+                fFoundWitness = true;
+
+        }
+    }
+
+    if (!fFoundWitness && !CalculateWitnessForMint(txout, pubCoin, a, aw, ac, strError, MIN_MINT_SECURITY + nEntropy))
         return error(strprintf("Error calculating witness for mint: %s", strError));
 
     if (!creator.CreateCoinSpend(&Params().GetConsensus().Zerocoin_Params, pubCoin, a, ac, aw, scriptPubKey, sigdata, strError))

@@ -12,6 +12,9 @@
 #include "script/sign.h"
 #include "zerochain.h"
 
+#define MIN_MINT_SECURITY 100
+#define WITNESS_ADDED_ENTROPY 20
+
 // NEEDS UNIT TEST
 bool DestinationToVecRecipients(CAmount nValue, const std::string &address, vector<CRecipient> &vecSend,  bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate = false, bool fReduceOutputs = false);
 bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate = false, bool fReduceOutputs = false);
