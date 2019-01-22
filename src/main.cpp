@@ -3082,7 +3082,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             if(!IsZerocoinEnabled(pindex->pprev, chainparams.GetConsensus()))
                 return state.Invalid(error("%s: too early zerocoin mint", __func__));
 
+            int i = -1;
             for (auto& out : tx.vout) {
+                i++;
+
                 if (!out.IsZerocoinMint())
                     continue;
 
@@ -3095,7 +3098,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
                 nZeroCreated += out.nValue;
 
-                vZeroMints.push_back(make_pair(pubCoin.getValue(), PublicMintChainData(tx.GetHash(), pindex->GetBlockHash())));
+                vZeroMints.push_back(make_pair(pubCoin.getValue(), PublicMintChainData(COutPoint(tx.GetHash(), i), pindex->GetBlockHash())));
             }
         }
 
@@ -5375,7 +5378,7 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
                                        mapAccumulators.GetChecksum().ToString(), block.GetBlockHeader().nAccumulatorChecksum.ToString()),
                              REJECT_INVALID, "bad-zero-accumulator-checksum");
         }
-        else if(!mapAccumulators.Save())
+        else if(!mapAccumulators.Save(block))
         {
             return AbortNode(state, "Failed to write zerocoin accumulator checksum");
         }
