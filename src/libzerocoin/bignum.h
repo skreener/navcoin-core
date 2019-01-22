@@ -27,6 +27,7 @@
 #include "random.h"
 
 #define PRIME_CACHE_SIZE 255
+#define POW_MOD_CACHE_SIZE 2048
 
 /** Errors thrown by the bignum class */
 class bignum_error : public std::runtime_error
@@ -151,7 +152,7 @@ public:
      * @param e exponent
      * @param m modulus
      */
-    CBigNum pow_mod(const CBigNum& e, const CBigNum& m) const;
+    CBigNum pow_mod(const CBigNum& e, const CBigNum& m, bool fCache=true) const;
 
     /**
     * Calculates the inverse of this element mod m.
@@ -225,6 +226,7 @@ public:
     friend inline bool operator>(const CBigNum& a, const CBigNum& b);
 
     mutable std::map<const CBigNum, bool> mapCachePrimes;
+    mutable std::map<std::pair<CBigNum, std::pair<CBigNum, CBigNum>>, CBigNum> mapCachePowMod;
 };
 
 #if defined(USE_NUM_OPENSSL)

@@ -363,8 +363,11 @@ CBigNum CBigNum::div(const CBigNum& d) const {
  * @param e exponent
  * @param m modulus
  */
-CBigNum CBigNum::pow_mod(const CBigNum& e, const CBigNum& m) const
+CBigNum CBigNum::pow_mod(const CBigNum& e, const CBigNum& m, bool fCache) const
 {
+    if (mapCachePowMod.count(std::make_pair(*this,std::make_pair(e,m))) != 0)
+        return mapCachePowMod[std::make_pair(*this,std::make_pair(e,m))];
+
     CAutoBN_CTX pctx;
     CBigNum ret;
     if( e < 0){
@@ -376,6 +379,11 @@ CBigNum CBigNum::pow_mod(const CBigNum& e, const CBigNum& m) const
     }else
         if (!BN_mod_exp(ret.bn, bn, e.bn, m.bn, pctx))
             throw bignum_error("CBigNum::pow_mod : BN_mod_exp failed");
+
+    if (mapCachePowMod.size() > POW_MOD_CACHE_SIZE)
+        mapCachePowMod.clear();
+    else if (fCache)
+        mapCachePowMod[std::make_pair(*this,std::make_pair(e,m))] = ret;
 
     return ret;
 }
