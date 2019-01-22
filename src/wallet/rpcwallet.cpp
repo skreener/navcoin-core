@@ -3125,10 +3125,10 @@ int GetsStakeSubTotal(vStakePeriodRange_T& aRange)
         nElement++;
 
         // use the cached amount if available
-        if (pcoin->fCreditCached && pcoin->fDebitCached)
-            nAmount = pcoin->nCreditCached - pcoin->nDebitCached;
+        if (pcoin->fCreditCached && pcoin->fDebitCached && pcoin->nPrivateCreditCached && pcoin->nPrivateDebitCached)
+            nAmount = (pcoin->nCreditCached + pcoin->nPrivateCreditCached) - (pcoin->nDebitCached + pcoin->nPrivateDebitCached);
         else
-            nAmount = pcoin->GetCredit(ISMINE_SPENDABLE) - pcoin->GetDebit(ISMINE_SPENDABLE);
+            nAmount = pcoin->GetCredit(ISMINE_SPENDABLE|ISMINE_SPENDABLE_PRIVATE) - pcoin->GetDebit(ISMINE_SPENDABLE|ISMINE_SPENDABLE_PRIVATE);
 
 
         // scan the range
