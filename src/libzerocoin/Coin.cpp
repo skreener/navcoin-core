@@ -78,7 +78,7 @@ PublicCoin::PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const 
         CBigNum sigma = CBigNum(pre_sigma) % (this->params->coinCommitmentGroup.groupOrder);
 
         // C = bc2 * (bc1 ^ z) mod p
-        CBigNum commitmentValue = blindingCommitment.first.pow_mod(chi, this->params->coinCommitmentGroup.modulus).mul_mod(
+        CBigNum commitmentValue = blindingCommitment.first.pow_mod(chi, this->params->coinCommitmentGroup.modulus, false).mul_mod(
                                   blindingCommitment.second, this->params->coinCommitmentGroup.modulus);
 
         // First verify that the commitment is a prime number
@@ -181,7 +181,7 @@ PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomin
     CBigNum sigma = CBigNum(pre_sigma) % (this->params->coinCommitmentGroup.groupOrder);
 
     // C = bc2 * (bc1 ^ z) mod p
-    CBigNum commitmentValue = blindingCommitment.first.pow_mod(chi, this->params->coinCommitmentGroup.modulus).mul_mod(
+    CBigNum commitmentValue = blindingCommitment.first.pow_mod(chi, this->params->coinCommitmentGroup.modulus, false).mul_mod(
                               blindingCommitment.second, this->params->coinCommitmentGroup.modulus);
 
     if (commitmentValue.isPrime(ZEROCOIN_MINT_PRIME_PARAM) &&
@@ -225,7 +225,7 @@ bool PrivateCoin::QuickCheckIsMine(const ZerocoinParams* p, const CKey privKey, 
     CBigNum chi = CBigNum(pre_chi) % (p->coinCommitmentGroup.groupOrder);
 
     // C = bc2 * (bc1 ^ z) mod p
-    CBigNum commitmentValue = blindingCommitment.first.pow_mod(chi, p->coinCommitmentGroup.modulus).mul_mod(
+    CBigNum commitmentValue = blindingCommitment.first.pow_mod(chi, p->coinCommitmentGroup.modulus, false).mul_mod(
                               blindingCommitment.second, p->coinCommitmentGroup.modulus);
 
     return (commitmentValue == commitment_value);
