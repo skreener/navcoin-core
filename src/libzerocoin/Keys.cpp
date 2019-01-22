@@ -37,10 +37,10 @@ void GenerateParameters(const ZerocoinParams* params, std::vector<unsigned char>
     CBigNum ok2(h.GetHash());
     ok2 = ok2 % params->coinCommitmentGroup.groupOrder;
 
-    CBigNum bc1 = params->coinCommitmentGroup.g.pow_mod(oj1, params->coinCommitmentGroup.modulus).mul_mod(
-          params->coinCommitmentGroup.h.pow_mod(ok1, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
-    CBigNum bc2 = params->coinCommitmentGroup.g.pow_mod(oj2, params->coinCommitmentGroup.modulus).mul_mod(
-          params->coinCommitmentGroup.h.pow_mod(ok2, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
+    CBigNum bc1 = params->coinCommitmentGroup.g.pow_mod(oj1, params->coinCommitmentGroup.modulus, false).mul_mod(
+          params->coinCommitmentGroup.h.pow_mod(ok1, params->coinCommitmentGroup.modulus, false), params->coinCommitmentGroup.modulus);
+    CBigNum bc2 = params->coinCommitmentGroup.g.pow_mod(oj2, params->coinCommitmentGroup.modulus, false).mul_mod(
+          params->coinCommitmentGroup.h.pow_mod(ok2, params->coinCommitmentGroup.modulus, false), params->coinCommitmentGroup.modulus);
 
     oj = std::make_pair(oj1,oj2);
     ok = std::make_pair(ok1,ok2);
