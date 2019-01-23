@@ -236,6 +236,7 @@ public:
 
     uint256 nAccumulatorChecksum;
     CAmount nMoneySupply;
+    CAmount nAccumulatedPrivateFee;
 
     std::map<libzerocoin::CoinDenomination, int64_t> mapZerocoinSupply;
 
@@ -270,6 +271,7 @@ public:
         vPaymentRequestVotes.clear();
         nMoneySupply = 0;
         nAccumulatorChecksum = 0;
+        nAccumulatedPrivateFee = 0;
     }
 
     CBlockIndex()
@@ -552,6 +554,7 @@ public:
         if((this->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN) {
             READWRITE(nAccumulatorChecksum);
             READWRITE(mapZerocoinSupply);
+            READWRITE(nAccumulatedPrivateFee);
         }
     }
 

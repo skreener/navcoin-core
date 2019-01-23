@@ -1458,7 +1458,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
         int64_t nSigOpsCost = GetTransactionSigOpCost(tx, view, STANDARD_SCRIPT_VERIFY_FLAGS);
 
         CAmount nValueOut = tx.GetValueOut();
-        CAmount nFees = (!tx.IsCoinStake())?nValueIn-nValueOut:0;
+        CAmount nFees = (!tx.IsCoinStake()&&!tx.IsZerocoinSpend())?nValueIn-nValueOut:0;
         // nModifiedFees includes any fee deltas from PrioritiseTransaction
         CAmount nModifiedFees = nFees;
         double nPriorityDummy = 0;
@@ -2869,6 +2869,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     {
         pindex->mapZerocoinSupply
                          = pindex->pprev->mapZerocoinSupply;
+        pindex->nAccumulatedPrivateFee
+                         = pindex->nAccumulatedPrivateFee;
     }
 
     pindex->vProposalVotes.clear();
@@ -3332,6 +3334,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             if (tx.nTime < block.nTime && pindex->nHeight > Params().GetConsensus().nCoinbaseTimeActivationHeight)
                 return error("ConnectBlock(): Coinbase timestamp doesn't meet protocol (tx=%d vs block=%d)",
                              tx.nTime, block.nTime);
+        } else if(tx.IsZerocoinSpend()) {
+            pindex->nAccumulatedPrivateFee += view.GetValueIn(tx) - tx.GetValueOut();
         }
 
         nCreated += tx.GetValueOut() - view.GetValueIn(tx);;
@@ -3516,10 +3520,15 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         if (!(block.vtx[1].IsZerocoinSpend()) && !TransactionGetCoinAge(const_cast<CTransaction&>(block.vtx[1]), nCoinAge, view))
             return error("ConnectBlock() : %s unable to get coin age for coinstake", block.vtx[1].GetHash().ToString());
 
+        if (block.vtx[1].IsZerocoinSpend())
+            nFees += pindex->nAccumulatedPrivateFee;
+
         int64_t nCalculatedStakeReward = GetProofOfStakeReward(pindex->nHeight, nCoinAge, nFees, pindex->pprev);
 
         if (nStakeReward > nCalculatedStakeReward)
             return state.DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%d vs calculated=%d)", nStakeReward, nCalculatedStakeReward));
+
+        pindex->nAccumulatedPrivateFee = 0;
     }
 
     int64_t nTime26 = GetTimeMicros();

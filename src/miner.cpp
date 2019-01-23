@@ -139,7 +139,7 @@ void BlockAssembler::resetBlock()
     blockFinished = false;
 }
 
-CBlockTemplate* BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bool fProofOfStake, uint64_t* pFees)
+CBlockTemplate* BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bool fProofOfStake, uint64_t* pFees, uint64_t* pPrivateFees)
 {
     resetBlock();
 
@@ -322,7 +322,10 @@ CBlockTemplate* BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bo
     }
 
     if (pFees)
-      *pFees = nFees;
+        *pFees = nFees;
+
+    if (pPrivateFees)
+        *pPrivateFees = nPrivateFees;
 
     return pblocktemplate.release();
 }
@@ -448,7 +451,10 @@ void BlockAssembler::AddToBlock(CTxMemPool::txiter iter)
     nBlockWeight += iter->GetTxWeight();
     ++nBlockTx;
     nBlockSigOpsCost += iter->GetSigOpCost();
-    nFees += iter->GetFee();
+    if (iter->GetTx().IsZerocoinSpend())
+        nPrivateFees += iter->GetFee();
+    else
+        nFees += iter->GetFee();
     inBlock.insert(iter);
 
     bool fPrintPriority = GetBoolArg("-printpriority", DEFAULT_PRINTPRIORITY);
@@ -817,8 +823,9 @@ void NavCoinStaker(const CChainParams& chainparams)
             // Create new block
             //
             uint64_t nFees = 0;
+            uint64_t nPrivateFees = 0;
 
-            std::unique_ptr<CBlockTemplate> pblocktemplate(BlockAssembler(Params()).CreateNewBlock(coinbaseScript->reserveScript, true, &nFees));
+            std::unique_ptr<CBlockTemplate> pblocktemplate(BlockAssembler(Params()).CreateNewBlock(coinbaseScript->reserveScript, true, &nFees, &nPrivateFees));
             if (!pblocktemplate.get())
             {
                 LogPrintf("Error in NavCoinStaker: Keypool ran out, please call keypoolrefill before restarting the staking thread\n");
@@ -830,7 +837,7 @@ void NavCoinStaker(const CChainParams& chainparams)
             //     ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
 
             //Trying to sign a block
-            if (SignBlock(pblock, *pwalletMain, nFees))
+            if (SignBlock(pblock, *pwalletMain, nFees, nPrivateFees))
             {
                 LogPrint("coinstake", "PoS Block signed\n");
                 SetThreadPriority(THREAD_PRIORITY_NORMAL);
@@ -856,7 +863,7 @@ void NavCoinStaker(const CChainParams& chainparams)
 }
 
 #ifdef ENABLE_WALLET
-bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees)
+bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees, int64_t nPrivateFees)
 {
   std::vector<CTransaction> vtx = pblock->vtx;
   // if we are trying to sign
@@ -887,7 +894,7 @@ bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees)
   {
       int64_t nSearchInterval = nBestHeight+1 > 0 ? 1 : nSearchTime - nLastCoinStakeSearchTime;
       CBigNum zerokey;
-      if (wallet.CreateCoinStake(wallet, pblock->nBits, nSearchInterval, nFees, txCoinStake, key, zerokey))
+      if (wallet.CreateCoinStake(wallet, pblock->nBits, nSearchInterval, nFees, chainActive.Tip()->nAccumulatedPrivateFee+nPrivateFees, txCoinStake, key, zerokey))
       {
 
           if (txCoinStake.nTime >= chainActive.Tip()->GetPastTimeLimit()+1)
