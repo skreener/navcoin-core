@@ -26,7 +26,7 @@
 #include "version.h"
 #include "random.h"
 
-#define PRIME_CACHE_SIZE 255
+#define PRIME_CACHE_SIZE 1024
 #define POW_MOD_CACHE_SIZE 2048
 
 /** Errors thrown by the bignum class */
