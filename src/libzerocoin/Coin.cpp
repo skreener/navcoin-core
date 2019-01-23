@@ -130,7 +130,7 @@ PublicCoin::PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const 
 }
 
 
-bool PublicCoin::isValid() const
+bool PublicCoin::isValid(bool fFast) const
 {
     if (this->params->accumulatorParams.minCoinValue >= value) {
         throw std::runtime_error("PublicCoin::isValid(): value is too low");
@@ -140,7 +140,7 @@ bool PublicCoin::isValid() const
         throw std::runtime_error("PublicCoin::isValid(): value is too high");
     }
 
-    if (!value.isPrime(params->zkp_iterations)) {
+    if (!value.isPrime(params->zkp_iterations/(fFast?2:1))) {
         throw std::runtime_error("PublicCoin::isValid(): value is not prime");
     }
 

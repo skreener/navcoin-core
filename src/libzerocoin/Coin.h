@@ -81,7 +81,7 @@ public:
     }
     bool operator!=(const PublicCoin& rhs) const { return !(*this == rhs); }
 
-    bool isValid() const;
+    bool isValid(bool fFast=false) const;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
