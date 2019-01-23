@@ -303,10 +303,12 @@ void CWallet::AvailableZeroCoinsForStaking(vector<COutput>& vCoins, unsigned int
                 continue;
 
             int nDepth = pcoin->GetDepthInMainChain();
+
             if (nDepth < 1)
                 continue;
 
-            for (unsigned int i = 0; i < pcoin->vout.size(); i++) {
+            for (unsigned int i = 0; i < pcoin->vout.size(); i++)
+            {
                 if (!pcoin->vout[i].scriptPubKey.IsZerocoinMint())
                     continue;
 
@@ -316,6 +318,7 @@ void CWallet::AvailableZeroCoinsForStaking(vector<COutput>& vCoins, unsigned int
                     continue;
 
                 PublicMintChainData zeroMint;
+
                 if (!pblocktree->ReadCoinMint(pubCoin.getValue(), zeroMint))
                     continue;
 
@@ -324,17 +327,20 @@ void CWallet::AvailableZeroCoinsForStaking(vector<COutput>& vCoins, unsigned int
                 {
                     LOCK(cs_witnesser);
                     if (mapWitness.count(pubCoin.getValue())) {
+
                         PublicMintWitnessData witnessData = mapWitness.at(pubCoin.getValue());
+
                         AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
 
                         uint256 ac = witnessData.GetChecksum();
 
-                        if (witnessData.Verify() && accumulatorMap.Load(ac))
+                        if (witnessData.GetCount() > 0)
                             fFoundWitness = true;
+
                     }
                 }
 
-                if (!fFoundWitness)
+                if (!fFoundWitness && GetArg("-enablewitnesser",true))
                     continue;
 
                 if (!(IsSpent(wtxid,i)) && IsMine(pcoin->vout[i]) && pcoin->vout[i].nValue >= nMinimumInputValue && pcoin->vout[i].IsZerocoinMint()){
@@ -342,6 +348,7 @@ void CWallet::AvailableZeroCoinsForStaking(vector<COutput>& vCoins, unsigned int
                                            ((IsMine(pcoin->vout[i]) & (ISMINE_SPENDABLE_PRIVATE)) != ISMINE_NO &&
                                            IsZerocoinEnabled(pindexBestHeader, Params().GetConsensus()))));
                 }
+
             }
         }
     }
@@ -395,7 +402,6 @@ bool CWallet::SelectZeroCoinsForStaking(int64_t nTargetValue, unsigned int nSpen
 {
     vector<COutput> vCoins;
     AvailableZeroCoinsForStaking(vCoins, nSpendTime);
-
     setCoinsRet.clear();
     nValueRet = 0;
 
@@ -2594,12 +2600,12 @@ CAmount CWalletTx::GetAvailablePrivateCredit() const
 
                 uint256 ac = witnessData.GetChecksum();
 
-                if (witnessData.Verify() && accumulatorMap.Load(ac))
+                if (witnessData.GetCount() > 0)
                     fFoundWitness = true;
             }
         }
 
-        if (!fFoundWitness)
+        if (!fFoundWitness && GetArg("-enablewitnesser",true))
             continue;
 
         if (!pwallet->IsSpent(hashTx, i))
@@ -2647,12 +2653,12 @@ CAmount CWalletTx::GetImmaturePrivateCredit() const
 
                     uint256 ac = witnessData.GetChecksum();
 
-                    if (witnessData.Verify() && accumulatorMap.Load(ac))
+                    if (witnessData.GetCount() > 0)
                         fFoundWitness = true;
                 }
             }
 
-            if (fFoundWitness)
+            if (fFoundWitness && GetArg("-enablewitnesser",true))
                 continue;
 
             const CTxOut &txout = vout[i];
@@ -3079,12 +3085,12 @@ void CWallet::AvailablePrivateCoins(vector<COutput>& vCoins, bool fOnlyConfirmed
 
                         uint256 ac = witnessData.GetChecksum();
 
-                        if (witnessData.Verify() && accumulatorMap.Load(ac))
+                        if (witnessData.GetCount() > 0)
                             fFoundWitness = true;
                     }
                 }
 
-                if (!fFoundWitness)
+                if (!fFoundWitness && GetArg("-enablewitnesser",true))
                     continue;
 
                 if (!(IsSpent(wtxid, i)) && mine != ISMINE_NO &&
