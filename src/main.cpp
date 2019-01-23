@@ -3037,6 +3037,13 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     CAmount nZeroCreated = 0;
     CAmount nZeroBurnt = 0;
 
+    int64_t nTime20 = GetTimeMicros();
+    int64_t nCfVIBench = 0;
+    int64_t nZMcBench = 0;
+    int64_t nZScBench = 0;
+    int64_t nEIBench = 0;
+    int64_t nNCeBench = 0;
+
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction &tx = block.vtx[i];
@@ -3078,6 +3085,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             }
         }
 
+        int64_t nTime21 = GetTimeMicros();
+        nCfVIBench += 0.001 * (nTime21 - nTime20);
+
         if (tx.HasZerocoinMint()) {
             if(!IsZerocoinEnabled(pindex->pprev, chainparams.GetConsensus()))
                 return state.Invalid(error("%s: too early zerocoin mint", __func__));
@@ -3102,6 +3112,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             }
         }
 
+        int64_t nTime22 = GetTimeMicros();
+        nZMcBench += 0.001 * (nTime22 - nTime21);
+
         if (tx.IsZerocoinSpend()) {
             for (auto& in : tx.vin) {
                 if (!in.scriptSig.IsZerocoinSpend()) {
@@ -3120,6 +3133,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 vZeroSpents.push_back(make_pair(coinSpend.getCoinSerialNumber(), tx.GetHash()));
             }
         }
+
+        int64_t nTime23 = GetTimeMicros();
+        nZScBench += 0.001 * (nTime23 - nTime22);
 
         if (!tx.IsCoinBase() && !tx.IsZerocoinSpend())
         {
@@ -3315,6 +3331,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             }
         }
 
+        int64_t nTime24 = GetTimeMicros();
+        nEIBench += 0.001 * (nTime24 - nTime23);
+
         bool fContribution = false;
         CAmount nProposalFee = 0;
 
@@ -3432,7 +3451,17 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 LogPrint("cfund","New payment request %s\n",tx.GetHash().ToString());
             }
         }
+        int64_t nTime25 = GetTimeMicros();
+        nNCeBench += 0.001 * (nTime25 - nTime24);
     }
+
+    LogPrint("bench", "    - Community fund Vote Index: %.2fms \n", 0.001 * (nCfVIBench));
+    LogPrint("bench", "    - Zerocoin Mint check: %.2fms \n", 0.001 * (nZMcBench));
+    LogPrint("bench", "    - Zerocoin Spend check: %.2fms \n", 0.001 * (nZScBench));
+    LogPrint("bench", "    - Extra Indexing: %.2fms \n", 0.001 * (nEIBench));
+    LogPrint("bench", "    - New Cfund entries: %.2fms \n", 0.001 * (nNCeBench));
+
+    int64_t nTime25 = GetTimeMicros();
 
     if (block.IsProofOfStake())
     {
@@ -3446,6 +3475,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         if (nStakeReward > nCalculatedStakeReward)
             return state.DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%d vs calculated=%d)", nStakeReward, nCalculatedStakeReward));
     }
+
+    int64_t nTime26 = GetTimeMicros();
+    LogPrint("bench", "    - Calculate Stake Reward: %.2fms \n", 0.001 * (nTime26 - nTime25));
 
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
@@ -3464,7 +3496,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     pindex->nMint = nCreated - nFees;
 
     int64_t nTime3 = GetTimeMicros(); nTimeConnect += nTime3 - nTime2;
-    LogPrint("bench", "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs]\n", (unsigned)block.vtx.size(), 0.001 * (nTime3 - nTime2), 0.001 * (nTime3 - nTime2) / block.vtx.size(), nInputs <= 1 ? 0 : 0.001 * (nTime3 - nTime2) / (nInputs-1), nTimeConnect * 0.000001);
+    LogPrint("bench", "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs]\n", (unsigned)block.vtx.size(), 0.001 * (nTime3 - nTime26), 0.001 * (nTime3 - nTime26) / block.vtx.size(), nInputs <= 1 ? 0 : 0.001 * (nTime3 - nTime26) / (nInputs-1), nTimeConnect * 0.000001);
     CAmount nPOWBlockReward = nFees + GetBlockSubsidy(pindex->nHeight, chainparams.GetConsensus());
 
     // Coinbase output can only include outputs with value if:
