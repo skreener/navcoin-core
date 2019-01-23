@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
-// Copyright (c) 2017-2018 The NavCoin Core developers
+// Copyright (c) 2017-2019 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -65,6 +65,7 @@ using namespace std;
  */
 
 CCriticalSection cs_main;
+CCriticalSection cs_coinspend_cache;
 
 BlockMap mapBlockIndex;
 CChain chainActive;
@@ -2180,6 +2181,17 @@ bool CScriptCheck::operator()() {
     return true;
 }
 
+bool CCoinSpendCheck::operator()() {
+    if (!VerifyCoinSpend(coinSpend, accumulator, false)) {
+        return false;
+    }
+    return true;
+}
+
+bool CPublicCoinCheck::operator()() {
+    return pubCoin.isValid(fFast);
+}
+
 int GetSpendHeight(const CCoinsViewCache& inputs)
 {
     LOCK(cs_main);
@@ -2720,10 +2732,22 @@ void static FlushBlockFile(bool fFinalize = false)
 bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigned int nAddSize);
 
 static CCheckQueue<CScriptCheck> scriptcheckqueue(128);
+static CCheckQueue<CCoinSpendCheck> coinspendcheckqueue(128);
+static CCheckQueue<CPublicCoinCheck> pubcoincheckqueue(128);
 
 void ThreadScriptCheck() {
     RenameThread("navcoin-scriptch");
     scriptcheckqueue.Thread();
+}
+
+void ThreadCoinSpendCheck() {
+    RenameThread("navcoin-coinspendchecker");
+    coinspendcheckqueue.Thread();
+}
+
+void ThreadPublicCoinCheck() {
+    RenameThread("navcoin-pubcoinchecker");
+    pubcoincheckqueue.Thread();
 }
 
 // Protected by cs_main
@@ -2835,6 +2859,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 {
 
     AssertLockHeld(cs_main);
+    LOCK(cs_coinspend_cache);
 
     pindex->nCFSupply    = pindex->pprev != NULL ? pindex->pprev->nCFSupply : 0;
     pindex->nCFLocked    = pindex->pprev != NULL ? pindex->pprev->nCFLocked : 0;
@@ -3030,6 +3055,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     std::vector<std::pair<CBigNum, uint256> > vZeroSpents;
 
     CCheckQueueControl<CScriptCheck> control(fScriptChecks && nScriptCheckThreads ? &scriptcheckqueue : NULL);
+    CCheckQueueControl<CCoinSpendCheck> controlZero(fScriptChecks && nScriptCheckThreads ? &coinspendcheckqueue : NULL);
+    CCheckQueueControl<CPublicCoinCheck> controlPubCoin(fScriptChecks && nScriptCheckThreads ? &pubcoincheckqueue : NULL);
     std::vector<PrecomputedTransactionData> txdata;
     txdata.reserve(block.vtx.size()); // Required so that pointers to individual PrecomputedTransactionData don't get invalidated
 
@@ -3052,7 +3079,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         const CTransaction &tx = block.vtx[i];
         const uint256 txhash = tx.GetHash();
 
-        nInputs += tx.vin.size();
+        if (!tx.IsZerocoinSpend())
+            nInputs += tx.vin.size();
 
         if((tx.IsCoinBase() && IsCommunityFundEnabled(pindex->pprev, chainparams.GetConsensus()))) {
             for (size_t j = 0; j < tx.vout.size(); j++) {
@@ -3091,6 +3119,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         int64_t nTime21 = GetTimeMicros();
         nCfVIBench += 0.001 * (nTime21 - nTime20);
 
+        std::vector<CPublicCoinCheck> vPubCoinCheck;
+
         if (tx.HasZerocoinMint()) {
             if(!IsZerocoinEnabled(pindex->pprev, chainparams.GetConsensus()))
                 return state.Invalid(error("%s: too early zerocoin mint", __func__));
@@ -3104,8 +3134,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
                 libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
 
-                if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, out, view, state, vZeroMints, &pubCoin, IsInitialBlockDownload()))
+                if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, out, view, state, vZeroMints, &pubCoin, fScriptChecks && !nScriptCheckThreads, IsInitialBlockDownload()))
                     return state.Invalid(error("%s: zerocoin mint failed contextual check", __func__));
+
+                vPubCoinCheck.push_back(CPublicCoinCheck(pubCoin, IsInitialBlockDownload()));
 
                 pindex->mapZerocoinSupply[libzerocoin::AmountToZerocoinDenomination(out.nValue)]++;
 
@@ -3117,8 +3149,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             }
         }
 
+        controlPubCoin.Add(vPubCoinCheck);
+
         int64_t nTime22 = GetTimeMicros();
         nZMcBench += 0.001 * (nTime22 - nTime21);
+
+        std::vector<CCoinSpendCheck> vCoinSpendCheck;
 
         if (tx.IsZerocoinSpend()) {
             for (auto& in : tx.vin) {
@@ -3127,9 +3163,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 }
 
                 libzerocoin::CoinSpend coinSpend(&Params().GetConsensus().Zerocoin_Params);
+                libzerocoin::Accumulator accumulator(&Params().GetConsensus().Zerocoin_Params.accumulatorParams);
 
-                if (!CheckZerocoinSpend(&Params().GetConsensus().Zerocoin_Params, in, view, state, vZeroSpents, &coinSpend))
+                if (!CheckZerocoinSpend(&Params().GetConsensus().Zerocoin_Params, in, view, state, vZeroSpents, &coinSpend, &accumulator, fScriptChecks && !nScriptCheckThreads))
                     return state.DoS(100, false, REJECT_INVALID, "bad-zerocoin-spend");
+
+                vCoinSpendCheck.push_back(CCoinSpendCheck(coinSpend, accumulator));
 
                 pindex->mapZerocoinSupply[coinSpend.getDenomination()]--;
 
@@ -3140,6 +3179,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 nSpendCount++;
             }
         }
+
+        controlZero.Add(vCoinSpendCheck);
 
         int64_t nTime23 = GetTimeMicros();
         nZScBench += 0.001 * (nTime23 - nTime22);
@@ -3463,8 +3504,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     }
 
     LogPrint("bench", "      - Community fund Vote Index: %.2fms \n", nCfVIBench);
-    LogPrint("bench", "      - Zerocoin Mint check: %.2fms (%.2fms/mint)\n",  nZMcBench, nZMcBench/(nMintCount?nMintCount:1));
-    LogPrint("bench", "      - Zerocoin Spend check: %.2fms (%.2fms/spend)\n", nZScBench, nZScBench/(nSpendCount?nSpendCount:1));
     LogPrint("bench", "      - Extra Indexing: %.2fms \n", nEIBench);
     LogPrint("bench", "      - New Cfund entries: %.2fms \n", nNCeBench);
 
@@ -3484,7 +3523,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     }
 
     int64_t nTime26 = GetTimeMicros();
-    LogPrint("bench", "    - Calculate Stake Reward: %.2fms \n", 0.001 * (nTime26 - nTime25));
+    LogPrint("bench", "      - Calculate Stake Reward: %.2fms \n", 0.001 * (nTime26 - nTime25));
 
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
@@ -3575,8 +3614,17 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (!control.Wait()) {
         return state.DoS(100, false);
     }
-    int64_t nTime4 = GetTimeMicros(); nTimeVerify += nTime4 - nTime2;
-    LogPrint("bench", "    - Verify %u txins: %.2fms (%.3fms/txin) [%.2fs]\n", nInputs - 1, 0.001 * (nTime4 - nTime2), nInputs <= 1 ? 0 : 0.001 * (nTime4 - nTime2) / (nInputs-1), nTimeVerify * 0.000001);
+
+    if (!controlZero.Wait()) {
+        return state.DoS(100, error("%s : Error verifying ZeroCoin Spends", __func__));
+    }
+
+    if (!controlPubCoin.Wait()) {
+        return state.DoS(100, error("%s : Error verifying ZeroCoin PubCoins", __func__));
+    }
+
+    int64_t nTime5 = GetTimeMicros(); nTimeVerify += nTime5 - nTime2;
+    LogPrint("bench", "    - Verify %u txins, %u coinspends and %u pubcoins: %.2fms [%.2fs]\n", nInputs - 1, nSpendCount, nMintCount, 0.001 * (nTime5 - nTime2), nTimeVerify * 0.000001);
 
     if (fJustCheck)
         return true;
@@ -3648,8 +3696,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
 
-    int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
-    LogPrint("bench", "    - Index writing: %.2fms [%.2fs]\n", 0.001 * (nTime5 - nTime4), nTimeIndex * 0.000001);
+    int64_t nTime55 = GetTimeMicros(); nTimeIndex += nTime55 - nTime5;
+    LogPrint("bench", "    - Index writing: %.2fms [%.2fs]\n", 0.001 * (nTime55 - nTime5), nTimeIndex * 0.000001);
 
     // Watch for changes to the previous coinbase transaction.
     static uint256 hashPrevBestCoinBase;
@@ -3665,8 +3713,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         LogPrint("mempool", "Erased %d orphan tx included or conflicted by block\n", nErased);
     }
 
-    int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime5;
-    LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime5), nTimeCallbacks * 0.000001);
+    int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime55;
+    LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime55), nTimeCallbacks * 0.000001);
 
     return true;
 }
