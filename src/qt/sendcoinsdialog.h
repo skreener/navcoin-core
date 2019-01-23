@@ -66,6 +66,7 @@ private:
     WalletModel *model;
     bool fNewRecipientAllowed;
     bool fFeeMinimized;
+    bool fPrivate;
     const PlatformStyle *platformStyle;
 
     // Process WalletModel::SendCoinsReturn and generate a pair consisting
@@ -92,6 +93,7 @@ private Q_SLOTS:
     void coinControlClipboardPriority();
     void coinControlClipboardLowOutput();
     void coinControlClipboardChange();
+    void updatePrivateOrPublic(bool fPrivate);
     void setMinimumFee();
     void updateFeeSectionControls();
     void updateMinFeeLabel();

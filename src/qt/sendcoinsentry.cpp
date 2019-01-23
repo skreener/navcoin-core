@@ -79,6 +79,7 @@ void SendCoinsEntry::sendPublicChanged()
     fPrivate = !((bool)ui->sendPublic->isChecked() && ui->sendPublic->isCheckable());
     QSettings settings;
     settings.setValue("defaultprivate", !ui->sendPublic->isChecked());
+    Q_EMIT privateOrPublicChanged(false);
 }
 
 void SendCoinsEntry::sendPrivateChanged()
@@ -86,6 +87,7 @@ void SendCoinsEntry::sendPrivateChanged()
     fPrivate = (bool)ui->sendPrivate->isChecked() && ui->sendPrivate->isCheckable();
     QSettings settings;
     settings.setValue("defaultprivate", ui->sendPrivate->isChecked());
+    Q_EMIT privateOrPublicChanged(true);
 }
 
 void SendCoinsEntry::setTotalPrivateAmount(const CAmount& amount)

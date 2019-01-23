@@ -43,6 +43,7 @@ SendCoinsDialog::SendCoinsDialog(const PlatformStyle *platformStyle, QWidget *pa
     model(0),
     fNewRecipientAllowed(true),
     fFeeMinimized(true),
+    fPrivate(false),
     platformStyle(platformStyle)
 {
     ui->setupUi(this);
@@ -411,6 +412,7 @@ SendCoinsEntry *SendCoinsDialog::addEntry()
     connect(entry, SIGNAL(removeEntry(SendCoinsEntry*)), this, SLOT(removeEntry(SendCoinsEntry*)));
     connect(entry, SIGNAL(payAmountChanged()), this, SLOT(coinControlUpdateLabels()));
     connect(entry, SIGNAL(subtractFeeFromAmountChanged()), this, SLOT(coinControlUpdateLabels()));
+    connect(entry, SIGNAL(privateOrPublicChanged(bool)), this, SLOT(updatePrivateOrPublic(bool)));
 
     // Focus the field, so that entry can start immediately
     entry->clear();
@@ -760,6 +762,13 @@ void SendCoinsDialog::coinControlClipboardLowOutput()
 void SendCoinsDialog::coinControlClipboardChange()
 {
     GUIUtil::setClipboard(ui->labelCoinControlChange->text().left(ui->labelCoinControlChange->text().indexOf(" ")).replace(ASYMP_UTF8, ""));
+}
+
+void SendCoinsDialog::updatePrivateOrPublic(bool fPrivate)
+{
+    ui->lineEditCoinControlChange->setEnabled(!fPrivate);
+    ui->checkBoxCoinControlChange->setEnabled(!fPrivate);
+    this->fPrivate = fPrivate;
 }
 
 // Coin Control: settings menu - coin control enabled/disabled by user
