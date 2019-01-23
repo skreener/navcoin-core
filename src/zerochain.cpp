@@ -35,16 +35,16 @@ bool BlockToZerocoinMints(const ZerocoinParams *params, const CBlock* block, std
     return true;
 }
 
-bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, PublicMintChainData>> vSeen, PublicCoin* pPubCoin)
+bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, PublicMintChainData>> vSeen, PublicCoin* pPubCoin, bool fFast)
 {
     PublicCoin pubCoin(params);
-    if(!TxOutToPublicCoin(params, txout, pubCoin, &state, true))
+    if(!TxOutToPublicCoin(params, txout, pubCoin, &state, false))
         return state.DoS(100, error("CheckZerocoinMint(): TxOutToPublicCoin() failed"));
 
     if (pPubCoin)
         *pPubCoin = pubCoin;
 
-    if (!pubCoin.isValid())
+    if (!pubCoin.isValid(fFast))
         return state.DoS(100, error("CheckZerocoinMint() : PubCoin does not validate"));
 
     for(auto& it : vSeen)
@@ -195,7 +195,6 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
     accumulatorWitness.resetValue(accumulator, pubCoin);
 
     int nCount = 0;
-    uint64_t nTimeStart = GetTimeMicros();
 
     if (chainActive.Next(pindex)) {
         pindex = chainActive.Next(pindex);
@@ -244,8 +243,6 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
             pindex = chainActive.Next(pindex);
         }
     }
-
-    uint64_t nTimeEnd = GetTimeMicros();
 
     if (!pindex) {
         strError = strprintf("Last block index is null");

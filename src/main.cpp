@@ -3044,6 +3044,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int64_t nEIBench = 0;
     int64_t nNCeBench = 0;
 
+    int nMintCount = 0;
+    int nSpendCount = 0;
+
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction &tx = block.vtx[i];
@@ -3101,7 +3104,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
                 libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
 
-                if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, out, view, state, vZeroMints, &pubCoin))
+                if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, out, view, state, vZeroMints, &pubCoin, IsInitialBlockDownload()))
                     return state.Invalid(error("%s: zerocoin mint failed contextual check", __func__));
 
                 pindex->mapZerocoinSupply[libzerocoin::AmountToZerocoinDenomination(out.nValue)]++;
@@ -3109,6 +3112,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 nZeroCreated += out.nValue;
 
                 vZeroMints.push_back(make_pair(pubCoin.getValue(), PublicMintChainData(COutPoint(tx.GetHash(), i), pindex->GetBlockHash())));
+
+                nMintCount++;
             }
         }
 
@@ -3131,6 +3136,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 nZeroBurnt += libzerocoin::ZerocoinDenominationToAmount(coinSpend.getDenomination());
 
                 vZeroSpents.push_back(make_pair(coinSpend.getCoinSerialNumber(), tx.GetHash()));
+
+                nSpendCount++;
             }
         }
 
@@ -3456,8 +3463,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     }
 
     LogPrint("bench", "      - Community fund Vote Index: %.2fms \n", nCfVIBench);
-    LogPrint("bench", "      - Zerocoin Mint check: %.2fms \n",  nZMcBench);
-    LogPrint("bench", "      - Zerocoin Spend check: %.2fms \n", nZScBench);
+    LogPrint("bench", "      - Zerocoin Mint check: %.2fms (%.2fms/mint)\n",  nZMcBench, nZMcBench/(nMintCount?nMintCount:1));
+    LogPrint("bench", "      - Zerocoin Spend check: %.2fms (%.2fms/spend)\n", nZScBench, nZScBench/(nSpendCount?nSpendCount:1));
     LogPrint("bench", "      - Extra Indexing: %.2fms \n", nEIBench);
     LogPrint("bench", "      - New Cfund entries: %.2fms \n", nNCeBench);
 
