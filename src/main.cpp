@@ -3455,11 +3455,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         nNCeBench += 0.001 * (nTime25 - nTime24);
     }
 
-    LogPrint("bench", "    - Community fund Vote Index: %.2fms \n", 0.001 * (nCfVIBench));
-    LogPrint("bench", "    - Zerocoin Mint check: %.2fms \n", 0.001 * (nZMcBench));
-    LogPrint("bench", "    - Zerocoin Spend check: %.2fms \n", 0.001 * (nZScBench));
-    LogPrint("bench", "    - Extra Indexing: %.2fms \n", 0.001 * (nEIBench));
-    LogPrint("bench", "    - New Cfund entries: %.2fms \n", 0.001 * (nNCeBench));
+    LogPrint("bench", "    - Community fund Vote Index: %.2fms \n", nCfVIBench);
+    LogPrint("bench", "    - Zerocoin Mint check: %.2fms \n",  nZMcBench);
+    LogPrint("bench", "    - Zerocoin Spend check: %.2fms \n", nZScBench);
+    LogPrint("bench", "    - Extra Indexing: %.2fms \n", nEIBench);
+    LogPrint("bench", "    - New Cfund entries: %.2fms \n", nNCeBench);
 
     int64_t nTime25 = GetTimeMicros();
 
