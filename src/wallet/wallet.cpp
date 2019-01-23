@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
-// Copyright (c) 2019 The NavCoin Core developers
+// Copyright (c) 2018-2019 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -329,10 +329,6 @@ void CWallet::AvailableZeroCoinsForStaking(vector<COutput>& vCoins, unsigned int
                     if (mapWitness.count(pubCoin.getValue())) {
 
                         PublicMintWitnessData witnessData = mapWitness.at(pubCoin.getValue());
-
-                        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
-
-                        uint256 ac = witnessData.GetChecksum();
 
                         if (witnessData.GetCount() > 0)
                             fFoundWitness = true;
@@ -2596,9 +2592,6 @@ CAmount CWalletTx::GetAvailablePrivateCredit() const
             LOCK(pwalletMain->cs_witnesser);
             if (pwalletMain->mapWitness.count(pubCoin.getValue())) {
                 PublicMintWitnessData witnessData = pwalletMain->mapWitness.at(pubCoin.getValue());
-                AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
-
-                uint256 ac = witnessData.GetChecksum();
 
                 if (witnessData.GetCount() > 0)
                     fFoundWitness = true;
@@ -2649,9 +2642,6 @@ CAmount CWalletTx::GetImmaturePrivateCredit() const
                 LOCK(pwalletMain->cs_witnesser);
                 if ((pwalletMain->mapWitness.count(pubCoin.getValue()))) {
                     PublicMintWitnessData witnessData = pwalletMain->mapWitness.at(pubCoin.getValue());
-                    AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
-
-                    uint256 ac = witnessData.GetChecksum();
 
                     if (witnessData.GetCount() > 0)
                         fFoundWitness = true;
@@ -3081,9 +3071,6 @@ void CWallet::AvailablePrivateCoins(vector<COutput>& vCoins, bool fOnlyConfirmed
                     LOCK(cs_witnesser);
                     if (mapWitness.count(pubCoin.getValue())) {
                         PublicMintWitnessData witnessData = mapWitness.at(pubCoin.getValue());
-                        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
-
-                        uint256 ac = witnessData.GetChecksum();
 
                         if (witnessData.GetCount() > 0)
                             fFoundWitness = true;
@@ -3448,6 +3435,9 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 AvailableCoins(vAvailableCoins, true, coinControl);
             nFeeRet = 0;
             // Start with no fee and loop until there is enough fee
+            // Unless it's a private transaction and the fee is fixed so we can already add it for efficiency
+            if (fPrivate)
+                nValue += libzerocoin::ZerocoinDenominationToAmount(libzerocoin::GetSmallerDenomination());
             while (true)
             {
                 nChangePosInOut = nChangePosRequest;
@@ -3733,7 +3723,8 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
                 if (fPrivate)
                 {
-                    nFeeNeeded = libzerocoin::ZerocoinDenominationToAmount(libzerocoin::GetSmallerDenomination());
+                    nFeeNeeded = 0;
+                    nFeeRet = libzerocoin::ZerocoinDenominationToAmount(libzerocoin::GetSmallerDenomination());
                 }
                 else
                 {

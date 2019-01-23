@@ -39,7 +39,6 @@ namespace libzerocoin
 class CoinSpend
 {
 public:
-
     CoinSpend(const ZerocoinParams* params) :
         accumulatorPoK(&params->accumulatorParams),
         serialNumberSoK(params),

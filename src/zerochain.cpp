@@ -1,4 +1,4 @@
-// Copyright (c) 2019 The NavCoin Core developers
+// Copyright (c) 2018-2019 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -35,7 +35,7 @@ bool BlockToZerocoinMints(const ZerocoinParams *params, const CBlock* block, std
     return true;
 }
 
-bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, PublicMintChainData>> vSeen, PublicCoin* pPubCoin, bool fFast)
+bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, PublicMintChainData>> vSeen, PublicCoin* pPubCoin, bool fCheck, bool fFast)
 {
     PublicCoin pubCoin(params);
     if(!TxOutToPublicCoin(params, txout, pubCoin, &state, false))
@@ -44,7 +44,7 @@ bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, const 
     if (pPubCoin)
         *pPubCoin = pubCoin;
 
-    if (!pubCoin.isValid(fFast))
+    if (fCheck && !pubCoin.isValid(fFast))
         return state.DoS(100, error("CheckZerocoinMint() : PubCoin does not validate"));
 
     for(auto& it : vSeen)
@@ -65,7 +65,7 @@ bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, const 
     return true;
 }
 
-bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen, CoinSpend* pCoinSpend)
+bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen, CoinSpend* pCoinSpend, Accumulator* pAccumulator, bool fSpendCheck)
 {
     CoinSpend coinSpend(params);
 
@@ -90,19 +90,13 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const C
     Accumulator accumulator(params, coinSpend.getDenomination());
     accumulator.setValue(accumulatorMap.GetValue(coinSpend.getDenomination()));
 
-    uint256 csHash = coinSpend.GetHash();
+    if (pAccumulator)
+        *pAccumulator = accumulator;
 
-    bool fCached = (mapCacheValidCoinSpends.count(csHash) != 0);
-
-    if ((!fCached && !coinSpend.Verify(accumulator)) || (fCached && mapCacheValidCoinSpends[csHash] == false)) {
-        mapCacheValidCoinSpends[csHash] = false;
-        return state.DoS(100, error("CheckZerocoinSpend() : CoinSpend does not verify"));
+    if (fSpendCheck) {
+        if (!VerifyCoinSpend(coinSpend, accumulator, true))
+            return state.DoS(100, error("CheckZerocoinSpend() : CoinSpend does not verify"));
     }
-
-    mapCacheValidCoinSpends[csHash] = true;
-
-    if (mapCacheValidCoinSpends.size() > COINSPEND_CACHE_SIZE)
-        mapCacheValidCoinSpends.clear();
 
     uint256 txHash;
     int nHeight;
@@ -119,6 +113,27 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const C
 
     return true;
 
+}
+
+bool VerifyCoinSpend(const CoinSpend& coinSpend, const Accumulator &accumulator, bool fWriteToCache)
+{
+    LOCK(fWriteToCache ? cs_coinspend_cache : cs_dummy);
+    uint256 csHash = coinSpend.GetHash();
+    bool fCached = (mapCacheValidCoinSpends.count(csHash) != 0);
+
+    if ((!fCached && !coinSpend.Verify(accumulator)) || (fCached && mapCacheValidCoinSpends[csHash] == false)) {
+        if (fWriteToCache)
+            mapCacheValidCoinSpends[csHash] = false;
+        return false;
+    }
+
+    if (fWriteToCache)
+        mapCacheValidCoinSpends[csHash] = true;
+
+    if (fWriteToCache && mapCacheValidCoinSpends.size() > COINSPEND_CACHE_SIZE)
+        mapCacheValidCoinSpends.clear();
+
+    return true;
 }
 
 bool CountMintsFromHeight(unsigned int nInitialHeight, CoinDenomination denom, unsigned int& nRet)

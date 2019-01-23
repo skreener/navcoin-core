@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
-// Copyright (c) 2018 The NavCoin Core developers
+// Copyright (c) 2018-2019 The NavCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -15,6 +15,7 @@
 #include "chain.h"
 #include "coins.h"
 #include "libzerocoin/Coin.h"
+#include "libzerocoin/CoinSpend.h"
 #include "net.h"
 #include "script/interpreter.h"
 #include "script/script_error.h"
@@ -178,6 +179,7 @@ struct BlockHasher
 
 extern CScript COINBASE_FLAGS;
 extern CCriticalSection cs_main;
+extern CCriticalSection cs_coinspend_cache;
 extern CTxMemPool mempool;
 typedef boost::unordered_map<uint256, CBlockIndex*, BlockHasher> BlockMap;
 extern BlockMap mapBlockIndex;
@@ -280,6 +282,8 @@ bool ProcessMessages(CNode* pfrom);
 bool SendMessages(CNode* pto);
 /** Run an instance of the script checking thread */
 void ThreadScriptCheck();
+void ThreadCoinSpendCheck();
+void ThreadPublicCoinCheck();
 /** Check whether we are doing an initial block download (synchronizing from disk or network) */
 bool IsInitialBlockDownload();
 /** Format a string that describes several potential problems detected by the core.
@@ -461,6 +465,44 @@ public:
     }
 
     ScriptError GetScriptError() const { return error; }
+};
+
+class CCoinSpendCheck
+{
+private:
+    libzerocoin::Accumulator accumulator;
+    libzerocoin::CoinSpend coinSpend;
+
+public:
+    CCoinSpendCheck() : accumulator(&Params().GetConsensus().Zerocoin_Params.accumulatorParams), coinSpend(&Params().GetConsensus().Zerocoin_Params) {}
+    CCoinSpendCheck(const libzerocoin::CoinSpend& coinSpendIn, const libzerocoin::Accumulator& accumulatorIn) :
+        accumulator(accumulatorIn), coinSpend(coinSpendIn) { }
+
+    bool operator()();
+
+    void swap(CCoinSpendCheck &check) {
+        std::swap(coinSpend, check.coinSpend);
+        std::swap(accumulator, check.accumulator);
+    }
+};
+
+class CPublicCoinCheck
+{
+private:
+    libzerocoin::PublicCoin pubCoin;
+    bool fFast;
+
+public:
+    CPublicCoinCheck() : pubCoin(&Params().GetConsensus().Zerocoin_Params), fFast(false) {}
+    CPublicCoinCheck(const libzerocoin::PublicCoin& pubCoinIn, bool fFastIn) :
+        pubCoin(pubCoinIn), fFast(fFastIn) { }
+
+    bool operator()();
+
+    void swap(CPublicCoinCheck &check) {
+        std::swap(pubCoin, check.pubCoin);
+        std::swap(fFast, check.fFast);
+    }
 };
 
 bool GetTimestampIndex(const unsigned int &high, const unsigned int &low, const bool fActiveOnly, std::vector<std::pair<uint256, unsigned int> > &hashes);

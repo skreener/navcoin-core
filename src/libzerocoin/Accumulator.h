@@ -22,7 +22,6 @@ namespace libzerocoin {
 
 class Accumulator {
 public:
-
     Accumulator(const AccumulatorAndProofParams* p): params(p) { }
 
     /**
