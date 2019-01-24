@@ -105,7 +105,7 @@ void NavCoinWitnesser(const CChainParams& chainparams)
                     if (!pindex)
                         continue;
 
-                    CBlockIndex *plastindex;
+                    CBlockIndex *plastindex = pindex;
                     bool fShouldWrite = false;
                     int nCount = GetArg("-witnesser_blocks_per_round", DEFAULT_BLOCKS_PER_ROUND);
 

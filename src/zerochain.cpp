@@ -7,6 +7,8 @@
 
 using namespace libzerocoin;
 
+CCriticalSection cs_dummy;
+
 bool BlockToZerocoinMints(const ZerocoinParams *params, const CBlock* block, std::vector<PublicCoin> &vPubCoins)
 {
     for (auto& tx : block->vtx) {
