@@ -401,6 +401,7 @@ libzerocoin_libnavcoin_zerocoin_a_SOURCES = \
   libzerocoin/SerialNumberSignatureOfKnowledge.h \
   libzerocoin/SerialNumberSoK_small.h \
   libzerocoin/SerialNumberProofOfKnowledge.h \
+  libzerocoin/SpendType.h \
   libzerocoin/ZerocoinDefines.h \
   libzerocoin/zkplib.h \
   libzerocoin/Accumulator.cpp \
