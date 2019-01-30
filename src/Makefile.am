@@ -161,6 +161,7 @@ NAVCOIN_CORE_H = \
   zeroaccumulators.h \
   zerochain.h \
   zeromint.h \
+  zerotx.h \
   zerowallet.h \
   zerowitnesser.h \
   zmq/zmqabstractnotifier.h \
