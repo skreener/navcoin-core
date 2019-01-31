@@ -125,7 +125,7 @@ const uint256 CoinSpend::signatureHash() const
 std::string CoinSpend::ToString() const
 {
     std::stringstream ss;
-    ss << "CoinSpend:\n version=" << (int)version << " signatureHash=" << signatureHash().GetHex() << " spendtype=" << spendType << "\n";
+    ss << "CoinSpend(" << coinValuePublic.ToString(16) << ", " << getDenomination() << ")";
     return ss.str();
 }
 
