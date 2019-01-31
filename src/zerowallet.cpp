@@ -107,8 +107,6 @@ bool MintVecRecipients(const CTxDestination &address, vector<CRecipient> &vecSen
 
     for(auto& it: vecSend)
     {
-        boost::this_thread::interruption_point();
-
         unsigned int nProgress = (i++)*100/vecSend.size();
 
         if (nProgress > 0 && fShowDialog)
