@@ -14,6 +14,7 @@
 #include "util.h"
 #include "utilmoneystr.h"
 #include "utilstrencodings.h"
+#include "zerotx.h"
 
 #include <boost/assign/list_of.hpp>
 #include <boost/foreach.hpp>
@@ -175,7 +176,9 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
         if (tx.IsCoinBase() && !tx.IsZerocoinSpend())
             in.pushKV("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
         else if(txin.scriptSig.IsZerocoinSpend()) {
-            in.pushKV("zerocoinspend", "HexStr(txin.scriptSig.begin(), txin.scriptSig.end())");
+            libzerocoin::CoinSpend coinSpend(&Params().GetConsensus().Zerocoin_Params);
+            if (TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, txin, coinSpend))
+                in.pushKV("zerocoinspend", coinSpend.getCoinSerialNumber().ToString(16));
         } else {
             in.pushKV("txid", txin.prevout.hash.GetHex());
             in.pushKV("vout", (int64_t)txin.prevout.n);
