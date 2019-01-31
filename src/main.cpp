@@ -2864,13 +2864,13 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     pindex->nCFSupply    = pindex->pprev != NULL ? pindex->pprev->nCFSupply : 0;
     pindex->nCFLocked    = pindex->pprev != NULL ? pindex->pprev->nCFLocked : 0;
     pindex->nMoneySupply = pindex->pprev != NULL ? pindex->pprev->nMoneySupply : 0;
+    pindex->nAccumulatedPrivateFee
+                         = pindex->pprev != NULL ? pindex->pprev->nAccumulatedPrivateFee : 0;
 
     if(pindex->pprev != NULL)
     {
         pindex->mapZerocoinSupply
                          = pindex->pprev->mapZerocoinSupply;
-        pindex->nAccumulatedPrivateFee
-                         = pindex->nAccumulatedPrivateFee;
     }
 
     pindex->vProposalVotes.clear();
@@ -3334,7 +3334,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             if (tx.nTime < block.nTime && pindex->nHeight > Params().GetConsensus().nCoinbaseTimeActivationHeight)
                 return error("ConnectBlock(): Coinbase timestamp doesn't meet protocol (tx=%d vs block=%d)",
                              tx.nTime, block.nTime);
-        } else if(tx.IsZerocoinSpend()) {
+        }
+        if(tx.IsZerocoinSpend() && !tx.IsCoinStake() && !tx.IsCoinBase()) {
             pindex->nAccumulatedPrivateFee += view.GetValueIn(tx) - tx.GetValueOut();
         }
 
