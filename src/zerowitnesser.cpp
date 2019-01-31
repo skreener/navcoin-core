@@ -4,6 +4,7 @@
 
 #include "chainparams.h"
 #include "main.h"
+#include "miner.h"
 
 #include "zeroaccumulators.h"
 #include "zerotx.h"
@@ -113,6 +114,10 @@ void NavCoinWitnesser(const CChainParams& chainparams)
                     {
                         CBlock block;
                         bool fRecover = false;
+                        bool fStake = (chainActive.Tip()->nHeight - pindex->nHeight) > COINBASE_MATURITY;
+
+                        if (GetStaking() && fStake)
+                            break;
 
                         if (!ReadBlockFromDisk(block, pindex, Params().GetConsensus()))
                             fRecover = true;

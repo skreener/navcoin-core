@@ -165,7 +165,7 @@ bool CountMintsFromHeight(unsigned int nInitialHeight, CoinDenomination denom, u
     return true;
 }
 
-bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin& pubCoin, Accumulator& accumulator, AccumulatorWitness& accumulatorWitness, uint256& accumulatorChecksum, std::string& strError, int nRequiredMints)
+bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin& pubCoin, Accumulator& accumulator, AccumulatorWitness& accumulatorWitness, uint256& accumulatorChecksum, std::string& strError, int nRequiredMints, int nMaxHeight)
 {
     if (!txout.IsZerocoinMint()) {
         strError = "Transaction output script is not a zerocoin mint.";
@@ -215,7 +215,7 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
 
     if (chainActive.Next(pindex)) {
         pindex = chainActive.Next(pindex);
-        while (pindex) {
+        while (pindex && pindex->nHeight <= nMaxHeight) {
             CBlock block;
 
             if (!ReadBlockFromDisk(block, pindex, Params().GetConsensus())) {

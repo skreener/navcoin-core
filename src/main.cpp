@@ -5465,6 +5465,9 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
         if (pindexPrev->nAccumulatorChecksum != uint256())
             mapAccumulators.Load(pindexPrev->nAccumulatorChecksum);
 
+        uint256 prevBlockAccumulatorChecksum = mapAccumulators.GetFirstBlockHash();
+        uint256 prevAccumulatorChecksum = mapAccumulators.GetChecksum();
+
         if(!CalculateAccumulatorChecksum(&block, mapAccumulators, vAccumulatedMints))
             return state.DoS(10, error("ConnectBlock(): could not verify zerocoin accumulator checksum."),
                              REJECT_INVALID, "bad-zero-accumulator-checksum");
@@ -5475,7 +5478,7 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
                                        mapAccumulators.GetChecksum().ToString(), block.GetBlockHeader().nAccumulatorChecksum.ToString()),
                              REJECT_INVALID, "bad-zero-accumulator-checksum");
         }
-        else if(!mapAccumulators.Save(block))
+        else if(!mapAccumulators.Save(prevAccumulatorChecksum == mapAccumulators.GetChecksum() ? prevBlockAccumulatorChecksum : block.GetHash(), block.GetHash()))
         {
             return AbortNode(state, "Failed to write zerocoin accumulator checksum");
         }
@@ -9218,16 +9221,32 @@ bool CheckStakeKernelHash(CBlockIndex* pindexPrev, unsigned int nBits, CBlockInd
 bool CheckProofOfStake(CBlockIndex* pindexPrev, const CTransaction& tx, const CCoinsViewCache& view, unsigned int nBits, uint256& hashProofOfStake, uint256& targetProofOfStake, std::vector<CScriptCheck> *pvChecks, bool fCHeckSignature)
 {
     if (!tx.IsCoinStake())
-        return error("CheckProofOfStake() : called on non-coinstake %s", tx.GetHash().ToString());
+        return error("%s : called on non-coinstake %s", __func__, tx.GetHash().ToString());
 
     if (tx.IsZerocoinSpend()) {
         CoinSpend coinSpend(&Params().GetConsensus().Zerocoin_Params);
 
         if(tx.vin.size() > 1)
-            return error("CheckProofOfStake: More than one zerocoin input found");
+            return error("%s : More than one zerocoin input found", __func__);
 
         if(!TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, tx.vin[0], coinSpend))
-            return error("CheckProofOfStake: Could not convert tx in to Coinspend");
+            return error("%s : Could not convert tx in to Coinspend", __func__);
+
+        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
+
+        if (!accumulatorMap.Load(coinSpend.getAccumulatorChecksum()))
+            return error("%s : Could not load coin spend accumulator checksum", __func__);
+
+        if (!mapBlockIndex.count(accumulatorMap.GetFirstBlockHash()))
+            return error("%s : Accumulator checksum does not refer a valid block", __func__);
+
+        CBlockIndex* pindex = mapBlockIndex[accumulatorMap.GetFirstBlockHash()];
+
+        if (!chainActive.Contains(pindex))
+            return error("%s : Accumulator checksum refers a block not contained in the active chain", __func__);
+
+        if ((pindexPrev->nHeight - pindex->nHeight + 1) < COINBASE_MATURITY)
+            return error("%s : Coin spend is not mature enough (%d)", __func__, (pindexPrev->nHeight - pindex->nHeight));
 
         return CheckZeroStakeKernelHash(pindexPrev, nBits, tx.nTime, coinSpend.getCoinSerialNumber(), libzerocoin::ZerocoinDenominationToAmount(coinSpend.getDenomination()), hashProofOfStake, targetProofOfStake);
     }
@@ -9238,13 +9257,13 @@ bool CheckProofOfStake(CBlockIndex* pindexPrev, const CTransaction& tx, const CC
     CTransaction txPrev;
     uint256 hashBlock = uint256();
     if (!GetTransaction(txin.prevout.hash, txPrev, view, Params().GetConsensus(), hashBlock, true))
-        return error("CheckProofOfStake() : INFO: read txPrev failed %s",txin.prevout.hash.GetHex());  // previous transaction not in main chain, may occur during initial download
+        return error("%s : INFO: read txPrev failed %s", __func__, txin.prevout.hash.GetHex());  // previous transaction not in main chain, may occur during initial download
 
     if (txPrev.vout[txin.prevout.n].scriptPubKey.IsColdStaking())
         for(unsigned int i = 1; i < tx.vout.size() - 1; i++) // First output is empty, last is CFund contribution
             if(tx.vout[i].scriptPubKey != txPrev.vout[txin.prevout.n].scriptPubKey)
-                return error(strprintf("CheckProofOfStake(): Coinstake output %d tried to move cold staking coins to a non authorised script. (%s vs. %s)",
-                                       i, ScriptToAsmStr(txPrev.vout[txin.prevout.n].scriptPubKey), ScriptToAsmStr(tx.vout[i].scriptPubKey)));
+                return error(strprintf("%s : Coinstake output %d tried to move cold staking coins to a non authorised script. (%s vs. %s)",
+                                       __func__, i, ScriptToAsmStr(txPrev.vout[txin.prevout.n].scriptPubKey), ScriptToAsmStr(tx.vout[i].scriptPubKey)));
 
     if (pvChecks)
         pvChecks->reserve(tx.vin.size());
@@ -9264,19 +9283,19 @@ bool CheckProofOfStake(CBlockIndex* pindexPrev, const CTransaction& tx, const CC
             pvChecks->push_back(CScriptCheck());
             check.swap(pvChecks->back());
         } else if (!check())
-            return error("CheckProofOfStake() : script-verify-failed %s",ScriptErrorString(check.GetScriptError()));
+            return error("%s : script-verify-failed %s", __func__,ScriptErrorString(check.GetScriptError()));
     }
 
     if (mapBlockIndex.count(hashBlock) == 0)
-        return fDebug? error("CheckProofOfStake() : read block failed") : false; // unable to read block of previous transaction
+        return fDebug? error("%s : read block failed", __func__) : false; // unable to read block of previous transaction
 
     CBlockIndex* pblockindex = mapBlockIndex[hashBlock];
 
     if (txin.prevout.hash != txPrev.GetHash())
-        return error("CheckProofOfStake(): Coinstake input does not match previous output %s",txin.prevout.hash.GetHex());
+        return error("%s : Coinstake input does not match previous output %s", __func__,txin.prevout.hash.GetHex());
 
     if (!CheckStakeKernelHash(pindexPrev, nBits, *pblockindex, txPrev, txin.prevout, tx.nTime, hashProofOfStake, targetProofOfStake, fDebug))
-        return error("CheckProofOfStake() : INFO: check kernel failed on coinstake %s, hashProof=%s", tx.GetHash().ToString(), hashProofOfStake.ToString()); // may occur during initial download or if behind on block chain sync
+        return error("%s : INFO: check kernel failed on coinstake %s, hashProof=%s", __func__, tx.GetHash().ToString(), hashProofOfStake.ToString()); // may occur during initial download or if behind on block chain sync
 
     return true;
 }

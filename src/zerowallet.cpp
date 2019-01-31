@@ -5,7 +5,8 @@
 #include "zerowallet.h"
 #include "zerotx.h"
 
-bool DestinationToVecRecipients(CAmount nValue, const std::string &strAddress, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate, bool fReduceOutputs)
+bool DestinationToVecRecipients(CAmount nValue, const std::string &strAddress, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount,
+                                bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate, bool fReduceOutputs)
 {
     CNavCoinAddress a(strAddress);
 
@@ -14,10 +15,12 @@ bool DestinationToVecRecipients(CAmount nValue, const std::string &strAddress, v
 
     CTxDestination address = a.Get();
 
-    return DestinationToVecRecipients(nValue, address, vecSend, fSubtractFeeFromAmount, fDonate, fRetNeedsZeroMinting, fPrivate, fReduceOutputs);
+    return DestinationToVecRecipients(nValue, address, vecSend, fSubtractFeeFromAmount, fDonate, fRetNeedsZeroMinting, fPrivate,
+                                      fReduceOutputs);
 }
 
-bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate, bool fReduceOutputs)
+bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount,
+                                bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate, bool fReduceOutputs)
 {
     vecSend.clear();
     CScript scriptPubKey = GetScriptForDestination(address);
@@ -122,7 +125,8 @@ bool MintVecRecipients(const CTxDestination &address, vector<CRecipient> &vecSen
     return true;
 }
 
-bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript& scriptPubKey, const CAmount& amount, CScript& sigdata)
+bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript& scriptPubKey, const CAmount& amount,
+                             CScript& sigdata, bool fStake)
 {
     if (!scriptPubKey.IsZerocoinMint())
         return error(strprintf("Transaction output script is not a zerocoin mint."));
@@ -145,11 +149,15 @@ bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript&
 
     {
         LOCK(pwalletMain->cs_witnesser);
-        if (pwalletMain->mapWitness.count(pubCoin.getValue())) {
+        if (pwalletMain->mapWitness.count(pubCoin.getValue()))
+        {
             PublicMintWitnessData witnessData = pwalletMain->mapWitness.at(pubCoin.getValue());
             AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
             uint256 blockHash = accumulatorMap.GetBlockHash();
+            uint256 firstBlockHash = accumulatorMap.GetFirstBlockHash();
+
             int nCalculatedBlocksAgo = std::numeric_limits<unsigned int>::max();
+            int nCalculatedFirstBlocksAgo = 0;
 
             ac = witnessData.GetChecksum();
             aw = witnessData.GetAccumulatorWitness();
@@ -157,19 +165,32 @@ bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript&
 
             if (mapBlockIndex.count(blockHash))
             {
+                LOCK(cs_main);
                 CBlockIndex* pindex = mapBlockIndex[blockHash];
                 if (chainActive.Contains(pindex))
                     nCalculatedBlocksAgo = chainActive.Height() - pindex->nHeight;
+            }
+
+            if (mapBlockIndex.count(firstBlockHash))
+            {
+                LOCK(cs_main);
+                CBlockIndex* pindex = mapBlockIndex[firstBlockHash];
+                if (chainActive.Contains(pindex))
+                    nCalculatedFirstBlocksAgo = chainActive.Height() - pindex->nHeight;
             }
 
             if (witnessData.Verify() && accumulatorMap.Load(ac) &&
                (witnessData.GetCount() > (MIN_MINT_SECURITY + nEntropy) || nCalculatedBlocksAgo < (MIN_MINT_SECURITY/2)))
                 fFoundWitness = true;
 
+            if (fStake && nCalculatedFirstBlocksAgo < COINBASE_MATURITY)
+                fFoundWitness = false;
+
         }
     }
 
-    if (!fFoundWitness && !CalculateWitnessForMint(txout, pubCoin, a, aw, ac, strError, MIN_MINT_SECURITY + nEntropy))
+    if (!fFoundWitness && !CalculateWitnessForMint(txout, pubCoin, a, aw, ac, strError, MIN_MINT_SECURITY + nEntropy,
+                                                   chainActive.Tip()->nHeight - (fStake ? COINBASE_MATURITY : 0)))
         return error(strprintf("Error calculating witness for mint: %s", strError));
 
     if (!creator.CreateCoinSpend(&Params().GetConsensus().Zerocoin_Params, pubCoin, a, ac, aw, scriptPubKey, sigdata, strError))
@@ -183,7 +204,7 @@ bool ProduceCoinSpend(const BaseSignatureCreator& creator, const CScript& fromPu
     CScript script = fromPubKey;
     bool solved = true;
     CScript result;
-    solved = PrepareAndSignCoinSpend(creator, script, amount, result);
+    solved = PrepareAndSignCoinSpend(creator, script, amount, result, fCoinStake);
     sigdata.scriptWitness.stack.clear();
     sigdata.scriptSig = result;
 
