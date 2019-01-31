@@ -20,6 +20,7 @@ private:
     const libzerocoin::ZerocoinParams* params;
     std::map<libzerocoin::CoinDenomination, std::unique_ptr<libzerocoin::Accumulator> > mapAccumulators;
     uint256 blockHash;
+    uint256 firstBlockHash;
 public:
     AccumulatorMap(const libzerocoin::ZerocoinParams* params);
     bool Accumulate(const libzerocoin::PublicCoin& pubCoin, bool fSkipValidation = false);
@@ -28,10 +29,11 @@ public:
     bool Get(libzerocoin::CoinDenomination denom, libzerocoin::Accumulator& accumulator);
     uint256 GetChecksum();
     uint256 GetBlockHash() { return blockHash; }
+    uint256 GetFirstBlockHash() { return firstBlockHash; }
     void Reset();
     void Reset(const libzerocoin::ZerocoinParams* params2);
     bool Load(uint256 nCheckpoint);
-    bool Save(const CBlock& block);
+    bool Save(uint256 firstBlockHashIn, uint256 blockHashIn);
 };
 
 bool CalculateAccumulatorChecksum(const CBlock* block, AccumulatorMap& mapAccumulators, std::vector<std::pair<CBigNum, uint256>>& vPubCoins);

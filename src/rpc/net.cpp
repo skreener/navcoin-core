@@ -583,12 +583,15 @@ UniValue getstakinginfo(const UniValue& params, bool fHelp)
             "Returns an object containing staking-related information.");
 
     uint64_t nWeight = 0;
-    if (pwalletMain)
+    uint64_t nZeroWeight = 0;
+    if (pwalletMain) {
         nWeight = pwalletMain->GetStakeWeight();
+        nZeroWeight = pwalletMain->GetZeroStakeWeight();
+    }
 
     uint64_t nNetworkWeight = GetPoSKernelPS();
-    bool staking = nLastCoinStakeSearchInterval && nWeight;
-    uint64_t nExpectedTime = staking ? (GetTargetSpacing(pindexBestHeader->nHeight) * nNetworkWeight / nWeight) : 0;
+    bool staking = nLastCoinStakeSearchInterval && (nWeight || nZeroWeight);
+    uint64_t nExpectedTime = staking ? (GetTargetSpacing(pindexBestHeader->nHeight) * nNetworkWeight / (nWeight + nZeroWeight)) : 0;
 
     UniValue obj(UniValue::VOBJ);
 
@@ -602,6 +605,7 @@ UniValue getstakinginfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("difficulty", GetDifficulty(GetLastBlockIndex(pindexBestHeader, true))));
     obj.push_back(Pair("search-interval", (int)nLastCoinStakeSearchInterval));
 
+    obj.push_back(Pair("private_weight", (uint64_t)nZeroWeight));
     obj.push_back(Pair("weight", (uint64_t)nWeight));
     obj.push_back(Pair("netstakeweight", (uint64_t)nNetworkWeight));
 

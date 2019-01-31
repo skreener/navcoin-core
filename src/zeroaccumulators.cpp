@@ -110,7 +110,7 @@ uint256 AccumulatorMap::GetChecksum()
 //Load a checkpoint containing 8 32bit checksums of accumulator values.
 bool AccumulatorMap::Load(uint256 nChecksum)
 {
-    std::pair<uint256,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>> toRead;
+    std::pair<std::pair<uint256, uint256>,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>> toRead;
     if (!pblocktree->ReadZerocoinAccumulator(nChecksum, toRead))
         return error("%s : cannot read zerocoin accumulator checksum %s", __func__, nChecksum.ToString());
 
@@ -119,12 +119,13 @@ bool AccumulatorMap::Load(uint256 nChecksum)
         mapAccumulators.at(it.first)->setValue(it.second);
     }
 
-    blockHash = toRead.first;
+    firstBlockHash = toRead.first.first;
+    blockHash = toRead.first.second;
 
     return true;
 }
 
-bool AccumulatorMap::Save(const CBlock& block)
+bool AccumulatorMap::Save(uint256 firstBlockHashIn, uint256 blockHashIn)
 {
     std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> vAcc;
 
@@ -133,10 +134,11 @@ bool AccumulatorMap::Save(const CBlock& block)
         vAcc.push_back(std::make_pair(it.first, it.second->getValue()));
     }
 
-    if (!pblocktree->WriteZerocoinAccumulator(GetChecksum(), std::make_pair(block.GetHash(), vAcc)))
+    if (!pblocktree->WriteZerocoinAccumulator(GetChecksum(), std::make_pair(std::make_pair(firstBlockHashIn, blockHashIn), vAcc)))
         return error("%s : cannot write zerocoin accumulator checksum %s", __func__, GetChecksum().ToString());
 
-    blockHash = block.GetHash();
+    blockHash = blockHashIn;
+    firstBlockHash = firstBlockHashIn;
 
     return true;
 }
