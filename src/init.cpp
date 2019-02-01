@@ -382,6 +382,7 @@ std::string HelpMessage(HelpMessageMode mode)
 #ifdef ENABLE_WALLET
     strUsage += HelpMessageOpt("-staking=<bool>", _("Enables or disables the staking thread."));
     strUsage += HelpMessageOpt("-enablewitnesser=<bool>", _("Enables or disables the witnesser thread."));
+    strUsage += HelpMessageOpt("-defaultsecuritylevel=<level>", strprintf(_("Sets the required minimum count of additional mints for a zerocoin to be spent. (default: %d)"), DEFAULT_SPEND_MIN_MINT_COUNT));
 #endif
 #ifndef WIN32
     strUsage += HelpMessageOpt("-sysperms", _("Create new files with system default permissions, instead of umask 077 (only effective with disabled wallet functionality)"));

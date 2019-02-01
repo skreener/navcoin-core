@@ -14,6 +14,7 @@
 
 #define MIN_MINT_SECURITY 100
 #define WITNESS_ADDED_ENTROPY 40
+#define DEFAULT_SPEND_MIN_MINT_COUNT 1
 
 // NEEDS UNIT TEST
 bool DestinationToVecRecipients(CAmount nValue, const std::string &address, vector<CRecipient> &vecSend,  bool fSubtractFeeFromAmount, bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate = false, bool fReduceOutputs = false);
