@@ -54,6 +54,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
         // Credit
         //
         unsigned int i = 0;
+        bool fZero = false;
         BOOST_FOREACH(const CTxOut& txout, wtx.vout)
         {
             isminetype mine = wallet->IsMine(txout);
@@ -102,6 +103,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                             sub.paymentId = it.second;
                             break;
                         }
+                    fZero = true;
                 }
                 if(txout.scriptPubKey.IsCommunityFundContribution())
                 {
@@ -111,6 +113,28 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 parts.append(sub);
             }
             i++;
+        }
+        if (fZero)
+        {
+            TransactionRecord sub(hash, nTime);
+            bool fInit = false;
+            QList<TransactionRecord>::iterator it = parts.begin();
+            while (it != parts.end())
+            {
+                if (it->type == TransactionRecord::AnonTxRecv) {
+                    if (!fInit) {
+                        fInit = true;
+                        sub = *it;
+                    } else {
+                        sub.credit += it->credit;
+                    }
+                    it = parts.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+            if (fInit)
+                parts.append(sub);
         }
     }
     else
@@ -148,10 +172,17 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             //
             CAmount nTxFee = nDebit - wtx.GetValueOut();
 
+            bool fZero = false;
+
             for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
             {
                 const CTxOut& txout = wtx.vout[nOut];
+
+                if(txout.scriptPubKey.IsZerocoinMint())
+                    fZero = true;
+
                 TransactionRecord sub(hash, nTime);
+
                 sub.idx = parts.size();
                 sub.involvesWatchAddress = involvesWatchAddress;
 
@@ -201,6 +232,28 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 sub.debit = -nValue;
 
                 parts.append(sub);
+            }
+            if (fZero)
+            {
+                TransactionRecord sub(hash, nTime);
+                bool fInit = false;
+                QList<TransactionRecord>::iterator it = parts.begin();
+                while (it != parts.end())
+                {
+                    if (it->type == TransactionRecord::AnonTxSend) {
+                        if (!fInit) {
+                            fInit = true;
+                            sub = *it;
+                        } else {
+                            sub.debit += it->debit;
+                        }
+                        it = parts.erase(it);
+                    } else {
+                        ++it;
+                    }
+                }
+                if (fInit)
+                    parts.append(sub);
             }
         }
         else
