@@ -199,6 +199,7 @@ void SendCoinsDialog::on_sendButton_clicked()
 
     QList<SendCoinsRecipient> recipients;
     bool valid = true;
+    bool fPrivate = false;
 
     SendCoinsEntry *entry = qobject_cast<SendCoinsEntry*>(ui->entries->itemAt(0)->widget());
     if(entry)
@@ -207,6 +208,7 @@ void SendCoinsDialog::on_sendButton_clicked()
         {
             SendCoinsRecipient recipient = entry->getValue();
             recipients.append(recipient);
+            fPrivate = recipient.isanon;
         }
         else
         {
@@ -234,9 +236,11 @@ void SendCoinsDialog::on_sendButton_clicked()
 
     CAmount nTotalAmount = 0;
 
+    CCoinControl* coinControl = fPrivate?CoinControlDialog::zeroCoinControl:CoinControlDialog::coinControl;
+
     WalletModel::SendCoinsReturn prepareStatus;
     if (model->getOptionsModel()->getCoinControlFeatures()) // coin control enabled
-        prepareStatus = model->prepareTransaction(currentTransaction, nTotalAmount, CoinControlDialog::coinControl);
+        prepareStatus = model->prepareTransaction(currentTransaction, nTotalAmount, coinControl);
     else
         prepareStatus = model->prepareTransaction(currentTransaction, nTotalAmount);
 
@@ -366,7 +370,7 @@ void SendCoinsDialog::on_sendButton_clicked()
 
     // now send the prepared transaction
     if (model->getOptionsModel()->getCoinControlFeatures()) // coin control enabled
-        sendStatus = model->sendCoins(currentTransaction, CoinControlDialog::coinControl);
+        sendStatus = model->sendCoins(currentTransaction, coinControl);
     else
         sendStatus = model->sendCoins(currentTransaction);
 
@@ -376,7 +380,7 @@ void SendCoinsDialog::on_sendButton_clicked()
     if (sendStatus.status == WalletModel::OK)
     {
         accept();
-        CoinControlDialog::coinControl->UnSelectAll();
+        coinControl->UnSelectAll();
         coinControlUpdateLabels();
     }
     fNewRecipientAllowed = true;
@@ -413,6 +417,8 @@ SendCoinsEntry *SendCoinsDialog::addEntry()
     connect(entry, SIGNAL(payAmountChanged()), this, SLOT(coinControlUpdateLabels()));
     connect(entry, SIGNAL(subtractFeeFromAmountChanged()), this, SLOT(coinControlUpdateLabels()));
     connect(entry, SIGNAL(privateOrPublicChanged(bool)), this, SLOT(updatePrivateOrPublic(bool)));
+
+    updatePrivateOrPublic(entry->fPrivate);
 
     // Focus the field, so that entry can start immediately
     entry->clear();
@@ -769,6 +775,10 @@ void SendCoinsDialog::updatePrivateOrPublic(bool fPrivate)
     ui->lineEditCoinControlChange->setEnabled(!fPrivate);
     ui->checkBoxCoinControlChange->setEnabled(!fPrivate);
     this->fPrivate = fPrivate;
+    CoinControlDialog::fPrivate = fPrivate;
+    CCoinControl* coinControl = CoinControlDialog::fPrivate ? CoinControlDialog::zeroCoinControl : CoinControlDialog::coinControl;
+    coinControl->UnSelectAll();
+    coinControlUpdateLabels();
 }
 
 // Coin Control: settings menu - coin control enabled/disabled by user
@@ -785,7 +795,7 @@ void SendCoinsDialog::coinControlFeatureChanged(bool checked)
 // Coin Control: button inputs -> show actual coin control dialog
 void SendCoinsDialog::coinControlButtonClicked()
 {
-    CoinControlDialog dlg(platformStyle);
+    CoinControlDialog dlg(platformStyle, 0);
     dlg.setModel(model);
     dlg.exec();
     coinControlUpdateLabels();
@@ -901,7 +911,9 @@ void SendCoinsDialog::coinControlUpdateLabels()
         }
     }
 
-    if (CoinControlDialog::coinControl->HasSelected())
+    CCoinControl* coinControl = fPrivate?CoinControlDialog::zeroCoinControl:CoinControlDialog::coinControl;
+
+    if (coinControl->HasSelected())
     {
         // actual coin control calculation
         CoinControlDialog::updateLabels(model, this);

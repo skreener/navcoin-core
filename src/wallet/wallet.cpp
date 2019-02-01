@@ -3055,6 +3055,14 @@ void CWallet::AvailablePrivateCoins(vector<COutput>& vCoins, bool fOnlyConfirmed
             const uint256& wtxid = it->first;
             const CWalletTx* pcoin = &(*it).second;
 
+            std::string paymentId = "";
+
+            for (auto &it: pcoin->vOrderForm)
+                if (it.first == "Message") {
+                    paymentId = it.second;
+                    break;
+                }
+
             if (!CheckFinalTx(*pcoin))
                 continue;
 
@@ -3121,7 +3129,8 @@ void CWallet::AvailablePrivateCoins(vector<COutput>& vCoins, bool fOnlyConfirmed
                     (!coinControl || !coinControl->HasSelected() || coinControl->fAllowOtherInputs || coinControl->IsSelected(COutPoint((*it).first, i))))
                         vCoins.push_back(COutput(pcoin, i, nDepth,
                                                  ((mine & ISMINE_SPENDABLE_PRIVATE) != ISMINE_NO),
-                                                 ((mine & ISMINE_SPENDABLE_PRIVATE) != ISMINE_NO)));
+                                                 ((mine & ISMINE_SPENDABLE_PRIVATE) != ISMINE_NO),
+                                                 paymentId));
             }
         }
     }
@@ -3466,7 +3475,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
         {
             std::vector<COutput> vAvailableCoins;
             if(fPrivate)
-                AvailablePrivateCoins(vAvailableCoins, true);
+                AvailablePrivateCoins(vAvailableCoins, true, coinControl);
             else
                 AvailableCoins(vAvailableCoins, true, coinControl);
             nFeeRet = 0;
