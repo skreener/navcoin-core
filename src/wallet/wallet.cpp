@@ -359,6 +359,23 @@ void CWallet::AvailableZeroCoinsForStaking(vector<COutput>& vCoins, unsigned int
                 if (!pblocktree->ReadCoinMint(pubCoin.getValue(), zeroMint))
                     continue;
 
+                bool fFoundWitness = false;
+
+                {
+                    LOCK(pwalletMain->cs_witnesser);
+                    if (pwalletMain->mapWitness.count(pubCoin.getValue())) {
+
+                        PublicMintWitnessData witnessData = pwalletMain->mapWitness.at(pubCoin.getValue());
+
+                        if (witnessData.GetCount() > (GetArg("-defaultsecuritylevel", DEFAULT_SPEND_MIN_MINT_COUNT)-1))
+                            fFoundWitness = true;
+
+                    }
+                }
+
+                if (!fFoundWitness && GetArg("-enablewitnesser",true))
+                    continue;
+
                 if (!(IsSpent(wtxid,i)) && IsMine(pcoin->vout[i]) && pcoin->vout[i].nValue >= nMinimumInputValue && pcoin->vout[i].IsZerocoinMint()){
                     vCoins.push_back(COutput(pcoin, i, nDepth, true,
                                            ((IsMine(pcoin->vout[i]) & (ISMINE_SPENDABLE_PRIVATE)) != ISMINE_NO &&
@@ -2600,6 +2617,28 @@ CAmount CWalletTx::GetAvailablePrivateCredit() const
         if (!pwallet->IsSpent(hashTx, i))
         {
             const CTxOut &txout = vout[i];
+            libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
+
+            if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, txout, pubCoin, NULL))
+                continue;
+
+            bool fFoundWitness = false;
+
+            {
+                LOCK(pwalletMain->cs_witnesser);
+                if (pwalletMain->mapWitness.count(pubCoin.getValue())) {
+
+                    PublicMintWitnessData witnessData = pwalletMain->mapWitness.at(pubCoin.getValue());
+
+                    if (witnessData.GetCount() > (GetArg("-defaultsecuritylevel", DEFAULT_SPEND_MIN_MINT_COUNT)-1))
+                        fFoundWitness = true;
+
+                }
+            }
+
+            if (!fFoundWitness && GetArg("-enablewitnesser",true))
+                continue;
+
             nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE_PRIVATE);
             if (!MoneyRange(nCredit))
                 throw std::runtime_error("CWalletTx::GetAvailableCredit() : value out of range");
@@ -2611,17 +2650,48 @@ CAmount CWalletTx::GetAvailablePrivateCredit() const
 
 CAmount CWalletTx::GetImmaturePrivateCredit(const bool& fUseCache) const
 {
-// TODO: We need to define what immature private credit is.
-//    if (IsInMainChain())
-//    {
-//        if (fUseCache && fImmaturePrivateCreditCached)
-//            return nImmaturePrivateCreditCached;
-//        nImmaturePrivateCreditCached = pwallet->GetCredit(*this, ISMINE_SPENDABLE_PRIVATE);
-//        fImmaturePrivateCreditCached = true;
-//        return nImmaturePrivateCreditCached;
-//    }
+    if (pwallet == 0 || !IsInMainChain())
+        return 0;
 
-    return 0;
+    CAmount nCredit = 0;
+    uint256 hashTx = GetHash();
+    for (unsigned int i = 0; i < vout.size(); i++)
+    {
+        if (!vout[i].IsZerocoinMint())
+            continue;
+
+        if (!pwallet->IsSpent(hashTx, i))
+        {
+            const CTxOut &txout = vout[i];
+            libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
+
+            if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, txout, pubCoin, NULL))
+                continue;
+
+            bool fFoundWitness = false;
+
+            {
+                LOCK(pwalletMain->cs_witnesser);
+                if (pwalletMain->mapWitness.count(pubCoin.getValue())) {
+
+                    PublicMintWitnessData witnessData = pwalletMain->mapWitness.at(pubCoin.getValue());
+
+                    if (witnessData.GetCount() > (GetArg("-defaultsecuritylevel", DEFAULT_SPEND_MIN_MINT_COUNT)-1))
+                        fFoundWitness = true;
+
+                }
+            }
+
+            if (fFoundWitness && GetArg("-enablewitnesser",true))
+                continue;
+
+            nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE_PRIVATE);
+            if (!MoneyRange(nCredit))
+                throw std::runtime_error("CWalletTx::GetAvailableCredit() : value out of range");
+        }
+    }
+
+    return nCredit;
 }
 
 CAmount CWalletTx::GetImmatureWatchOnlyCredit(const bool& fUseCache) const
@@ -3027,6 +3097,23 @@ void CWallet::AvailablePrivateCoins(vector<COutput>& vCoins, bool fOnlyConfirmed
 
                 PublicMintChainData zeroMint;
                 if (!pblocktree->ReadCoinMint(pubCoin.getValue(), zeroMint) || zeroMint.GetTxHash() == uint256() || zeroMint.GetBlockHash() == uint256())
+                    continue;
+
+                bool fFoundWitness = false;
+
+                {
+                    LOCK(cs_witnesser);
+                    if (mapWitness.count(pubCoin.getValue())) {
+
+                        PublicMintWitnessData witnessData = mapWitness.at(pubCoin.getValue());
+
+                        if (witnessData.GetCount() > (GetArg("-defaultsecuritylevel", DEFAULT_SPEND_MIN_MINT_COUNT)-1))
+                            fFoundWitness = true;
+
+                    }
+                }
+
+                if (!fFoundWitness && !coinControl && GetArg("-enablewitnesser",true))
                     continue;
 
                 if (!(IsSpent(wtxid, i)) && mine != ISMINE_NO &&

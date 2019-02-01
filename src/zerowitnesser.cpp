@@ -116,7 +116,7 @@ void NavCoinWitnesser(const CChainParams& chainparams)
                         bool fRecover = false;
                         bool fStake = (chainActive.Tip()->nHeight - pindex->nHeight) > COINBASE_MATURITY;
 
-                        if (GetStaking() && fStake)
+                        if (GetStaking() && fStake && witnessData.GetCount() > 0)
                             break;
 
                         if (!ReadBlockFromDisk(block, pindex, Params().GetConsensus()))

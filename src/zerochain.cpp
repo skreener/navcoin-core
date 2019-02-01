@@ -247,12 +247,17 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
 
                     accumulatorWitness.AddElement(pubCoinOut);
                     accumulator.accumulate(pubCoinOut);
-
-                    if (!accumulatorMap.Load(pindex->nAccumulatorChecksum)) {
-                        return false;
-                    }
                 }
             }
+
+            accumulatorChecksum = pindex->nAccumulatorChecksum;
+
+
+            if (!accumulatorMap.Load(accumulatorChecksum)) {
+                return false;
+            }
+
+            assert(accumulator.getValue() == accumulatorMap.GetValue(pubCoin.getDenomination()));
 
             if(!chainActive.Next(pindex) || (nRequiredMints > 0 && nCount >= nRequiredMints))
                 break;
@@ -261,16 +266,9 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
         }
     }
 
-    if (!pindex) {
-        strError = strprintf("Last block index is null");
-        return false;
-    }
-
-    accumulatorChecksum = pindex->nAccumulatorChecksum;
-
     if (!accumulatorMap.Load(accumulatorChecksum)) {
-        strError = strprintf("Could not load Accumulators data from checksum %s of last block index %d (%s)",
-                             accumulatorChecksum.GetHex(), pindex->nHeight, pindex->GetBlockHash().ToString().substr(0,8));
+        strError = strprintf("Could not load Accumulators data from checksum %s of last block index",
+                             accumulatorChecksum.GetHex());
         return false;
     }
 
