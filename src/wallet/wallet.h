@@ -517,15 +517,16 @@ public:
     int nDepth;
     bool fSpendable;
     bool fSolvable;
+    std::string sPaymentId;
 
-    COutput(const CWalletTx *txIn, int iIn, int nDepthIn, bool fSpendableIn, bool fSolvableIn)
+    COutput(const CWalletTx *txIn, int iIn, int nDepthIn, bool fSpendableIn, bool fSolvableIn, std::string sPaymentIdIn = "")
     {
-        tx = txIn; i = iIn; nDepth = nDepthIn; fSpendable = fSpendableIn; fSolvable = fSolvableIn;
+        tx = txIn; i = iIn; nDepth = nDepthIn; fSpendable = fSpendableIn; fSolvable = fSolvableIn; sPaymentId = sPaymentIdIn;
     }
 
-    COutput(const CWalletTx *txIn, const CTransaction *ptxIn, int iIn, int nDepthIn, bool fSpendableIn, bool fSolvableIn)
+    COutput(const CWalletTx *txIn, const CTransaction *ptxIn, int iIn, int nDepthIn, bool fSpendableIn, bool fSolvableIn, std::string sPaymentIdIn = "")
     {
-        tx = txIn; ptx = ptxIn; i = iIn; nDepth = nDepthIn; fSpendable = fSpendableIn; fSolvable = fSolvableIn;
+        tx = txIn; ptx = ptxIn; i = iIn; nDepth = nDepthIn; fSpendable = fSpendableIn; fSolvable = fSolvableIn; sPaymentId = sPaymentIdIn;
     }
 
     std::string ToString() const;
