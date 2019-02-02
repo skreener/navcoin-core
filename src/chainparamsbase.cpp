@@ -110,7 +110,7 @@ void SelectBaseParams(const std::string& chain)
 std::string ChainNameFromCommandLine()
 {
     bool fRegTest = GetBoolArg("-regtest", false);
-    bool fTestNet = GetBoolArg("-testnet", false);
+    bool fTestNet = GetBoolArg("-testnet", true);
     bool fDevNet = GetBoolArg("-devnet", false);
 
     if (fTestNet && fRegTest)
