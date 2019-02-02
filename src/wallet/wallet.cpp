@@ -1969,6 +1969,21 @@ void CWallet::SyncTransaction(const CTransaction& tx, const CBlockIndex *pindex,
             if (tx.IsCoinStake() && IsFromMe(tx))
                 mapTxSpends.erase(prevout);
         }
+        BOOST_FOREACH(const CTxOut& txout, tx.vout)
+        {
+            if (txout.IsZerocoinMint()) {
+                libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
+                assert(TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, txout, pubCoin));
+                {
+                    LOCK(cs_witnesser);
+                    if (mapWitness.count(pubCoin.getValue())) {
+                            PublicMintWitnessData witnessData = pwalletMain->mapWitness.at(pubCoin.getValue());
+                            if (witnessData.GetChainData().GetTxHash() == tx.GetHash())
+                                mapWitness.erase(pubCoin.getValue());
+                    }
+                }
+            }
+        }
     }
 }
 
