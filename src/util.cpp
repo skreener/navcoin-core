@@ -467,7 +467,7 @@ boost::filesystem::path GetDefaultDataDir()
     // Unix: ~/.navcoin
 #ifdef WIN32
     // Windows
-    return GetSpecialFolderPath(CSIDL_APPDATA) / "NavCoin4";
+    return GetSpecialFolderPath(CSIDL_APPDATA) / "NavCoin5";
 #else
     fs::path pathRet;
     char* pszHome = getenv("HOME");
@@ -477,10 +477,10 @@ boost::filesystem::path GetDefaultDataDir()
         pathRet = fs::path(pszHome);
 #ifdef MAC_OSX
     // Mac
-    return pathRet / "Library/Application Support/NavCoin4";
+    return pathRet / "Library/Application Support/NavCoin5";
 #else
     // Unix
-    return pathRet / ".navcoin4";
+    return pathRet / ".navcoin5";
 #endif
 #endif
 }
