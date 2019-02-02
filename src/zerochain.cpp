@@ -83,12 +83,6 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const C
     if (!accumulatorMap.Load(accumulatorChecksum))
         return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Wrong accumulator checksum %s", accumulatorChecksum.ToString())));
 
-    {
-        AssertLockHeld(cs_main);
-        if (accumulatorMap.GetBlockHash() == uint256() || !mapBlockIndex.count(accumulatorMap.GetBlockHash()))
-            return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Internal error: Unknown block hash %s", accumulatorMap.GetBlockHash().GetHex())));
-    }
-
     Accumulator accumulator(params, coinSpend.getDenomination());
     accumulator.setValue(accumulatorMap.GetValue(coinSpend.getDenomination()));
 
