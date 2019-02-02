@@ -2508,7 +2508,7 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
             if(tx.nVersion == CTransaction::PROPOSAL_VERSION && CFund::IsValidProposal(tx, nMaxVersionProposal)) {
                 std::vector<std::pair<uint256, CFund::CProposal> > proposalIndex;
                 proposalIndex.push_back(make_pair(hash,CFund::CProposal()));
-                if (!pfClean && !pblocktree->UpdateProposalIndex(proposalIndex)) {
+                if (!pfClean && proposalIndex.size() > 0 && !pblocktree->UpdateProposalIndex(proposalIndex)) {
                     return AbortNode(state, "Failed to write proposal index");
                 }
             }
@@ -2525,11 +2525,11 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                         proposalIndex.push_back(make_pair(proposal.hash,proposal));
                     }
                 }
-                if (!pfClean && !pblocktree->UpdateProposalIndex(proposalIndex)) {
+                if (!pfClean && proposalIndex.size() > 0 && !pblocktree->UpdateProposalIndex(proposalIndex)) {
                     return AbortNode(state, "Failed to write proposal index");
                 }
 
-                if (!pfClean && !pblocktree->UpdatePaymentRequestIndex(paymentRequestIndex)) {
+                if (!pfClean && paymentRequestIndex.size() > 0 && !pblocktree->UpdatePaymentRequestIndex(paymentRequestIndex)) {
                     return AbortNode(state, "Failed to write proposal index");
                 }
             }
@@ -2680,11 +2680,11 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
 
-    if (!pblocktree->UpdateCoinMintIndex(vZeroMints)){
+    if (vZeroMints.size() > 0 && !pblocktree->UpdateCoinMintIndex(vZeroMints)){
         return AbortNode(state, "Failed to write zerocoin mint index");
     }
 
-    if (!pblocktree->UpdateCoinSpendIndex(vZeroSpents)){
+    if (vZeroSpents.size() > 0 && !pblocktree->UpdateCoinSpendIndex(vZeroSpents)){
         return AbortNode(state, "Failed to write zerocoin mint index");
     }
 
@@ -3442,7 +3442,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     return error("ConnectBlock(): Proposal cannot have an amount less than 0\n");
                 }
 
-                if (!pblocktree->UpdateProposalIndex(proposalIndex))
+                if (proposalIndex.size() > 0 && !pblocktree->UpdateProposalIndex(proposalIndex))
                     return AbortNode(state, "Failed to write proposal index");
 
                 LogPrint("cfund","New proposal %s\n",tx.GetHash().ToString());
@@ -3495,10 +3495,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 proposalIndex.push_back(make_pair(prequest.proposalhash, proposal));
                 paymentRequestIndex.push_back(make_pair(tx.GetHash(), prequest));
 
-                if (!pblocktree->UpdateProposalIndex(proposalIndex))
+                if (proposalIndex.size() > 0 && !pblocktree->UpdateProposalIndex(proposalIndex))
                     return AbortNode(state, "Failed to write proposal index");
 
-                if (!pblocktree->UpdatePaymentRequestIndex(paymentRequestIndex))
+                if (paymentRequestIndex.size() > 0 && !pblocktree->UpdatePaymentRequestIndex(paymentRequestIndex))
                     return AbortNode(state, "Failed to write payment request index");
 
                 LogPrint("cfund","New payment request %s\n",tx.GetHash().ToString());
@@ -3608,7 +3608,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     prequest.paymenthash = block.GetHash();
                     paymentRequestIndex.push_back(make_pair(prequest.hash, prequest));
                     nCreated -= block.vtx[0].vout[i].nValue;
-                    if (!pblocktree->UpdatePaymentRequestIndex(paymentRequestIndex))
+                    if (paymentRequestIndex.size() > 0 && !pblocktree->UpdatePaymentRequestIndex(paymentRequestIndex))
                         return AbortNode(state, "Failed to write payment request index");
                 }
             } else {
@@ -3703,11 +3703,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     }
 
     int64_t nTime56 = GetTimeMicros();
-    if (!pblocktree->UpdateCoinMintIndex(vZeroMints))
+    if (vZeroMints.size() > 0 && !pblocktree->UpdateCoinMintIndex(vZeroMints))
         return AbortNode(state, "Failed to write new zerocoin mints to index");
 
     int64_t nTime57 = GetTimeMicros();
-    if (!pblocktree->UpdateCoinSpendIndex(vZeroSpents))
+    if (vZeroSpents.size() > 0 && !pblocktree->UpdateCoinSpendIndex(vZeroSpents))
         return AbortNode(state, "Failed to write new zerocoin spends to index");
 
     // add this block to the view's block chain
@@ -4102,11 +4102,11 @@ bool static DisconnectTip(CValidationState& state, const CChainParams& chainpara
         vecPaymentRequestsToUpdate.push_back(make_pair(prequest.hash, prequest));
     }
 
-    if (!pblocktree->UpdatePaymentRequestIndex(vecPaymentRequestsToUpdate)) {
+    if (vecPaymentRequestsToUpdate.size() > 0 && !pblocktree->UpdatePaymentRequestIndex(vecPaymentRequestsToUpdate)) {
         AbortNode(state, "Failed to write payment request index");
     }
 
-    if (!pblocktree->UpdateProposalIndex(vecProposalsToUpdate)) {
+    if (vecProposalsToUpdate.size() > 0 && !pblocktree->UpdateProposalIndex(vecProposalsToUpdate)) {
         AbortNode(state, "Failed to write proposal index");
     }
 
@@ -4284,11 +4284,11 @@ void CountVotes(CValidationState& state, CBlockIndex *pindexNew, bool fUndo)
         vecPaymentRequestsToUpdate.push_back(make_pair(prequest.hash, prequest));
     }
 
-    if (!pblocktree->UpdatePaymentRequestIndex(vecPaymentRequestsToUpdate)) {
+    if (vecPaymentRequestsToUpdate.size() > 0 && !pblocktree->UpdatePaymentRequestIndex(vecPaymentRequestsToUpdate)) {
         AbortNode(state, "Failed to write payment request index");
     }
 
-    if (!pblocktree->UpdateProposalIndex(vecProposalsToUpdate)) {
+    if (vecProposalsToUpdate.size() > 0 && !pblocktree->UpdateProposalIndex(vecProposalsToUpdate)) {
         AbortNode(state, "Failed to write proposal index");
     }
     int64_t nTimeEnd3 = GetTimeMicros();
@@ -4476,11 +4476,11 @@ void CountVotes(CValidationState& state, CBlockIndex *pindexNew, bool fUndo)
 
     LogPrint("bench-cfund", "  - CFund update proposal status: %.2fms\n", (nTimeEnd5 - nTimeStart5) * 0.001);
 
-    if (!pblocktree->UpdatePaymentRequestIndex(vecPaymentRequestsToUpdate)) {
+    if (vecPaymentRequestsToUpdate.size() > 0 && !pblocktree->UpdatePaymentRequestIndex(vecPaymentRequestsToUpdate)) {
         AbortNode(state, "Failed to write payment request index");
     }
 
-    if (!pblocktree->UpdateProposalIndex(vecProposalsToUpdate)) {
+    if (vecProposalsToUpdate.size() > 0 && !pblocktree->UpdateProposalIndex(vecProposalsToUpdate)) {
         AbortNode(state, "Failed to write proposal index");
     }
 
@@ -6874,6 +6874,12 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         if(pfrom->nVersion < 70020 && IsCommunityFundEnabled(chainActive.Tip(), Params().GetConsensus()))
         {
             reason = "Community Fund has been enabled and you are using an old version of NavCoin, please update.";
+            fObsolete = true;
+        }
+
+        if(pfrom->nVersion < 70030 && IsZerocoinEnabled(chainActive.Tip(), Params().GetConsensus()))
+        {
+            reason = "ZeroCoin has been enabled and you are using an old version of NavCoin, please update.";
             fObsolete = true;
         }
 
