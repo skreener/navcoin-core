@@ -29,7 +29,7 @@ AccumulatorMap::AccumulatorMap(const libzerocoin::ZerocoinParams* params)
     this->params = params;
     for (auto& denom : zerocoinDenomList) {
         unique_ptr<Accumulator> uptr(new Accumulator(params, denom));
-        accumulatorMap.insert(make_pair(denom, std::move(uptr)));
+        mapAccumulators.insert(make_pair(denom, std::move(uptr)));
     }
     vBlockHashes = std::vector<uint256>();
 }
@@ -43,10 +43,10 @@ void AccumulatorMap::Reset()
 void AccumulatorMap::Reset(const libzerocoin::ZerocoinParams* params2)
 {
     this->params = params2;
-    accumulatorMap.clear();
+    mapAccumulators.clear();
     for (auto& denom : zerocoinDenomList) {
         unique_ptr<Accumulator> uptr(new Accumulator(params, denom));
-        accumulatorMap.insert(make_pair(denom, std::move(uptr)));
+        mapAccumulators.insert(make_pair(denom, std::move(uptr)));
     }
 }
 
@@ -58,9 +58,9 @@ bool AccumulatorMap::Accumulate(const PublicCoin& pubCoin, bool fSkipValidation)
         return false;
 
     if (fSkipValidation)
-        accumulatorMap.at(denom)->increment(pubCoin.getValue());
+        mapAccumulators.at(denom)->increment(pubCoin.getValue());
     else
-        accumulatorMap.at(denom)->accumulate(pubCoin);
+        mapAccumulators.at(denom)->accumulate(pubCoin);
 
     return true;
 }
@@ -68,7 +68,7 @@ bool AccumulatorMap::Accumulate(const PublicCoin& pubCoin, bool fSkipValidation)
 //Add a zerocoin to the accumulator of its denomination using directly its value
 bool AccumulatorMap::Increment(const CoinDenomination denom, const CBigNum& bnValue)
 {
-    accumulatorMap.at(denom)->increment(bnValue);
+    mapAccumulators.at(denom)->increment(bnValue);
     return true;
 }
 
@@ -77,7 +77,7 @@ CBigNum AccumulatorMap::GetValue(CoinDenomination denom)
 {
     if (denom == CoinDenomination::ZQ_ERROR)
         return CBigNum(0);
-    return accumulatorMap.at(denom)->getValue();
+    return mapAccumulators.at(denom)->getValue();
 }
 
 //Returns a specific accumulator
@@ -85,7 +85,7 @@ bool AccumulatorMap::Get(CoinDenomination denom, libzerocoin::Accumulator& accum
 {
     if (denom == CoinDenomination::ZQ_ERROR)
         return false;
-    accumulator.setValue(accumulatorMap.at(denom)->getValue());
+    accumulator.setValue(mapAccumulators.at(denom)->getValue());
     return true;
 }
 
@@ -97,8 +97,8 @@ uint256 AccumulatorMap::GetChecksum()
     //Prevent possible overflows from future changes to the list and forgetting to update this code
     assert(zerocoinDenomList.size() == 8);
     for (auto& denom : zerocoinDenomList) {
-        if(accumulatorMap.at(denom)) {
-            CBigNum bnValue = accumulatorMap.at(denom)->getValue();
+        if(mapAccumulators.at(denom)) {
+            CBigNum bnValue = mapAccumulators.at(denom)->getValue();
             uint32_t nCheckSum = GetChecksumFromBn(bnValue);
             nCombinedChecksum = nCombinedChecksum << 32 | nCheckSum;
         }
@@ -116,7 +116,7 @@ bool AccumulatorMap::Load(uint256 nChecksum)
 
     for(auto& it : toRead.second)
     {
-        accumulatorMap.at(it.first)->setValue(it.second);
+        mapAccumulators.at(it.first)->setValue(it.second);
     }
 
     vBlockHashes = toRead.first;
@@ -128,7 +128,7 @@ bool AccumulatorMap::Save(uint256 blockHashIn)
 {
     std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> vAcc;
 
-    for(auto& it : accumulatorMap)
+    for(auto& it : mapAccumulators)
     {
         vAcc.push_back(std::make_pair(it.first, it.second->getValue()));
     }
@@ -151,7 +151,7 @@ bool AccumulatorMap::Disconnect(uint256 blockHashIn)
 
     std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> vAcc;
 
-    for(auto& it : accumulatorMap)
+    for(auto& it : mapAccumulators)
     {
         vAcc.push_back(std::make_pair(it.first, it.second->getValue()));
     }
