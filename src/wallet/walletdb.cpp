@@ -950,7 +950,8 @@ DBErrors CWalletDB::ZapSelectTx(CWallet* pwallet, vector<uint256>& vTxHashIn, ve
     vector<uint256> vTxHash;
     vector<CWalletTx> vWtx;
     vector<CBigNum> vSerial;
-    DBErrors err = FindWalletTx(pwallet, vTxHash, vSerial, vWtx);
+    vector<CBigNum> vWitness;
+    DBErrors err = FindWalletTx(pwallet, vTxHash, vSerial, vWitness, vWtx);
     if (err != DB_LOAD_OK) {
         return err;
     }
@@ -984,6 +985,12 @@ DBErrors CWalletDB::ZapSelectTx(CWallet* pwallet, vector<uint256>& vTxHashIn, ve
             return DB_CORRUPT;
     }
 
+    // erase each coin from mapWitness
+    BOOST_FOREACH (CBigNum& bnVl, vWitness) {
+        if (!EraseWitnessData(bnVl))
+            return DB_CORRUPT;
+    }
+
     if (delerror) {
         return DB_CORRUPT;
     }
@@ -1013,8 +1020,8 @@ DBErrors CWalletDB::ZapWalletTx(CWallet* pwallet, vector<CWalletTx>& vWtx)
     }
 
     // erase each coin from mapWitness
-    BOOST_FOREACH (CBigNum& bnSn, vWitness) {
-        if (!EraseWitnessData(bnSn))
+    BOOST_FOREACH (CBigNum& bnVl, vWitness) {
+        if (!EraseWitnessData(bnVl))
             return DB_CORRUPT;
     }
 
