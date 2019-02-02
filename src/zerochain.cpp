@@ -85,7 +85,7 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const C
 
     {
         AssertLockHeld(cs_main);
-        if (!mapBlockIndex.count(accumulatorMap.GetBlockHash()))
+        if (accumulatorMap.GetBlockHash() == uint256() || !mapBlockIndex.count(accumulatorMap.GetBlockHash()))
             return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Internal error: Unknown block hash %s", accumulatorMap.GetBlockHash().GetHex())));
     }
 
