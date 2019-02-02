@@ -2462,43 +2462,11 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
     std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
     std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > addressUnspentIndex;
     std::vector<std::pair<CSpentIndexKey, CSpentIndexValue> > spentIndex;
-    std::vector<std::pair<CBigNum, PublicMintChainData> > vZeroMints;
-    std::vector<std::pair<CBigNum, uint256> > vZeroSpents;
 
     // undo transactions in reverse order
     for (int i = block.vtx.size() - 1; i >= 0; i--) {
         const CTransaction &tx = block.vtx[i];
         uint256 hash = tx.GetHash();
-
-        if (IsZerocoinEnabled(pindex->pprev, Params().GetConsensus()) && tx.HasZerocoinMint()) {
-            for (auto& out : tx.vout) {
-                if (!out.IsZerocoinMint())
-                    continue;
-
-                libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
-
-                if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, out, pubCoin, &state))
-                    return error("%s: error disconnecting zerocoin mint from %s", __func__, hash.ToString());
-                PublicMintChainData zeroMint;
-                if (pblocktree->ReadCoinMint(pubCoin.getValue(), zeroMint) && zeroMint.GetTxHash() == hash)
-                    vZeroMints.push_back(make_pair(pubCoin.getValue(), PublicMintChainData()));
-            }
-        }
-
-        if (IsZerocoinEnabled(pindex->pprev, Params().GetConsensus()) && tx.IsZerocoinSpend()) {
-            for (auto& in : tx.vin) {
-                if (!in.scriptSig.IsZerocoinSpend())
-                    continue;
-
-                libzerocoin::CoinSpend coinSpend(&Params().GetConsensus().Zerocoin_Params);
-
-                if (!TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, in, coinSpend))
-                    return error("%s: error disconnecting zerocoin spend from %s", __func__, hash.ToString());
-                uint256 txHash;
-                if (pblocktree->ReadCoinSpend(coinSpend.getCoinSerialNumber(), txHash) && txHash == hash)
-                    vZeroSpents.push_back(make_pair(coinSpend.getCoinSerialNumber(), tx.GetHash()));
-            }
-        }
 
         if(IsCommunityFundEnabled(pindex->pprev, Params().GetConsensus())) {
             bool fReducedQuorum = IsReducedCFundQuorumEnabled(pindexBestHeader, Params().GetConsensus());
@@ -2679,15 +2647,6 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
 
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
-
-    if (vZeroMints.size() > 0 && !pblocktree->UpdateCoinMintIndex(vZeroMints)){
-        return AbortNode(state, "Failed to write zerocoin mint index");
-    }
-
-    if (vZeroSpents.size() > 0 && !pblocktree->UpdateCoinSpendIndex(vZeroSpents)){
-        return AbortNode(state, "Failed to write zerocoin mint index");
-    }
-
 
     if (pfClean) {
         *pfClean = fClean;
@@ -4115,11 +4074,47 @@ bool static DisconnectTip(CValidationState& state, const CChainParams& chainpara
 
     CountVotes(state, pindexDelete->pprev, true);
 
+    std::vector<std::pair<CBigNum, PublicMintChainData> > vZeroMints;
+    std::vector<std::pair<CBigNum, uint256> > vZeroSpents;
+
     // Let wallets know transactions went from 1-confirmed to
     // 0-confirmed or conflicted:
     BOOST_FOREACH(const CTransaction &tx, block.vtx) {
         SyncWithWallets(tx, pindexDelete->pprev, NULL, false);
+
+        if (IsZerocoinEnabled(pindexDelete, Params().GetConsensus()) && tx.HasZerocoinMint()) {
+            for (auto& out : tx.vout) {
+                if (!out.IsZerocoinMint())
+                    continue;
+
+                libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
+
+                assert(TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, out, pubCoin, &state));
+
+                vZeroMints.push_back(make_pair(pubCoin.getValue(), PublicMintChainData()));
+            }
+        }
+
+        if (IsZerocoinEnabled(pindexDelete, Params().GetConsensus()) && tx.IsZerocoinSpend()) {
+            for (auto& in : tx.vin) {
+                if (!in.scriptSig.IsZerocoinSpend())
+                    continue;
+
+                libzerocoin::CoinSpend coinSpend(&Params().GetConsensus().Zerocoin_Params);
+
+                assert(TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, in, coinSpend));
+
+                vZeroSpents.push_back(make_pair(coinSpend.getCoinSerialNumber(), tx.GetHash()));
+            }
+        }
     }
+
+    if (vZeroMints.size() > 0 && !pblocktree->UpdateCoinMintIndex(vZeroMints))
+        return AbortNode(state, "Failed to write zerocoin mint index");
+
+    if (vZeroSpents.size() > 0 && !pblocktree->UpdateCoinSpendIndex(vZeroSpents))
+        return AbortNode(state, "Failed to write zerocoin mint index");
+
     return true;
 }
 
