@@ -110,6 +110,8 @@ uint256 AccumulatorMap::GetChecksum()
 //Load a checkpoint containing 8 32bit checksums of accumulator values.
 bool AccumulatorMap::Load(uint256 nChecksum)
 {
+    vBlockHashes.clear();
+
     std::pair<std::vector<uint256>,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>> toRead;
     if (!pblocktree->ReadZerocoinAccumulator(nChecksum, toRead))
         return error("%s : cannot read zerocoin accumulator checksum %s", __func__, nChecksum.ToString());
