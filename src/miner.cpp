@@ -316,7 +316,10 @@ CBlockTemplate* BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bo
         AccumulatorMap mapAccumulators(&Params().GetConsensus().Zerocoin_Params);
         std::vector<std::pair<CBigNum, uint256>> vDummy;
         if (pindexPrev->nAccumulatorChecksum != uint256())
-            mapAccumulators.Load(pindexPrev->nAccumulatorChecksum);
+            if (!mapAccumulators.Load(pindexPrev->nAccumulatorChecksum)) {
+                LogPrintf("%s : Could not load previous accumulator checksum %s\n", pindexPrev->nAccumulatorChecksum);
+                return NULL;
+            }
         CalculateAccumulatorChecksum(pblock, mapAccumulators, vDummy);
         pblock->nAccumulatorChecksum = mapAccumulators.GetChecksum();
     }
@@ -973,7 +976,8 @@ bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees, int64_t nPrivateF
               {
                   AccumulatorMap mapAccumulators(&Params().GetConsensus().Zerocoin_Params);
                   if (chainActive.Tip()->nAccumulatorChecksum != uint256())
-                      mapAccumulators.Load(chainActive.Tip()->nAccumulatorChecksum);
+                      if (mapAccumulators.Load(chainActive.Tip()->nAccumulatorChecksum))
+                          return error("%s : Could not load previous accumulator checksum %s", pindexPrev->nAccumulatorChecksum);
                   std::vector<std::pair<CBigNum, uint256>> vDummy;
                   CalculateAccumulatorChecksum(pblock, mapAccumulators, vDummy);
                   pblock->nAccumulatorChecksum = mapAccumulators.GetChecksum();
