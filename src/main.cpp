@@ -5471,8 +5471,8 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
         std::vector<std::pair<CBigNum, uint256>> vAccumulatedMints;
 
         if (pindexPrev->nAccumulatorChecksum != uint256())
-            if (mapAccumulators.Load(pindexPrev->nAccumulatorChecksum))
-                return state.DoS(10, error("ConnectBlock(): could not load previous accumulator checksum.", pindexPrev->nAccumulatorChecksum.ToString()),
+            if (!mapAccumulators.Load(pindexPrev->nAccumulatorChecksum))
+                return state.DoS(10, error("ConnectBlock(): could not load previous accumulator checksum %s", pindexPrev->nAccumulatorChecksum.ToString()),
                                  REJECT_INVALID, "bad-zero-accumulator-checksum");
 
         uint256 prevBlockAccumulatorChecksum = mapAccumulators.GetFirstBlockHash();
