@@ -3639,6 +3639,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (fJustCheck)
         return true;
 
+    int64_t nTime51 = GetTimeMicros();
     // Write undo information to disk
     if (pindex->GetUndoPos().IsNull() || !pindex->IsValid(BLOCK_VALID_SCRIPTS))
     {
@@ -3658,10 +3659,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         setDirtyBlockIndex.insert(pindex);
     }
 
+    int64_t nTime52 = GetTimeMicros();
     if (fTxIndex)
         if (!pblocktree->WriteTxIndex(vPos))
             return AbortNode(state, "Failed to write transaction index");
 
+    int64_t nTime53 = GetTimeMicros();
     if (fAddressIndex) {
         if (!pblocktree->WriteAddressIndex(addressIndex)) {
             return AbortNode(state, "Failed to write address index");
@@ -3672,10 +3675,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
     }
 
+    int64_t nTime54 = GetTimeMicros();
     if (fSpentIndex)
         if (!pblocktree->UpdateSpentIndex(spentIndex))
             return AbortNode(state, "Failed to write transaction index");
 
+    int64_t nTime55 = GetTimeMicros();
     if (fTimestampIndex) {
         unsigned int logicalTS = pindex->nTime;
         unsigned int prevLogicalTS = 0;
@@ -3697,17 +3702,21 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             return AbortNode(state, "Failed to write blockhash index");
     }
 
+    int64_t nTime56 = GetTimeMicros();
     if (!pblocktree->UpdateCoinMintIndex(vZeroMints))
         return AbortNode(state, "Failed to write new zerocoin mints to index");
 
+    int64_t nTime57 = GetTimeMicros();
     if (!pblocktree->UpdateCoinSpendIndex(vZeroSpents))
         return AbortNode(state, "Failed to write new zerocoin spends to index");
 
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
 
-    int64_t nTime55 = GetTimeMicros(); nTimeIndex += nTime55 - nTime5;
-    LogPrint("bench", "    - Index writing: %.2fms [%.2fs]\n", 0.001 * (nTime55 - nTime5), nTimeIndex * 0.000001);
+    int64_t nTime59 = GetTimeMicros(); nTimeIndex += nTime59 - nTime5;
+    LogPrint("bench", "    - Index writing: %.2fms (%.2fms/%.2fms/%.2fms/%.2fms/%.2fms/%.2fms/%.2fms) [%.2fs]\n", 0.001 * (nTime59 - nTime5), 0.001 * (nTime52 - nTime51),
+             0.001 * (nTime53 - nTime52), 0.001 * (nTime54 - nTime53), 0.001 * (nTime55 - nTime54), 0.001 * (nTime56 - nTime55), 0.001 * (nTime57 - nTime56), 0.001 * (nTime59 - nTime57),
+             nTimeIndex * 0.000001);
 
     // Watch for changes to the previous coinbase transaction.
     static uint256 hashPrevBestCoinBase;
@@ -3723,8 +3732,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         LogPrint("mempool", "Erased %d orphan tx included or conflicted by block\n", nErased);
     }
 
-    int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime55;
-    LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime55), nTimeCallbacks * 0.000001);
+    int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime59;
+    LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime59), nTimeCallbacks * 0.000001);
 
     return true;
 }
