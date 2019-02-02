@@ -212,12 +212,12 @@ bool CBlockTreeDB::EraseCoinSpend(CBigNum coinSerial) {
     return Erase(make_pair(DB_ZEROCOIN_SPENDINDEX, hash));
 }
 
-bool CBlockTreeDB::ReadZerocoinAccumulator(uint256 accumulatorChecksum, std::pair<std::vector<uint256>,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>> &accumulatorMap)
+bool CBlockTreeDB::ReadZerocoinAccumulator(uint256 accumulatorChecksum, std::pair<std::map<int, uint256>,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>> &accumulatorMap)
 {
     return Read(make_pair(DB_ZEROCOIN_ACCUMULATOR, accumulatorChecksum), accumulatorMap);
 }
 
-bool CBlockTreeDB::WriteZerocoinAccumulator(uint256 accumulatorChecksum, std::pair<std::vector<uint256>,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>> accumulatorMap)
+bool CBlockTreeDB::WriteZerocoinAccumulator(uint256 accumulatorChecksum, std::pair<std::map<int, uint256>,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>> accumulatorMap)
 {
     return Write(make_pair(DB_ZEROCOIN_ACCUMULATOR, accumulatorChecksum), accumulatorMap);
 }

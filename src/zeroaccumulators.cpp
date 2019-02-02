@@ -31,7 +31,6 @@ AccumulatorMap::AccumulatorMap(const libzerocoin::ZerocoinParams* params)
         unique_ptr<Accumulator> uptr(new Accumulator(params, denom));
         mapAccumulators.insert(make_pair(denom, std::move(uptr)));
     }
-    vBlockHashes = std::vector<uint256>();
 }
 
 //Reset each accumulator to its default state
@@ -110,9 +109,10 @@ uint256 AccumulatorMap::GetChecksum()
 //Load a checkpoint containing 8 32bit checksums of accumulator values.
 bool AccumulatorMap::Load(uint256 nChecksum)
 {
-    vBlockHashes.clear();
+    mapBlockHashes.clear();
 
-    std::pair<std::vector<uint256>,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>> toRead;
+    std::pair<std::map<int,uint256>,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>> toRead;
+
     if (!pblocktree->ReadZerocoinAccumulator(nChecksum, toRead))
         return error("%s : cannot read zerocoin accumulator checksum %s", __func__, nChecksum.ToString());
 
@@ -121,56 +121,52 @@ bool AccumulatorMap::Load(uint256 nChecksum)
         mapAccumulators.at(it.first)->setValue(it.second);
     }
 
-    vBlockHashes = toRead.first;
+    mapBlockHashes = toRead.first;
 
     return true;
 }
 
-bool AccumulatorMap::Save(uint256 blockHashIn)
+bool AccumulatorMap::Save(const std::pair<int, uint256>& blockIn)
 {
     std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> vAcc;
 
     for(auto& it : mapAccumulators)
-    {
         vAcc.push_back(std::make_pair(it.first, it.second->getValue()));
-    }
 
-    if (blockHashIn != uint256())
-        vBlockHashes.push_back(blockHashIn);
+    mapBlockHashes.insert(blockIn);
 
-    if (!pblocktree->WriteZerocoinAccumulator(GetChecksum(), std::make_pair(vBlockHashes, vAcc)))
+    if (!pblocktree->WriteZerocoinAccumulator(GetChecksum(), std::make_pair(mapBlockHashes, vAcc)))
         return error("%s : cannot write zerocoin accumulator checksum %s", __func__, GetChecksum().ToString());
 
-    LogPrintf("Wrote Accumulator Map %s for block %s (%d)\n", GetChecksum().ToString(), blockHashIn.ToString(), vBlockHashes.size());
-
     return true;
 }
 
-bool AccumulatorMap::Disconnect(uint256 blockHashIn)
+bool AccumulatorMap::Disconnect(const std::pair<int, uint256>& blockIn)
 {
-    if (vBlockHashes.size() == 0)
+    if (mapBlockHashes.size() == 0 || !mapBlockHashes.count(blockIn.first))
         return false;
 
+    if (mapBlockHashes.size() == 1 && mapBlockHashes.at(blockIn.first) == blockIn.second)
+    {
+        if (!pblocktree->EraseZerocoinAccumulator(GetChecksum()))
+            return error("%s : cannot erase zerocoin accumulator checksum %s", __func__, GetChecksum().ToString());
+        else
+            return true;
+    }
+
     std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>> vAcc;
+
+    vAcc.clear();
 
     for(auto& it : mapAccumulators)
     {
         vAcc.push_back(std::make_pair(it.first, it.second->getValue()));
     }
 
-    if (vBlockHashes[vBlockHashes.size()-1] == blockHashIn) {
-        vBlockHashes.pop_back();
-        if (vBlockHashes.size() > 0) {
-            if (!pblocktree->WriteZerocoinAccumulator(GetChecksum(), std::make_pair(vBlockHashes, vAcc)))
-                return error("%s : cannot write zerocoin accumulator checksum %s", __func__, GetChecksum().ToString());
-            else
-                LogPrintf("Disconnected block %s from Accumulator Map %s (%d)\n", blockHashIn.ToString(), GetChecksum().ToString(), vBlockHashes.size());
-        } else if (!pblocktree->EraseZerocoinAccumulator(GetChecksum())) {
-            return error("%s : cannot erase zerocoin accumulator checksum %s", __func__, GetChecksum().ToString());
-        }
-    }
+    mapBlockHashes.erase(blockIn.first);
 
-    LogPrintf("Erased Accumulator Map %s\n", GetChecksum().ToString());
+    if (!pblocktree->WriteZerocoinAccumulator(GetChecksum(), std::make_pair(mapBlockHashes, vAcc)))
+        return error("%s : cannot write zerocoin accumulator checksum %s", __func__, GetChecksum().ToString());
 
     return true;
 }

@@ -19,7 +19,7 @@ class AccumulatorMap
 private:
     const libzerocoin::ZerocoinParams* params;
     std::map<libzerocoin::CoinDenomination, std::unique_ptr<libzerocoin::Accumulator> > mapAccumulators;
-    std::vector<uint256> vBlockHashes;
+    std::map<int, uint256> mapBlockHashes;
 public:
     AccumulatorMap(const libzerocoin::ZerocoinParams* params);
     bool Accumulate(const libzerocoin::PublicCoin& pubCoin, bool fSkipValidation = false);
@@ -27,13 +27,13 @@ public:
     CBigNum GetValue(libzerocoin::CoinDenomination denom);
     bool Get(libzerocoin::CoinDenomination denom, libzerocoin::Accumulator& accumulator);
     uint256 GetChecksum();
-    uint256 GetBlockHash() { return vBlockHashes.size() > 0 ? vBlockHashes[vBlockHashes.size()-1] : uint256(); }
-    uint256 GetFirstBlockHash() { return vBlockHashes.size() > 0 ? vBlockHashes[0] : uint256(); }
+    uint256 GetBlockHash() { return mapBlockHashes.size() == 0 ? uint256() : mapBlockHashes.rbegin()->second; }
+    uint256 GetFirstBlockHash() { return mapBlockHashes.size() == 0 ? uint256() : mapBlockHashes.begin()->second; }
     void Reset();
     void Reset(const libzerocoin::ZerocoinParams* params2);
     bool Load(uint256 nCheckpoint);
-    bool Save(uint256 blockHashIn = 0);
-    bool Disconnect(uint256 blockHashIn);
+    bool Save(const std::pair<int, uint256>& blockIn);
+    bool Disconnect(const std::pair<int, uint256>& blockIn);
 };
 
 bool CalculateAccumulatorChecksum(const CBlock* block, AccumulatorMap& accumulatorMap, std::vector<std::pair<CBigNum, uint256>>& vPubCoins);
