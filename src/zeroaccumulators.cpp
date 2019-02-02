@@ -138,6 +138,8 @@ bool AccumulatorMap::Save(uint256 blockHashIn)
     if (!pblocktree->WriteZerocoinAccumulator(GetChecksum(), std::make_pair(vBlockHashes, vAcc)))
         return error("%s : cannot write zerocoin accumulator checksum %s", __func__, GetChecksum().ToString());
 
+    LogPrintf("Wrote Accumulator Map %s for block %s\n", GetChecksum().ToString(), blockHashIn.ToString());
+
     return true;
 }
 
@@ -158,10 +160,14 @@ bool AccumulatorMap::Disconnect(uint256 blockHashIn)
         if (vBlockHashes.size() > 0) {
             if (!pblocktree->WriteZerocoinAccumulator(GetChecksum(), std::make_pair(vBlockHashes, vAcc)))
                 return error("%s : cannot write zerocoin accumulator checksum %s", __func__, GetChecksum().ToString());
+            else
+                LogPrintf("Disconnected block %s from Accumulator Map %s\n", blockHashIn.ToString(), GetChecksum().ToString());
         } else if (!pblocktree->EraseZerocoinAccumulator(GetChecksum())) {
             return error("%s : cannot erase zerocoin accumulator checksum %s", __func__, GetChecksum().ToString());
         }
     }
+
+    LogPrintf("Erased Accumulator Map %s\n", GetChecksum().ToString());
 
     return true;
 }
