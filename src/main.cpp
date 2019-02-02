@@ -2215,7 +2215,7 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
             assert(coins);
 
             // If prev is coinbase, check that it's matured
-            if ((coins->IsCoinBase() || coins->IsCoinStake()) && !GetBoolArg("-testnet",false)) {
+            if (coins->IsCoinBase() || coins->IsCoinStake()) {
                 if (nSpendHeight - coins->nHeight < COINBASE_MATURITY && nSpendHeight - coins->nHeight > 0)
                     return state.Invalid(false,
                         REJECT_INVALID, "bad-txns-premature-spend-of-coinbase",
@@ -5316,16 +5316,14 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
 
     if((block.nVersion & nCFundVersionMask) != nCFundVersionMask && IsCommunityFundEnabled(pindexPrev,Params().GetConsensus()))
         return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
-                           "rejected no cfund block");
+                             "rejected no cfund block");
 
-    if(!GetBoolArg("-testnet",false)) {
-        if((block.nVersion & nCFundAccVersionMask) != nCFundAccVersionMask && IsCommunityFundAccumulationEnabled(pindexPrev,Params().GetConsensus(), true))
-            return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
-                               "rejected no cfund accumulation block");
-        if((block.nVersion & nColdStakingVersionMask) != nColdStakingVersionMask && IsColdStakingEnabled(pindexPrev,Params().GetConsensus()))
-            return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
-                               "rejected no cold-staking block");
-    }
+    if((block.nVersion & nCFundAccVersionMask) != nCFundAccVersionMask && IsCommunityFundAccumulationEnabled(pindexPrev,Params().GetConsensus(), true))
+        return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
+                             "rejected no cfund accumulation block");
+    if((block.nVersion & nColdStakingVersionMask) != nColdStakingVersionMask && IsColdStakingEnabled(pindexPrev,Params().GetConsensus()))
+        return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
+                             "rejected no cold-staking block");
 
     if((block.nVersion & nCFundAccSpreadVersionMask) != nCFundAccSpreadVersionMask && IsCommunityFundAccumulationSpreadEnabled(pindexPrev,Params().GetConsensus()))
         return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),

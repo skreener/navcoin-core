@@ -397,7 +397,6 @@ void CoinControlDialog::viewItemChanged(QTreeWidgetItem* item, int column)
     if (column == COLUMN_CHECKBOX && item->text(COLUMN_TXHASH).length() == 64) // transaction hash is 64 characters (this means its a child node, so its not a parent node in tree mode)
     {
         COutPoint outpt(uint256S(item->text(COLUMN_TXHASH).toStdString()), item->text(COLUMN_VOUT_INDEX).toUInt());
-        LogPrintf("%s\n", outpt.ToString());
 
         if (item->checkState(COLUMN_CHECKBOX) == Qt::Unchecked)
             (CoinControlDialog::fPrivate ? zeroCoinControl : coinControl)->UnSelect(outpt);
