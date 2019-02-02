@@ -32,9 +32,9 @@ public:
     void Reset();
     void Reset(const libzerocoin::ZerocoinParams* params2);
     bool Load(uint256 nCheckpoint);
-    bool Save(uint256 blockHashIn);
+    bool Save(uint256 blockHashIn = 0);
     bool Disconnect(uint256 blockHashIn);
 };
 
-bool CalculateAccumulatorChecksum(const CBlock* block, AccumulatorMap& mapAccumulators, std::vector<std::pair<CBigNum, uint256>>& vPubCoins);
+bool CalculateAccumulatorChecksum(const CBlock* block, AccumulatorMap& accumulatorMap, std::vector<std::pair<CBigNum, uint256>>& vPubCoins);
 #endif //NAV_ACCUMULATORMAP_H
