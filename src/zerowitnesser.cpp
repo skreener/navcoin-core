@@ -73,7 +73,7 @@ void NavCoinWitnesser(const CChainParams& chainparams)
                     LOCK(cs_main);
                     bool fReset = false;
 
-                    if(!mapBlockIndex.count(accumulatorMap.GetBlockHash()))
+                    if(accumulatorMap.GetBlockHash() == uint256() || !mapBlockIndex.count(accumulatorMap.GetBlockHash()))
                     {
                         if (witnessData.GetCount() == 0)
                             continue;
@@ -90,7 +90,7 @@ void NavCoinWitnesser(const CChainParams& chainparams)
                             continue;
                         }
 
-                        if(!mapBlockIndex.count(accumulatorMap.GetBlockHash()))
+                        if(accumulatorMap.GetBlockHash() == uint256() || !mapBlockIndex.count(accumulatorMap.GetBlockHash()))
                         {
                             witnessData.Reset();
                             {
@@ -192,7 +192,7 @@ void NavCoinWitnesser(const CChainParams& chainparams)
                     if (!prevAccumulatorMap.Load(witnessData.GetPrevChecksum()))
                         fReset = true;
 
-                    if(!fReset && !mapBlockIndex.count(prevAccumulatorMap.GetBlockHash()))
+                    if(!fReset && (prevAccumulatorMap.GetBlockHash() == uint256() || !mapBlockIndex.count(prevAccumulatorMap.GetBlockHash())))
                         fReset = true;
 
                     if (fReset) {

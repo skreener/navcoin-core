@@ -186,6 +186,9 @@ bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript&
             if (fStake && nCalculatedFirstBlocksAgo < COINBASE_MATURITY)
                 fFoundWitness = false;
 
+            if (blockHash == uint256() || firstBlockHash == uint256())
+                fFoundWitness = false;
+
         }
     }
 

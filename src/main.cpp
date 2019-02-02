@@ -3993,7 +3993,10 @@ bool static DisconnectTip(CValidationState& state, const CChainParams& chainpara
             return AbortNode(state, "Failed to write height of first Zerocoin block");
 
     if(pindexDelete->nAccumulatorChecksum != uint256() && (block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN) {
-        if(!pblocktree->EraseZerocoinAccumulator(pindexDelete->nAccumulatorChecksum))
+        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
+        if(!accumulatorMap.Load(pindexDelete->nAccumulatorChecksum))
+            return AbortNode(state, "Could not read accumulator checksum");
+        if(!accumulatorMap.Disconnect(pindexDelete->GetBlockHash()))
             return AbortNode(state, "Failed to remove zerocoin accumulator checksum");
     }
 
@@ -5475,9 +5478,6 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
                 return state.DoS(10, error("ConnectBlock(): could not load previous accumulator checksum %s", pindexPrev->nAccumulatorChecksum.ToString()),
                                  REJECT_INVALID, "bad-zero-accumulator-checksum");
 
-        uint256 prevBlockAccumulatorChecksum = mapAccumulators.GetFirstBlockHash();
-        uint256 prevAccumulatorChecksum = mapAccumulators.GetChecksum();
-
         if(!CalculateAccumulatorChecksum(&block, mapAccumulators, vAccumulatedMints))
             return state.DoS(10, error("ConnectBlock(): could not verify zerocoin accumulator checksum."),
                              REJECT_INVALID, "bad-zero-accumulator-checksum");
@@ -5488,7 +5488,7 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
                                        mapAccumulators.GetChecksum().ToString(), block.GetBlockHeader().nAccumulatorChecksum.ToString()),
                              REJECT_INVALID, "bad-zero-accumulator-checksum");
         }
-        else if(!mapAccumulators.Save(prevAccumulatorChecksum == mapAccumulators.GetChecksum() ? prevBlockAccumulatorChecksum : block.GetHash(), block.GetHash()))
+        else if(!mapAccumulators.Save(block.GetHash()))
         {
             return AbortNode(state, "Failed to write zerocoin accumulator checksum");
         }
@@ -9253,7 +9253,7 @@ bool CheckProofOfStake(CBlockIndex* pindexPrev, const CTransaction& tx, const CC
         if (!accumulatorMap.Load(coinSpend.getAccumulatorChecksum()))
             return error("%s : Could not load coin spend accumulator checksum", __func__);
 
-        if (!mapBlockIndex.count(accumulatorMap.GetFirstBlockHash()))
+        if (accumulatorMap.GetFirstBlockHash() == uint256() || !mapBlockIndex.count(accumulatorMap.GetFirstBlockHash()))
             return error("%s : Accumulator checksum does not refer a valid block", __func__);
 
         CBlockIndex* pindex = mapBlockIndex[accumulatorMap.GetFirstBlockHash()];
