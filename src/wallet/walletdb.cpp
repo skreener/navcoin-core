@@ -866,7 +866,7 @@ bool CWalletDB::EraseWitnessData(const CBigNum& bnSerialNumber)
     return Erase(std::make_pair(std::string("witness"), bnSerialNumber));
 }
 
-DBErrors CWalletDB::FindWalletTx(CWallet* pwallet, vector<uint256>& vTxHash, vector<CBigNum>& vSerial, vector<CWalletTx>& vWtx)
+DBErrors CWalletDB::FindWalletTx(CWallet* pwallet, vector<uint256>& vTxHash, vector<CBigNum>& vSerial, vector<CBigNum>& vWitness, vector<CWalletTx>& vWtx)
 {
     pwallet->vchDefaultKey = CPubKey();
     bool fNoncriticalErrors = false;
@@ -922,6 +922,11 @@ DBErrors CWalletDB::FindWalletTx(CWallet* pwallet, vector<uint256>& vTxHash, vec
                 ssKey >> bnSerial;
                 ssValue >> out;
                 vSerial.push_back(bnSerial);
+            }
+            else if (strType == "witness") {
+                CBigNum bnCoinValue;
+                ssKey >> bnCoinValue;
+                vWitness.push_back(bnCoinValue);
             }
         }
         pcursor->close();
@@ -990,7 +995,8 @@ DBErrors CWalletDB::ZapWalletTx(CWallet* pwallet, vector<CWalletTx>& vWtx)
     // build list of wallet TXs
     vector<uint256> vTxHash;
     vector<CBigNum> vSerial;
-    DBErrors err = FindWalletTx(pwallet, vTxHash, vSerial, vWtx);
+    vector<CBigNum> vWitness;
+    DBErrors err = FindWalletTx(pwallet, vTxHash, vSerial, vWitness, vWtx);
     if (err != DB_LOAD_OK)
         return err;
 
@@ -1003,6 +1009,12 @@ DBErrors CWalletDB::ZapWalletTx(CWallet* pwallet, vector<CWalletTx>& vWtx)
     // erase each serial from mapSerial
     BOOST_FOREACH (CBigNum& bnSn, vSerial) {
         if (!EraseSerialNumber(bnSn))
+            return DB_CORRUPT;
+    }
+
+    // erase each coin from mapWitness
+    BOOST_FOREACH (CBigNum& bnSn, vWitness) {
+        if (!EraseWitnessData(bnSn))
             return DB_CORRUPT;
     }
 
