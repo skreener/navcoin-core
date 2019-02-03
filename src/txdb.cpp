@@ -602,6 +602,8 @@ bool CBlockTreeDB::LoadBlockIndexGuts(boost::function<CBlockIndex*(const uint256
                                           = diskindex.mapZerocoinSupply;
                 pindexNew->nAccumulatedPrivateFee
                                           = diskindex.nAccumulatedPrivateFee;
+                pindexNew->nAccumulatedPublicFee
+                                          = diskindex.nAccumulatedPublicFee;
 
                 pcursor->Next();
             } else {

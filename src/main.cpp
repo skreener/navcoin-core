@@ -1204,9 +1204,11 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state)
     set<CScript> vZeroInOutPoints;
     BOOST_FOREACH(const CTxIn& txin, tx.vin)
     {
-        if ((!txin.scriptSig.IsZerocoinSpend() && vInOutPoints.count(txin.prevout)) ||
-                (txin.scriptSig.IsZerocoinSpend() && vZeroInOutPoints.count(txin.scriptSig)))
-            return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputs-duplicate");
+        if (!txin.scriptSig.IsZerocoinSpend() && vInOutPoints.count(txin.prevout))
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputs-duplicate", false, strprintf("Duplicated input %s", txin.prevout.ToString()));
+
+        if (txin.scriptSig.IsZerocoinSpend() && vZeroInOutPoints.count(txin.scriptSig))
+            return state.DoS(100, false, REJECT_INVALID, "bad-zero-txns-inputs-duplicate");
 
         if ((tx.IsZerocoinSpend() && !txin.scriptSig.IsZerocoinSpend())
                 || (!tx.IsZerocoinSpend() && txin.scriptSig.IsZerocoinSpend())) {
@@ -2825,6 +2827,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     pindex->nMoneySupply = pindex->pprev != NULL ? pindex->pprev->nMoneySupply : 0;
     pindex->nAccumulatedPrivateFee
                          = pindex->pprev != NULL ? pindex->pprev->nAccumulatedPrivateFee : 0;
+    pindex->nAccumulatedPublicFee
+                         = pindex->pprev != NULL ? pindex->pprev->nAccumulatedPublicFee : 0;
 
     if(pindex->pprev != NULL)
     {
@@ -3294,8 +3298,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 return error("ConnectBlock(): Coinbase timestamp doesn't meet protocol (tx=%d vs block=%d)",
                              tx.nTime, block.nTime);
         }
-        if(tx.IsZerocoinSpend() && !tx.IsCoinStake() && !tx.IsCoinBase()) {
-            pindex->nAccumulatedPrivateFee += view.GetValueIn(tx) - tx.GetValueOut();
+        if(!tx.IsCoinStake() && !tx.IsCoinBase()) {
+            if (tx.IsZerocoinSpend()) {
+                pindex->nAccumulatedPrivateFee += view.GetValueIn(tx) - tx.GetValueOut();
+            } else {
+                pindex->nAccumulatedPublicFee += view.GetValueIn(tx) - tx.GetValueOut();
+            }
         }
 
         nCreated += tx.GetValueOut() - view.GetValueIn(tx);;
@@ -3480,15 +3488,15 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         if (!(block.vtx[1].IsZerocoinSpend()) && !TransactionGetCoinAge(const_cast<CTransaction&>(block.vtx[1]), nCoinAge, view))
             return error("ConnectBlock() : %s unable to get coin age for coinstake", block.vtx[1].GetHash().ToString());
 
-        if (block.vtx[1].IsZerocoinSpend())
-            nFees += pindex->nAccumulatedPrivateFee;
-
-        int64_t nCalculatedStakeReward = GetProofOfStakeReward(pindex->nHeight, nCoinAge, nFees, pindex->pprev);
+        int64_t nCalculatedStakeReward = GetProofOfStakeReward(pindex->nHeight, nCoinAge, block.vtx[1].IsZerocoinSpend() ? pindex->nAccumulatedPrivateFee : pindex->nAccumulatedPublicFee, pindex->pprev);
 
         if (nStakeReward > nCalculatedStakeReward)
             return state.DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%d vs calculated=%d)", nStakeReward, nCalculatedStakeReward));
 
-        pindex->nAccumulatedPrivateFee = 0;
+        if (block.vtx[1].IsZerocoinSpend())
+            pindex->nAccumulatedPrivateFee = 0;
+        else
+            pindex->nAccumulatedPublicFee = 0;
     }
 
     int64_t nTime26 = GetTimeMicros();
@@ -3512,7 +3520,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     int64_t nTime3 = GetTimeMicros(); nTimeConnect += nTime3 - nTime2;
     LogPrint("bench", "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs]\n", (unsigned)block.vtx.size(), 0.001 * (nTime3 - nTime26), 0.001 * (nTime3 - nTime26) / block.vtx.size(), nInputs <= 1 ? 0 : 0.001 * (nTime3 - nTime26) / (nInputs-1), nTimeConnect * 0.000001);
-    CAmount nPOWBlockReward = nFees + GetBlockSubsidy(pindex->nHeight, chainparams.GetConsensus());
+    CAmount nPOWBlockReward = pindex->nAccumulatedPublicFee + GetBlockSubsidy(pindex->nHeight, chainparams.GetConsensus());
+
+    if (block.IsProofOfWork()) {
+        pindex->nAccumulatedPublicFee = 0;
+    }
 
     // Coinbase output can only include outputs with value if:
     //  - its a POW block, POW blocks are allowed and the value meets the consensus rules, or
