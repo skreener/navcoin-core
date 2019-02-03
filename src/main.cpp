@@ -3694,6 +3694,33 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime59;
     LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime59), nTimeCallbacks * 0.000001);
 
+    if(IsZerocoinEnabled(pindex->pprev, Params().GetConsensus()))
+    {
+        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
+        std::vector<std::pair<CBigNum, uint256>> vAccumulatedMints;
+
+        if (pindex->pprev->nAccumulatorChecksum != uint256())
+            if (!accumulatorMap.Load(pindex->pprev->nAccumulatorChecksum))
+                return state.DoS(10, error("ContextualCheckBlock(): could not load previous accumulator checksum %s", pindex->pprev->nAccumulatorChecksum.ToString()),
+                                 REJECT_INVALID, "bad-zero-accumulator-checksum");
+
+        if(!CalculateAccumulatorChecksum(&block, accumulatorMap, vAccumulatedMints))
+            return state.DoS(10, error("ContextualCheckBlock(): could not verify zerocoin accumulator checksum."),
+                             REJECT_INVALID, "bad-zero-accumulator-checksum");
+
+        std::pair<int, uint256> blockLocator = std::make_pair(pindex->nHeight, pindex->GetBlockHash());
+        if (block.GetBlockHeader().nAccumulatorChecksum != accumulatorMap.GetChecksum())
+        {
+            return state.DoS(10, error("ContextualCheckBlock(): block accumulator checksum is not valid (valid=%d vs sent=%d)",
+                                       accumulatorMap.GetChecksum().ToString(), block.GetBlockHeader().nAccumulatorChecksum.ToString()),
+                             REJECT_INVALID, "bad-zero-accumulator-checksum");
+        } else if(!accumulatorMap.Save(blockLocator))
+            return AbortNode(state, "Failed to write zerocoin accumulator checksum");
+    }
+
+    int64_t nTime7 = GetTimeMicros();
+    LogPrint("bench", "    - Accumulator checksum: %.2fms\n", 0.001 * (nTime7 - nTime6));
+
     return true;
 }
 
@@ -5462,30 +5489,6 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
     // failed).
     if (GetBlockWeight(block) > MAX_BLOCK_WEIGHT) {
         return state.DoS(100, error("ContextualCheckBlock(): weight limit failed"), REJECT_INVALID, "bad-blk-weight");
-    }
-
-    if(IsZerocoinEnabled(pindexPrev, Params().GetConsensus()))
-    {
-        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
-        std::vector<std::pair<CBigNum, uint256>> vAccumulatedMints;
-
-        if (pindexPrev->nAccumulatorChecksum != uint256())
-            if (!accumulatorMap.Load(pindexPrev->nAccumulatorChecksum))
-                return state.DoS(10, error("ConnectBlock(): could not load previous accumulator checksum %s", pindexPrev->nAccumulatorChecksum.ToString()),
-                                 REJECT_INVALID, "bad-zero-accumulator-checksum");
-
-        if(!CalculateAccumulatorChecksum(&block, accumulatorMap, vAccumulatedMints))
-            return state.DoS(10, error("ConnectBlock(): could not verify zerocoin accumulator checksum."),
-                             REJECT_INVALID, "bad-zero-accumulator-checksum");
-
-        std::pair<int, uint256> blockLocator = std::make_pair(pindexPrev->nHeight+1,block.GetBlockHeader().GetHash());
-        if (block.GetBlockHeader().nAccumulatorChecksum != accumulatorMap.GetChecksum())
-        {
-            return state.DoS(10, error("ConnectBlock(): block accumulator checksum is not valid (valid=%d vs sent=%d)",
-                                       accumulatorMap.GetChecksum().ToString(), block.GetBlockHeader().nAccumulatorChecksum.ToString()),
-                             REJECT_INVALID, "bad-zero-accumulator-checksum");
-        } else if(!accumulatorMap.Save(blockLocator))
-            return AbortNode(state, "Failed to write zerocoin accumulator checksum");
     }
 
     return true;
