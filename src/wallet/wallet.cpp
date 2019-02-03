@@ -376,6 +376,31 @@ void CWallet::AvailableZeroCoinsForStaking(vector<COutput>& vCoins, unsigned int
                 if (!fFoundWitness && GetArg("-enablewitnesser",true))
                     continue;
 
+                vector<vector<unsigned char>> vSolutions;
+                txnouttype whichType;
+                if (!Solver(pcoin->vout[i].scriptPubKey, whichType, vSolutions)) {
+                    continue;
+                }
+
+                assert(whichType==TX_ZEROCOIN);
+
+                CPubKey p(vSolutions[0]); CBigNum c(vSolutions[1]);
+                CKey zk; libzerocoin::BlindingCommitment bc;
+
+                if(!GetZeroKey(zk))
+                    break;
+
+                if(!GetBlindingCommitment(bc))
+                    break;
+
+                libzerocoin::PrivateCoin privateCoin = libzerocoin::PrivateCoin(&Params().GetConsensus().Zerocoin_Params, pubCoin.getDenomination(), zk, p, bc, c, pubCoin.getPaymentId(), false);
+
+                uint256 txHash;
+                int nHeight;
+
+                if(pblocktree->ReadCoinSpend(privateCoin.getPublicSerialNumber(bc), txHash) && IsTransactionInChain(txHash, pcoinsTip, nHeight))
+                    continue;
+
                 if (!(IsSpent(wtxid,i)) && IsMine(pcoin->vout[i]) && pcoin->vout[i].nValue >= nMinimumInputValue && pcoin->vout[i].IsZerocoinMint()){
                     vCoins.push_back(COutput(pcoin, i, nDepth, true,
                                            ((IsMine(pcoin->vout[i]) & (ISMINE_SPENDABLE_PRIVATE)) != ISMINE_NO &&
