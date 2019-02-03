@@ -14,6 +14,8 @@
 using namespace libzerocoin;
 using namespace std;
 
+std::map<uint256, std::pair<std::map<int, uint256>,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>>> mapCacheAccumulatorMap;
+
 uint32_t GetChecksumFromBn(const CBigNum &bnValue)
 {
     CDataStream ss(SER_GETHASH, 0);
@@ -113,8 +115,8 @@ bool AccumulatorMap::Load(uint256 nChecksum)
 
     std::pair<std::map<int,uint256>,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>> toRead;
 
-    if (mapAccumulatorMap.count(nChecksum)) {
-        toRead = mapAccumulatorMap[nChecksum];
+    if (mapCacheAccumulatorMap.count(nChecksum)) {
+        toRead = mapCacheAccumulatorMap[nChecksum];
     } else f (!pblocktree->ReadZerocoinAccumulator(nChecksum, toRead))
         return error("%s : cannot read zerocoin accumulator checksum %s", __func__, nChecksum.ToString());
 
@@ -137,7 +139,7 @@ bool AccumulatorMap::Save(const std::pair<int, uint256>& blockIn)
 
     mapBlockHashes.insert(blockIn);
 
-    mapAccumulatorMap[GetChecksum()] = std::make_pair(mapBlockHashes, vAcc);
+    mapCacheAccumulatorMap[GetChecksum()] = std::make_pair(mapBlockHashes, vAcc);
 
     if (!pblocktree->WriteZerocoinAccumulator(GetChecksum(), std::make_pair(mapBlockHashes, vAcc)))
         return error("%s : cannot write zerocoin accumulator checksum %s", __func__, GetChecksum().ToString());
@@ -168,7 +170,7 @@ bool AccumulatorMap::Disconnect(const std::pair<int, uint256>& blockIn)
     }
 
     mapBlockHashes.erase(blockIn.first);
-    mapAccumulatorMap.erase(GetChecksum());
+    mapCacheAccumulatorMap.erase(GetChecksum());
 
     if (!pblocktree->WriteZerocoinAccumulator(GetChecksum(), std::make_pair(mapBlockHashes, vAcc)))
         return error("%s : cannot write zerocoin accumulator checksum %s", __func__, GetChecksum().ToString());

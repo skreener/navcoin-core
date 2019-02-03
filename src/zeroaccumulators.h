@@ -13,8 +13,6 @@ class CBlock;
 class CBlockIndex;
 class CChain;
 
-std::map<uint256, std::pair<std::map<int, uint256>,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>>> mapCacheAccumulatorMap;
-
 //A map with an accumulator for each denomination
 class AccumulatorMap
 {
