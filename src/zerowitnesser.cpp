@@ -160,9 +160,7 @@ void NavCoinWitnesser(const CChainParams& chainparams)
                         else
                             fRecover = true;
 
-                        if (accumulatorMap.Load(pindex->nAccumulatorChecksum))
-                            assert(witnessData.GetAccumulator().getValue() == accumulatorMap.GetValue(witnessData.GetPublicCoin().getDenomination()));
-                        else
+                        if (!accumulatorMap.Load(pindex->nAccumulatorChecksum) || witnessData.GetAccumulator().getValue() != accumulatorMap.GetValue(witnessData.GetPublicCoin().getDenomination()));
                             fRecover = true;
 
                         if (fRecover)
