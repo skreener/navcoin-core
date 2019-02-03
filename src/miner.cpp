@@ -897,7 +897,7 @@ bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees, int64_t nPrivateF
   {
       int64_t nSearchInterval = nBestHeight+1 > 0 ? 1 : nSearchTime - nLastCoinStakeSearchTime;
       CBigNum zerokey;
-      if (wallet.CreateCoinStake(wallet, pblock->nBits, nSearchInterval, nFees, chainActive.Tip()->nAccumulatedPrivateFee+nPrivateFees, txCoinStake, key, zerokey))
+      if (wallet.CreateCoinStake(wallet, pblock->nBits, nSearchInterval, chainActive.Tip()->nAccumulatedPublicFee+nFees, chainActive.Tip()->nAccumulatedPrivateFee+nPrivateFees, txCoinStake, key, zerokey))
       {
 
           if (txCoinStake.nTime >= chainActive.Tip()->GetPastTimeLimit()+1)

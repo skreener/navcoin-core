@@ -237,6 +237,7 @@ public:
     uint256 nAccumulatorChecksum;
     CAmount nMoneySupply;
     CAmount nAccumulatedPrivateFee;
+    CAmount nAccumulatedPublicFee;;
 
     std::map<libzerocoin::CoinDenomination, int64_t> mapZerocoinSupply;
 
@@ -272,6 +273,7 @@ public:
         nMoneySupply = 0;
         nAccumulatorChecksum = 0;
         nAccumulatedPrivateFee = 0;
+        nAccumulatedPublicFee = 0;
     }
 
     CBlockIndex()
@@ -555,6 +557,7 @@ public:
             READWRITE(nAccumulatorChecksum);
             READWRITE(mapZerocoinSupply);
             READWRITE(nAccumulatedPrivateFee);
+            READWRITE(nAccumulatedPublicFee);
         }
     }
 
