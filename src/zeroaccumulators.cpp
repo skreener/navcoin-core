@@ -117,7 +117,7 @@ bool AccumulatorMap::Load(uint256 nChecksum)
 
     if (mapCacheAccumulatorMap.count(nChecksum)) {
         toRead = mapCacheAccumulatorMap[nChecksum];
-    } else f (!pblocktree->ReadZerocoinAccumulator(nChecksum, toRead))
+    } else if (!pblocktree->ReadZerocoinAccumulator(nChecksum, toRead))
         return error("%s : cannot read zerocoin accumulator checksum %s", __func__, nChecksum.ToString());
 
     for(auto& it : toRead.second)
