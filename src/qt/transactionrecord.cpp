@@ -103,6 +103,11 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                             sub.paymentId = it.second;
                             break;
                         }
+                    for (auto &it: wtx.vOrderForm)
+                        if (it.first == "Amount") {
+                            sub.credit = stoll(it.second);
+                            break;
+                        }
                     fZero = true;
                 }
                 if(txout.scriptPubKey.IsCommunityFundContribution())
@@ -206,6 +211,14 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     sub.type = TransactionRecord::SendToOther;
                     sub.address = mapValue["to"];
                 }
+                CAmount nValue = txout.nValue;
+                /* Add fee to first output */
+                if (nTxFee > 0)
+                {
+                    nValue += nTxFee;
+                    nTxFee = 0;
+                }
+                sub.debit = -nValue;
 
                 if(txout.scriptPubKey.IsZerocoinMint())
                 {
@@ -215,6 +228,11 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                             sub.paymentId = it.second;
                             break;
                         }
+                    for (auto &it: wtx.vOrderForm)
+                        if (it.first == "Amount") {
+                            sub.debit = stoll(it.second);
+                            break;
+                        }
                 }
 
                 if(txout.scriptPubKey.IsCommunityFundContribution())
@@ -222,14 +240,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     sub.type = TransactionRecord::CFund;
                 }
 
-                CAmount nValue = txout.nValue;
-                /* Add fee to first output */
-                if (nTxFee > 0)
-                {
-                    nValue += nTxFee;
-                    nTxFee = 0;
-                }
-                sub.debit = -nValue;
+
 
                 parts.append(sub);
             }

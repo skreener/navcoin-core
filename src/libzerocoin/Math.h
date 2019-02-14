@@ -17,7 +17,7 @@
 
 #include "bignum.h"
 
-bool VectorExponent(CBigNum a, std::vector<CBigNum> a_exp, CBigNum b, std::vector<CBigNum> b_exp, CBigNum &out)
+bool VectorExponent(CBigNum &out, CBigNum a, std::vector<CBigNum> a_exp, CBigNum b, std::vector<CBigNum> b_exp, CBigNum mod)
 {
     if (a_exp.size() != b_exp.size())
         return false;
@@ -25,29 +25,14 @@ bool VectorExponent(CBigNum a, std::vector<CBigNum> a_exp, CBigNum b, std::vecto
     out.Nullify();
     for (unsigned int i = 0; i < a_exp.size(); i++)
     {
-        out *= a.pow(a_exp[i]);
-        out *= b.pow(b_exp[i]);
-    }
-    return true;
-}
-
-/* Compute a custom vector-scalar commitment */
-bool VectorVectorExponent(std::vector<CBigNum> a, std::vector<CBigNum> a_exp, std::vector<CBigNum> b, std::vector<CBigNum> b_exp, CBigNum &out)
-{
-    if (!(a.size() == b.size() && a_exp.size() == b_exp.size() && a.size() == b_exp.size()))
-        return false;
-
-    out.Nullify();
-    for (unsigned int i = 0; i < a.size(); i++)
-    {
-        out *= a[i].pow(a_exp[i]);
-        out *= b[i].pow(b_exp[i]);
+        out = a.pow(a_exp[i]);
+        out = b.pow(b_exp[i]);
     }
     return true;
 }
 
 /* Compute a custom vector-scalar commitment mod */
-bool VectorVectorExponentMod(std::vector<CBigNum> a, std::vector<CBigNum> a_exp, std::vector<CBigNum> b, std::vector<CBigNum> b_exp, CBigNum mod, CBigNum &out)
+bool VectorVectorExponentMod(CBigNum &out, std::vector<CBigNum> a, std::vector<CBigNum> a_exp, std::vector<CBigNum> b, std::vector<CBigNum> b_exp, CBigNum mod)
 {
     if (!(a.size() == b.size() && a_exp.size() == b_exp.size() && a.size() == b_exp.size()))
         return false;
@@ -55,15 +40,29 @@ bool VectorVectorExponentMod(std::vector<CBigNum> a, std::vector<CBigNum> a_exp,
     out.Nullify();
     for (unsigned int i = 0; i < a.size(); i++)
     {
-        out *= a[i].pow_mod(a_exp[i], mod);
-        out *= b[i].pow_mod(b_exp[i], mod);
+        out = (out * a[i].pow_mod(a_exp[i], mod)) % mod;
+        out = (out * b[i].pow_mod(b_exp[i], mod)) % mod;
+    }
+    return true;
+}
+
+bool VectorVectorExponentMod(CBigNum &out, std::vector<CBigNum> a, std::vector<CBigNum> a_exp, std::vector<CBigNum> b_exp, CBigNum mod)
+{
+    if (!(a.size() > (a_exp.size() + b_exp.size()) && a_exp.size() == b_exp.size()))
+        return false;
+
+    out.Nullify();
+    for (unsigned int i = 0; i < a_exp.size(); i++)
+    {
+        out = (out * a[i].pow_mod(a_exp[i], mod)) % mod;
+        out = (out * a[i+a_exp.size()].pow_mod(b_exp[i], mod)) % mod;
     }
     return true;
 }
 
 
 /* Given a scalar, construct a vector of powers */
-bool VectorPowers(CBigNum x, unsigned int size, std::vector<CBigNum>& out)
+bool VectorPowers(std::vector<CBigNum>& out, CBigNum x, unsigned int size)
 {
     out.clear();
     out.resize(size);
@@ -81,7 +80,7 @@ bool VectorPowers(CBigNum x, unsigned int size, std::vector<CBigNum>& out)
 }
 
 /* Given two scalar arrays, construct the inner product */
-bool InnerProduct(std::vector<CBigNum> a, std::vector<CBigNum> b, CBigNum& out)
+bool InnerProduct(CBigNum& out, std::vector<CBigNum> a, std::vector<CBigNum> b, CBigNum mod)
 {
     if (a.size() != b.size())
         return false;
@@ -89,13 +88,13 @@ bool InnerProduct(std::vector<CBigNum> a, std::vector<CBigNum> b, CBigNum& out)
     out.Nullify();
     for (unsigned int i = 0; i < a.size(); i++)
     {
-        out += a[i] * b[i];
+        out = (out + a[i].mul_mod(b[i], mod)) % mod;
     }
     return true;
 }
 
 /* Given two scalar arrays, construct the Hadamard product */
-bool Hadamard(std::vector<CBigNum> a, std::vector<CBigNum> b, std::vector<CBigNum>& out)
+bool Hadamard(std::vector<CBigNum>& out, std::vector<CBigNum> a, std::vector<CBigNum> b, CBigNum mod)
 {
     if (a.size() != b.size())
         return false;
@@ -107,7 +106,7 @@ bool Hadamard(std::vector<CBigNum> a, std::vector<CBigNum> b, std::vector<CBigNu
 
     for (unsigned int i = 0; i < a.size(); i++)
     {
-        temp[i] = a[i] * b[i];
+        temp[i] = a[i].mul_mod(b[i], mod);
     }
 
     out = temp;
@@ -116,7 +115,7 @@ bool Hadamard(std::vector<CBigNum> a, std::vector<CBigNum> b, std::vector<CBigNu
 }
 
 /* Add two vectors */
-bool VectorAdd(std::vector<CBigNum> a, std::vector<CBigNum> b, std::vector<CBigNum>& out)
+bool VectorAdd(std::vector<CBigNum>& out, std::vector<CBigNum> a, std::vector<CBigNum> b, CBigNum mod)
 {
     if (a.size() != b.size())
         return false;
@@ -128,7 +127,7 @@ bool VectorAdd(std::vector<CBigNum> a, std::vector<CBigNum> b, std::vector<CBigN
 
     for (unsigned int i = 0; i < a.size(); i++)
     {
-        temp[i] = a[i] + b[i];
+        temp[i] = (a[i] + b[i]) % mod;
     }
 
     out = temp;
@@ -137,7 +136,7 @@ bool VectorAdd(std::vector<CBigNum> a, std::vector<CBigNum> b, std::vector<CBigN
 }
 
 /* Subtract two vectors */
-bool VectorSubtract(std::vector<CBigNum> a, std::vector<CBigNum> b, std::vector<CBigNum>& out)
+bool VectorSubtract(std::vector<CBigNum>& out, std::vector<CBigNum> a, std::vector<CBigNum> b)
 {
     if (a.size() != b.size())
         return false;
@@ -158,13 +157,13 @@ bool VectorSubtract(std::vector<CBigNum> a, std::vector<CBigNum> b, std::vector<
 }
 
 /* Multiply a scalar and a vector */
-bool VectorScalar(std::vector<CBigNum> a, CBigNum x, std::vector<CBigNum>& out)
+bool VectorScalar(std::vector<CBigNum>& out, std::vector<CBigNum> a, CBigNum x, CBigNum mod)
 {
     std::vector<CBigNum> temp(out.size());
 
     for (unsigned int i = 0; i < a.size(); i++)
     {
-        temp[i] = a[i] * x;
+        temp[i] = a[i].mul_mod(x, mod);
     }
 
     out = temp;
@@ -173,13 +172,13 @@ bool VectorScalar(std::vector<CBigNum> a, CBigNum x, std::vector<CBigNum>& out)
 }
 
 /* Exponentiate a vector by a scalar */
-bool VectorScalarExp(std::vector<CBigNum> a, CBigNum x, std::vector<CBigNum>& out)
+bool VectorScalarExp(std::vector<CBigNum>& out, std::vector<CBigNum> a, CBigNum x, CBigNum mod)
 {
     std::vector<CBigNum> temp(a.size());
 
     for (unsigned int i = 0; i < a.size(); i++)
     {
-        temp[i] = a[i].pow(x);
+        temp[i] = a[i].pow_mod(x, mod);
     }
 
     out = temp;
@@ -188,7 +187,7 @@ bool VectorScalarExp(std::vector<CBigNum> a, CBigNum x, std::vector<CBigNum>& ou
 }
 
 /* Compute the slice of a scalar vector */
-bool VectorSlice(std::vector<CBigNum> a, unsigned int start, unsigned int stop, std::vector<CBigNum>& out)
+bool VectorSlice(std::vector<CBigNum>& out, std::vector<CBigNum> a, unsigned int start, unsigned int stop)
 {
     if (start > a.size() || stop > a.size())
         return false;

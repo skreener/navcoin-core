@@ -79,14 +79,14 @@ void PolynomialCommitment::Commit(const CBN_vector tpolynomial)
 
     // Commit to the top-half of the matrix
     for(int i=0; i<m1; i++)
-        Tf[i] = pedersenCommitment(params,fVector[i],fBlinders[i]);
+        Tf[i] = pedersenCommitment(&params->serialNumberSoKCommitmentGroup, fVector[i], fBlinders[i]);
 
     // Commit to the bottom-half of the matrix
     for(int i=0; i<m2; i++)
-        Trho[i] = pedersenCommitment(params,rhoVector[i],rhoBlinders[i]);
+        Trho[i] = pedersenCommitment(&params->serialNumberSoKCommitmentGroup, rhoVector[i], rhoBlinders[i]);
 
     // Commit to the blinders
-    U = pedersenCommitment(params,u,uBlinder);
+    U = pedersenCommitment(&params->serialNumberSoKCommitmentGroup, u, uBlinder);
 }
 
 
@@ -146,7 +146,7 @@ bool PolynomialCommitment::Verify(CBigNum& value)
     // @return      bool  :  result of the verification
 
     // Commit to tbar with randomness taubar
-    CBigNum C = pedersenCommitment(params, tbar, taubar);
+    CBigNum C = pedersenCommitment(&params->serialNumberSoKCommitmentGroup, tbar, taubar);
 
     // Find powers of commitments to Tf, Trho and U
     CBigNum test = CBigNum(1);

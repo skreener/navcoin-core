@@ -9,7 +9,6 @@
 
 #include "amount.h"
 #include "libzerocoin/bignum.h"
-#include "libzerocoin/Denominations.h"
 #include "streams.h"
 #include "tinyformat.h"
 #include "ui_interface.h"

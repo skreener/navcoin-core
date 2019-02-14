@@ -483,7 +483,7 @@ bool TransactionSignatureCreator::CreateCoinSpend(const libzerocoin::ZerocoinPar
             return false;
         }
 
-        libzerocoin::PrivateCoin privateCoin(params, pubCoin.getDenomination(), zk, pubCoin.getPubKey(), bc, pubCoin.getValue(), pubCoin.getPaymentId());
+        libzerocoin::PrivateCoin privateCoin(params, zk, pubCoin.getPubKey(), bc, pubCoin.getValue(), pubCoin.getPaymentId(), pubCoin.getAmount());
 
         if (!privateCoin.isValid()) {
             strError = "The private coin did not validate";

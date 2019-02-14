@@ -391,11 +391,13 @@ libzerocoin_libnavcoin_zerocoin_a_SOURCES = \
   libzerocoin/bignum.h \
   libzerocoin/bignum.cpp \
   libzerocoin/Bulletproofs.h \
+  libzerocoin/bulletproof_rangeproof.cpp \
+  libzerocoin/bulletproof_rangeproof.h \
   libzerocoin/Coin.h \
   libzerocoin/CoinSpend.h \
   libzerocoin/Commitment.h \
-  libzerocoin/Denominations.h \
   libzerocoin/Keys.h \
+  libzerocoin/Math.h \
   libzerocoin/ParamGeneration.h \
   libzerocoin/Params.h \
   libzerocoin/PolynomialCommitment.h \
@@ -412,7 +414,6 @@ libzerocoin_libnavcoin_zerocoin_a_SOURCES = \
   libzerocoin/Coin.cpp \
   libzerocoin/CoinSpend.cpp \
   libzerocoin/Commitment.cpp \
-  libzerocoin/Denominations.cpp \
   libzerocoin/Keys.cpp \
   libzerocoin/ParamGeneration.cpp \
   libzerocoin/Params.cpp \

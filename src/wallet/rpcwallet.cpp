@@ -446,8 +446,10 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
 
-    if (address.type() == typeid(libzerocoin::CPrivateAddress))
+    if (address.type() == typeid(libzerocoin::CPrivateAddress)) {
         wtxNew.vOrderForm.push_back(make_pair("Message", boost::get<libzerocoin::CPrivateAddress>(address).GetPaymentId()));
+        wtxNew.vOrderForm.push_back(make_pair("Amount", to_string(boost::get<libzerocoin::CPrivateAddress>(address).GetAmount())));
+    }
 
     if (!pwalletMain->CommitTransaction(wtxNew, reservekey))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of the wallet and coins were spent in the copy but not marked as spent here.");
@@ -539,6 +541,7 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
 
     if (dest.type() == typeid(libzerocoin::CPrivateAddress)) {
         boost::get<libzerocoin::CPrivateAddress>(dest).SetPaymentId(wtx.mapValue["comment"]);
+        boost::get<libzerocoin::CPrivateAddress>(dest).SetAmount(nAmount);
     }
 
     SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, strDZeel, false);
@@ -632,6 +635,7 @@ UniValue privatesendtoaddress(const UniValue& params, bool fHelp)
 
     if (dest.type() == typeid(libzerocoin::CPrivateAddress)) {
         boost::get<libzerocoin::CPrivateAddress>(dest).SetPaymentId(wtx.mapValue["comment"]);
+        boost::get<libzerocoin::CPrivateAddress>(dest).SetAmount(nAmount);
     }
 
     SendMoney(dest, nAmount, fSubtractFeeFromAmount, wtx, strDZeel, true);

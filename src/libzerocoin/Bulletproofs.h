@@ -9,6 +9,7 @@
 * @copyright  Copyright 2018 The PIVX Developers
 * @license    This project is released under the MIT license.
 **/
+// Copyright (c) 2018-2019 The NavCoin Core developers
 
 #pragma once
 #include "Coin.h"
@@ -21,10 +22,10 @@ namespace libzerocoin {
 class Bulletproofs {
 public:
     Bulletproofs(){};
-    Bulletproofs(const ZerocoinParams* ZCp): pi(2, CBN_vector()), params(ZCp) {};
+    Bulletproofs(const IntegerGroupParams* IGp): pi(2, CBN_vector()), params(IGp) {};
 
     void Prove(const CBN_matrix ck_inner_g, const CBigNum P_inner_prod, const CBigNum z, const CBN_matrix a_sets, const CBN_matrix b_sets, const CBigNum y);
-    bool Verify(const ZerocoinParams* ZCp, const CBN_matrix ck_inner_g, const CBN_matrix ck_inner_h, CBigNum A, CBigNum B, CBigNum z);
+    bool Verify(const IntegerGroupParams* IGp, const CBN_matrix ck_inner_g, const CBN_matrix ck_inner_h, CBigNum A, CBigNum B, CBigNum z);
 
     CBN_matrix pi;                      // shifted commitments to a_sets and b_sets
     CBN_matrix final_a, final_b;        // final witness
@@ -34,7 +35,7 @@ public:
 
 
 private:
-    const ZerocoinParams* params;
+    const IntegerGroupParams* params;
     CBN_matrix splitIntoSets(const CBN_matrix ck_inner_g, const int s);
     pair<CBigNum, CBigNum> findcLcR(const CBN_matrix a_sets, const CBN_matrix b_sets);
     pair<CBigNum, CBigNum> firstPreChallengeShifts(const CBN_matrix g_sets, const CBigNum u_inner, const CBN_matrix a_sets, const CBN_matrix b_sets, CBigNum cL, CBigNum cR, const CBN_vector ymPowers);

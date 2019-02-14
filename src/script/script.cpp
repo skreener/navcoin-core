@@ -337,7 +337,7 @@ bool CScript::ExtractVote(uint256 &hash, bool &vote) const
     return true;
 }
 
-bool CScript::ExtractZerocoinMintData(CPubKey &zkey, std::vector<unsigned char> &commitment, std::vector<unsigned char> &paymentid) const
+bool CScript::ExtractZerocoinMintData(CPubKey &zkey, std::vector<unsigned char> &commitment, std::vector<unsigned char> &paymentid, std::vector<unsigned char> &obfamount, std::vector<unsigned char> &amcommitment) const
 {
     if(!IsZerocoinMint())
         return false;
@@ -346,8 +346,9 @@ bool CScript::ExtractZerocoinMintData(CPubKey &zkey, std::vector<unsigned char> 
     if(!key.IsValid())
         return false;
     zkey = key;
-    commitment = std::vector<unsigned char>(this->begin()+4+(*this)[1],this->begin()+4+(*this)[1]+(*this)[3+(*this)[1]]);
-    paymentid = std::vector<unsigned char>(this->begin()+5+(*this)[1]+(*this)[3+(*this)[1]],this->end());
+    commitment = std::vector<unsigned char>(this->begin()+4+(*this)[1], this->begin()+4+(*this)[1]+(*this)[3+(*this)[1]]);
+    amcommitment = std::vector<unsigned char>(this->begin()+5+(*this)[1]+(*this)[3+(*this)[1]], this->begin()+5+(*this)[1]+(*this)[3+(*this)[1]+(*this)[3+(*this)[1]]]);
+    paymentid = std::vector<unsigned char>(this->begin()+6+(*this)[1]+(*this)[3+(*this)[1]+(*this)[3+(*this)[1]]], this->end());
     return true;
 }
 

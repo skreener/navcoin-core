@@ -313,15 +313,12 @@ CBlockTemplate* BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bo
 
     if(!fProofOfStake && IsZerocoinEnabled(pindexPrev, Params().GetConsensus()))
     {
-        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
+        Accumulator ac(&Params().GetConsensus().Zerocoin_Params);
         std::vector<std::pair<CBigNum, uint256>> vDummy;
         if (pindexPrev->nAccumulatorChecksum != uint256())
-            if (!accumulatorMap.Load(pindexPrev->nAccumulatorChecksum)) {
-                LogPrintf("%s : Could not load previous accumulator checksum %s\n",  __func__, pindexPrev->nAccumulatorChecksum.ToString());
-                return NULL;
-            }
-        CalculateAccumulatorChecksum(pblock, accumulatorMap, vDummy);
-        pblock->nAccumulatorChecksum = accumulatorMap.GetChecksum();
+            ac.setValue(pindexPrev->nAccumulatorChecksum);
+        CalculateAccumulatorChecksum(pblock, ac, vDummy);
+        pblock->nAccumulatorChecksum = ac.getValue().getuint256();
     }
 
     if (pFees)
@@ -974,13 +971,12 @@ bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees, int64_t nPrivateF
 
               if(IsZerocoinEnabled(chainActive.Tip(), Params().GetConsensus()))
               {
-                  AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
+                  Accumulator ac(&Params().GetConsensus().Zerocoin_Params);
                   if (chainActive.Tip()->nAccumulatorChecksum != uint256())
-                      if (!accumulatorMap.Load(chainActive.Tip()->nAccumulatorChecksum))
-                          return error("%s : Could not load previous accumulator checksum %s", __func__, chainActive.Tip()->nAccumulatorChecksum.ToString());
+                      ac.setValue(chainActive.Tip()->nAccumulatorChecksum);
                   std::vector<std::pair<CBigNum, uint256>> vDummy;
-                  CalculateAccumulatorChecksum(pblock, accumulatorMap, vDummy);
-                  pblock->nAccumulatorChecksum = accumulatorMap.GetChecksum();
+                  CalculateAccumulatorChecksum(pblock, ac, vDummy);
+                  pblock->nAccumulatorChecksum = ac.getValue().getuint256();
               }
 
               pblock->vtx[0].UpdateHash();

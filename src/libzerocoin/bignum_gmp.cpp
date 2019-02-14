@@ -32,15 +32,16 @@ CBigNum::~CBigNum()
 }
 
 //CBigNum(char n) is not portable.  Use 'signed char' or 'unsigned char'.
-CBigNum::CBigNum(signed char n)      { mpz_init(bn); if (n >= 0) mpz_set_ui(bn, n); else mpz_set_si(bn, n); }
-CBigNum::CBigNum(short n)            { mpz_init(bn); if (n >= 0) mpz_set_ui(bn, n); else mpz_set_si(bn, n); }
-CBigNum::CBigNum(int n)              { mpz_init(bn); if (n >= 0) mpz_set_ui(bn, n); else mpz_set_si(bn, n); }
-CBigNum::CBigNum(long n)             { mpz_init(bn); if (n >= 0) mpz_set_ui(bn, n); else mpz_set_si(bn, n); }
-CBigNum::CBigNum(long long n)        { mpz_init(bn); mpz_set_si(bn, n); }
-CBigNum::CBigNum(unsigned char n)    { mpz_init(bn); mpz_set_ui(bn, n); }
-CBigNum::CBigNum(unsigned short n)   { mpz_init(bn); mpz_set_ui(bn, n); }
-CBigNum::CBigNum(unsigned int n)     { mpz_init(bn); mpz_set_ui(bn, n); }
-CBigNum::CBigNum(unsigned long n)    { mpz_init(bn); mpz_set_ui(bn, n); }
+CBigNum::CBigNum(signed char n)       { mpz_init(bn); if (n >= 0) mpz_set_ui(bn, n); else mpz_set_si(bn, n); }
+CBigNum::CBigNum(short n)             { mpz_init(bn); if (n >= 0) mpz_set_ui(bn, n); else mpz_set_si(bn, n); }
+CBigNum::CBigNum(int n)               { mpz_init(bn); if (n >= 0) mpz_set_ui(bn, n); else mpz_set_si(bn, n); }
+CBigNum::CBigNum(long n)              { mpz_init(bn); if (n >= 0) mpz_set_ui(bn, n); else mpz_set_si(bn, n); }
+CBigNum::CBigNum(long long n)         { mpz_init(bn); mpz_set_si(bn, n); }
+CBigNum::CBigNum(unsigned char n)     { mpz_init(bn); mpz_set_ui(bn, n); }
+CBigNum::CBigNum(unsigned short n)    { mpz_init(bn); mpz_set_ui(bn, n); }
+CBigNum::CBigNum(unsigned int n)      { mpz_init(bn); mpz_set_ui(bn, n); }
+CBigNum::CBigNum(unsigned long n)     { mpz_init(bn); mpz_set_ui(bn, n); }
+CBigNum::CBigNum(unsigned long long n){ mpz_init(bn); mpz_set_ui(bn, n); }
 
 CBigNum::CBigNum(uint256 n) { mpz_init(bn); setuint256(n); }
 

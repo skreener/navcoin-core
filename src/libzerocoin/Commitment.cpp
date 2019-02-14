@@ -30,6 +30,14 @@ Commitment::Commitment(const IntegerGroupParams* p, const CBigNum& bnSerial, con
         params->h.pow_mod(this->randomness, params->modulus), params->modulus));
 }
 
+Commitment::Commitment(const IntegerGroupParams* p, const CBigNum& bnSerial, const CBigNum& bnRandomness, const CBigNum& extra): params(p), contents(bnSerial) {
+    this->randomness = bnRandomness;
+    this->extra = extra;
+    this->commitmentValue = (params->g.pow_mod(this->contents, params->modulus).mul_mod(
+        params->h.pow_mod(this->randomness, params->modulus), params->modulus)).mul_mod(
+        params->g2.pow_mod(this->extra, params->modulus), params->modulus);
+}
+
 const CBigNum& Commitment::getCommitmentValue() const {
 	return this->commitmentValue;
 }
@@ -40,6 +48,10 @@ const CBigNum& Commitment::getRandomness() const {
 
 const CBigNum& Commitment::getContents() const {
 	return this->contents;
+}
+
+const CBigNum& Commitment::getExtra() const {
+  return this->extra;
 }
 
 //CommitmentProofOfKnowledge class

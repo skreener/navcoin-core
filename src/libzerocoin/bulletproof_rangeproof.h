@@ -10,11 +10,12 @@
 * @copyright  Copyright 2018 alex v
 * @license    This project is released under the MIT license.
 **/
-// Copyright (c) 2018 The NavCoin Core developers
+// Copyright (c) 2018-2019 The NavCoin Core developers
 
 #ifndef BULLETPROOF_RANGEPROOF_H
 #define BULLETPROOF_RANGEPROOF_H
 
+#include "Bulletproofs.h"
 #include "Params.h"
 #include "Math.h"
 
@@ -22,15 +23,14 @@
 
 #include <cmath>
 
-namespace Bulletproof
-{
-
-class Rangeproof
+class BulletproofRangeproof
 {
 public:
-    Rangeproof(const libzerocoin::IntegerGroupParams* in_p, unsigned int in_nexp) : p(in_p), nexp(in_nexp) { n = pow(2,nexp); }
+    BulletproofRangeproof(const libzerocoin::IntegerGroupParams* in_p, unsigned int in_nexp) : p(in_p), bulletproof(in_p), nexp(in_nexp) { n = pow(2,nexp); }
 
     bool Prove(std::vector<CBigNum> v, std::vector<CBigNum> gamma, unsigned int logM);
+
+    bool Verify();
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
@@ -50,6 +50,7 @@ public:
 
 private:
     const libzerocoin::IntegerGroupParams* p;
+    const libzerocoin::Bulletproofs bulletproof;
 
     unsigned int nexp;
     unsigned int n;
@@ -69,7 +70,5 @@ private:
 
 };
 
-
-}
 
 #endif // BULLETPROOF_RANGEPROOF_H

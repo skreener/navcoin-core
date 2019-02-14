@@ -9,6 +9,8 @@
 * @copyright  Copyright 2018 The PIVX Developers
 * @license    This project is released under the MIT license.
 **/
+// Copyright (c) 2019 The NavCoin Core developers
+
 #pragma once
 
 namespace libzerocoin {
@@ -74,20 +76,19 @@ inline void random_vector_mod(CBN_vector& v, const CBigNum& modulus)
         v[i] = CBigNum::randBignum(modulus);
 }
 
-inline CBigNum pedersenCommitment(const ZerocoinParams* ZCparams,
+inline CBigNum pedersenCommitment(const IntegerGroupParams* IGparams,
         const CBN_vector& g_blinders, const CBigNum& h_blinder)
 {
-    const IntegerGroupParams* SoKgroup = &(ZCparams->serialNumberSoKCommitmentGroup);
-    const CBigNum p = SoKgroup->modulus;
+    const CBigNum p = IGparams->modulus;
 
     // assert len(gelements) >= len(g_blinders)
-    if( SoKgroup->gis.size() < g_blinders.size() )
+    if( IGparams->gis.size() < g_blinders.size() )
         throw std::runtime_error("len(gelements) < len(g_blinders) in pedersenCommit");
 
     CBigNum C = CBigNum(1);
     for(unsigned int i=0; i<g_blinders.size(); i++)
-        C = C.mul_mod((SoKgroup->gis[i]).pow_mod(g_blinders[i],p),p);
-    C = C.mul_mod((SoKgroup->h).pow_mod(h_blinder,p),p);
+        C = C.mul_mod((IGparams->gis[i]).pow_mod(g_blinders[i],p),p);
+    C = C.mul_mod((IGparams->h).pow_mod(h_blinder,p),p);
 
     return C;
 }
@@ -102,11 +103,10 @@ inline void binary_lookup(std::vector<int>& bits, const int i)
 */
 // Initialize sets for inner product
 inline std::pair<CBN_matrix, CBN_matrix> ck_inner_gen(
-        const ZerocoinParams* ZCp, const CBigNum& y)
+        const IntegerGroupParams* IGp, const CBigNum& y)
 {
-    const IntegerGroupParams* SoKgroup = &(ZCp->serialNumberSoKCommitmentGroup);
-    const CBigNum q = SoKgroup->groupOrder;
-    const CBigNum p = SoKgroup->modulus;
+    const CBigNum q = IGp->groupOrder;
+    const CBigNum p = IGp->modulus;
     CBN_matrix ck_inner_g(1, CBN_vector());
     CBN_matrix ck_inner_h(1, CBN_vector());
 
@@ -114,22 +114,21 @@ inline std::pair<CBN_matrix, CBN_matrix> ck_inner_gen(
     CBigNum ym = y.pow_mod(-ZKP_M, q);
 
     for(int j=0; j<(ZKP_N+ZKP_PADS); j++) {
-        ck_inner_g[0].push_back(SoKgroup->gis[j]);
+        ck_inner_g[0].push_back(IGp->gis[j]);
         exp = exp.mul_mod(ym,q);
-        ck_inner_h[0].push_back(SoKgroup->gis[j].pow_mod(exp,p));
+        ck_inner_h[0].push_back(IGp->gis[j].pow_mod(exp,p));
     }
 
     return make_pair(ck_inner_g, ck_inner_h);
 }
 
 // Initialize sets for inner product - for batching
-inline CBN_matrix ck_inner_gen(const ZerocoinParams* ZCp)
+inline CBN_matrix ck_inner_gen(const IntegerGroupParams* IGp)
 {
-    const IntegerGroupParams* SoKgroup = &(ZCp->serialNumberSoKCommitmentGroup);
     CBN_matrix ck_inner_g(1, CBN_vector());
 
     for(int j=0; j<(ZKP_N+ZKP_PADS); j++)
-        ck_inner_g[0].push_back(SoKgroup->gis[j]);
+        ck_inner_g[0].push_back(IGp->gis[j]);
 
     return ck_inner_g;
 }
@@ -168,6 +167,26 @@ inline void printMatrix(const CBN_matrix w)
     }
     printVector(w[w.size()-1]);
     std::cout << "]";
+}
+
+inline CBigNum XorObfuscate(std::string pid, CBigNum key, unsigned int len) {
+    std::string truncatedPid = pid.substr(0,len);
+    std::vector<unsigned char> vPid;
+
+    vPid.push_back(truncatedPid.length());
+    vPid.insert(vPid.end(), truncatedPid.begin(), truncatedPid.end());
+
+    CBigNum bnRand = CBigNum::RandKBitBigum((len-vPid.size())*8);
+    std::vector<unsigned char> vRand = bnRand.getvch();
+
+    vRand.resize(32-vPid.size());
+    vPid.insert(vPid.end(), vRand.begin(), vRand.end());
+
+    CBigNum bnPid;
+
+    bnPid.setvch(vPid);
+
+    return bnPid.Xor(key);
 }
 
 } /* namespace libzerocoin */

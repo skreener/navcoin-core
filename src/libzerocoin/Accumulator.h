@@ -22,7 +22,12 @@ namespace libzerocoin {
 
 class Accumulator {
 public:
-    Accumulator(const AccumulatorAndProofParams* p): params(p) { }
+    Accumulator(const AccumulatorAndProofParams* p): params(p) {
+        if (!(params->initialized)) {
+            throw std::runtime_error("Invalid parameters for accumulator");
+        }
+        this->value = this->params->accumulatorBase;
+    }
 
     /**
      * @brief      Construct an Accumulator from a stream.
@@ -47,9 +52,7 @@ public:
      * @param d the denomination of coins we are accumulating
      * @throw     Zerocoin exception in case of invalid parameters
      **/
-    Accumulator(const AccumulatorAndProofParams* p, const CoinDenomination d);
-
-    Accumulator(const ZerocoinParams* p, const CoinDenomination d, CBigNum bnValue = 0);
+    Accumulator(const ZerocoinParams* p, CBigNum bnValue = 0);
 
     /**
      * Accumulate a coin into the accumulator. Validates
@@ -63,7 +66,6 @@ public:
     void accumulate(const PublicCoin &coin);
     void increment(const CBigNum& bnValue);
 
-    CoinDenomination getDenomination() const;
     /** Get the accumulator result
      *
      * @return a CBigNum containing the result.
@@ -71,7 +73,7 @@ public:
     const CBigNum& getValue() const;
 
     void setValue(CBigNum bnValue);
-
+    void setValue(uint256 value);
 
     // /**
     //  * Used to set the accumulator value
@@ -92,12 +94,10 @@ public:
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
         READWRITE(value);
-        READWRITE(denomination);
     }
 private:
     const AccumulatorAndProofParams* params;
     CBigNum value;
-    CoinDenomination denomination;
 };
 
 /**A witness that a PublicCoin is in the accumulation of a set of coins

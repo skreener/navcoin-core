@@ -105,18 +105,18 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     cf.push_back(Pair("locked",         ValueFromAmount(chainActive.Tip()->nCFLocked)));
     obj.push_back(Pair("communityfund", cf));
     obj.push_back(Pair("publicmoneysupply", ValueFromAmount(chainActive.Tip()->nMoneySupply)));
-    UniValue privateMoneySupply(UniValue::VOBJ);
-    CAmount totalMoneySupply = 0;
-    for (auto const& it : chainActive.Tip()->mapZerocoinSupply)
-    {
-        privateMoneySupply.push_back(Pair(to_string(libzerocoin::ZerocoinDenominationToInt(it.first)), it.second));
-        totalMoneySupply += libzerocoin::ZerocoinDenominationToInt(it.first) * it.second;
-    }
-    totalMoneySupply *= COIN;
-    privateMoneySupply.push_back(Pair("total", ValueFromAmount(totalMoneySupply)));
-    obj.push_back(Pair("privatemoneysupply", privateMoneySupply));
-    totalMoneySupply += chainActive.Tip()->nMoneySupply;
-    obj.push_back(Pair("totalmoneysupply", ValueFromAmount(totalMoneySupply)));
+//    UniValue privateMoneySupply(UniValue::VOBJ);
+//    CAmount totalMoneySupply = 0;
+//    for (auto const& it : chainActive.Tip()->mapZerocoinSupply)
+//    {
+//        privateMoneySupply.push_back(Pair(to_string(libzerocoin::ZerocoinDenominationToInt(it.first)), it.second));
+//        totalMoneySupply += libzerocoin::ZerocoinDenominationToInt(it.first) * it.second;
+//    }
+//    totalMoneySupply *= COIN;
+//    privateMoneySupply.push_back(Pair("total", ValueFromAmount(totalMoneySupply)));
+//    obj.push_back(Pair("privatemoneysupply", privateMoneySupply));
+//    totalMoneySupply += chainActive.Tip()->nMoneySupply;
+//    obj.push_back(Pair("totalmoneysupply", ValueFromAmount(totalMoneySupply)));
     obj.push_back(Pair("timeoffset",    GetTimeOffset()));
     obj.push_back(Pair("ntptimeoffset", GetNtpTimeOffset()));
     obj.push_back(Pair("connections",   (int)vNodes.size()));

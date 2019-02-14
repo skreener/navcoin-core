@@ -26,60 +26,14 @@ bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, v
     CScript scriptPubKey = GetScriptForDestination(address);
 
     fRetNeedsZeroMinting = false;
-    map <libzerocoin::CoinDenomination, unsigned int> mapDenominations;
-    CAmount minDenomination = libzerocoin::GetSmallerDenomination() * COIN;
-    CAmount sumDenominations = 0;
 
     if(fDonate)
       CFund::SetScriptForCommunityFundContribution(scriptPubKey);
 
-    if (scriptPubKey.IsZerocoinMint() || fPrivate) {
-        for (unsigned int i = 0; i < libzerocoin::zerocoinDenomList.size(); i++) {
-            sumDenominations += libzerocoin::ZerocoinDenominationToInt(libzerocoin::zerocoinDenomList[i]) * COIN;
-            mapDenominations[libzerocoin::zerocoinDenomList[i]] = 0; // Initalize map
-        }
-    }
     if (scriptPubKey.IsZerocoinMint()) {
-        CAmount nRemainingValue = nValue;
-        int nCount = 0;
-        unsigned int nIndex = libzerocoin::zerocoinDenomList.size() - 1;
-        while (nRemainingValue >= minDenomination)
-        {
-            if(!fReduceOutputs && nRemainingValue >= sumDenominations)
-            {
-                for (unsigned int i = 0; i < libzerocoin::zerocoinDenomList.size(); i++) {
-                    mapDenominations[libzerocoin::zerocoinDenomList[i]]++;
-                    nCount++;
-                }
-                nRemainingValue -= sumDenominations;
-                continue;
-            }
-            CAmount value = libzerocoin::ZerocoinDenominationToInt(libzerocoin::zerocoinDenomList[nIndex]) * COIN;
-            if(nRemainingValue >= value) {
-                mapDenominations[libzerocoin::zerocoinDenomList[nIndex]]++;
-                nCount++;
-                nRemainingValue -= value;
-                continue;
-            }
-            if (nIndex == 0)
-                break;
-            nIndex -= 1;
-        }
-
-        if (nCount > 0)
-            fRetNeedsZeroMinting = true;
-
-        map <libzerocoin::CoinDenomination, unsigned int>::iterator it;
-        for ( it = mapDenominations.begin(); it != mapDenominations.end(); it++ )
-        {
-            for (unsigned int i = 0; i < it->second; i++) {
-                CRecipient recipient = {scriptPubKey, libzerocoin::ZerocoinDenominationToInt(it->first)  * COIN, false, ""};
-                vecSend.push_back(recipient);
-            }
-        }
+        CRecipient recipient = {scriptPubKey, nValue, false, ""};
+        vecSend.push_back(recipient);
     } else {
-        if (fPrivate)
-            nValue = nValue - (nValue % minDenomination);
         CRecipient recipient = {scriptPubKey, nValue, fSubtractFeeFromAmount, ""};
         vecSend.push_back(recipient);
     }
@@ -132,8 +86,7 @@ bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript&
         return error(strprintf("Transaction output script is not a zerocoin mint."));
 
     string strError = "";
-    libzerocoin::CoinDenomination cd = libzerocoin::AmountToZerocoinDenomination(amount);
-    libzerocoin::Accumulator a(&Params().GetConsensus().Zerocoin_Params, cd);
+    libzerocoin::Accumulator a(&Params().GetConsensus().Zerocoin_Params);
     libzerocoin::AccumulatorWitness aw(&Params().GetConsensus().Zerocoin_Params, a,
                                        libzerocoin::PublicCoin(&Params().GetConsensus().Zerocoin_Params));
     uint256 ac;
@@ -151,43 +104,43 @@ bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript&
         LOCK(pwalletMain->cs_witnesser);
         if (pwalletMain->mapWitness.count(pubCoin.getValue()))
         {
-            PublicMintWitnessData witnessData = pwalletMain->mapWitness.at(pubCoin.getValue());
-            AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
-            uint256 blockHash = accumulatorMap.GetBlockHash();
-            uint256 firstBlockHash = accumulatorMap.GetFirstBlockHash();
+//            PublicMintWitnessData witnessData = pwalletMain->mapWitness.at(pubCoin.getValue());
+//            AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
+//            uint256 blockHash = accumulatorMap.GetBlockHash();
+//            uint256 firstBlockHash = accumulatorMap.GetFirstBlockHash();
 
-            int nCalculatedBlocksAgo = std::numeric_limits<unsigned int>::max();
-            int nCalculatedFirstBlocksAgo = 0;
+//            int nCalculatedBlocksAgo = std::numeric_limits<unsigned int>::max();
+//            int nCalculatedFirstBlocksAgo = 0;
 
-            ac = witnessData.GetChecksum();
-            aw = witnessData.GetAccumulatorWitness();
-            a = witnessData.GetAccumulator();
+//            ac = witnessData.GetChecksum();
+//            aw = witnessData.GetAccumulatorWitness();
+//            a = witnessData.GetAccumulator();
 
-            if (mapBlockIndex.count(blockHash))
-            {
-                LOCK(cs_main);
-                CBlockIndex* pindex = mapBlockIndex[blockHash];
-                if (chainActive.Contains(pindex))
-                    nCalculatedBlocksAgo = chainActive.Height() - pindex->nHeight;
-            }
+//            if (mapBlockIndex.count(blockHash))
+//            {
+//                LOCK(cs_main);
+//                CBlockIndex* pindex = mapBlockIndex[blockHash];
+//                if (chainActive.Contains(pindex))
+//                    nCalculatedBlocksAgo = chainActive.Height() - pindex->nHeight;
+//            }
 
-            if (mapBlockIndex.count(firstBlockHash))
-            {
-                LOCK(cs_main);
-                CBlockIndex* pindex = mapBlockIndex[firstBlockHash];
-                if (chainActive.Contains(pindex))
-                    nCalculatedFirstBlocksAgo = chainActive.Height() - pindex->nHeight;
-            }
+//            if (mapBlockIndex.count(firstBlockHash))
+//            {
+//                LOCK(cs_main);
+//                CBlockIndex* pindex = mapBlockIndex[firstBlockHash];
+//                if (chainActive.Contains(pindex))
+//                    nCalculatedFirstBlocksAgo = chainActive.Height() - pindex->nHeight;
+//            }
 
-            if (witnessData.Verify() && accumulatorMap.Load(ac) &&
-               (witnessData.GetCount() > (MIN_MINT_SECURITY + nEntropy) || nCalculatedBlocksAgo < (MIN_MINT_SECURITY/2)))
-                fFoundWitness = true;
+//            if (witnessData.Verify() && accumulatorMap.Load(ac) &&
+//               (witnessData.GetCount() > (MIN_MINT_SECURITY + nEntropy) || nCalculatedBlocksAgo < (MIN_MINT_SECURITY/2)))
+//                fFoundWitness = true;
 
-            if (fStake && nCalculatedFirstBlocksAgo < COINBASE_MATURITY)
-                fFoundWitness = false;
+//            if (fStake && nCalculatedFirstBlocksAgo < COINBASE_MATURITY)
+//                fFoundWitness = false;
 
-            if (blockHash == uint256() || firstBlockHash == uint256())
-                fFoundWitness = false;
+//            if (blockHash == uint256() || firstBlockHash == uint256())
+//                fFoundWitness = false;
 
         }
     }

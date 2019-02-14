@@ -237,9 +237,7 @@ public:
     uint256 nAccumulatorChecksum;
     CAmount nMoneySupply;
     CAmount nAccumulatedPrivateFee;
-    CAmount nAccumulatedPublicFee;;
-
-    std::map<libzerocoin::CoinDenomination, int64_t> mapZerocoinSupply;
+    CAmount nAccumulatedPublicFee;
 
     void SetNull()
     {
@@ -361,15 +359,6 @@ public:
         if((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
             block.nAccumulatorChecksum = nAccumulatorChecksum;
         return block;
-    }
-
-    int64_t GetZerocoinSupply() const
-    {
-        int64_t nTotal = 0;
-        for (auto& denom : libzerocoin::zerocoinDenomList) {
-            nTotal += libzerocoin::ZerocoinDenominationToAmount(denom) * mapZerocoinSupply.at(denom);
-        }
-        return nTotal;
     }
 
     uint256 GetBlockHash() const
@@ -555,7 +544,6 @@ public:
         READWRITE(nMoneySupply);
         if((this->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN) {
             READWRITE(nAccumulatorChecksum);
-            READWRITE(mapZerocoinSupply);
             READWRITE(nAccumulatedPrivateFee);
             READWRITE(nAccumulatedPublicFee);
         }

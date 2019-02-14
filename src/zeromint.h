@@ -57,7 +57,7 @@ public:
 
     WitnessData(const libzerocoin::ZerocoinParams* paramsIn, libzerocoin::PublicCoin pubCoinIn,
                 libzerocoin::Accumulator accumulatorIn, uint256 accumulatorChecksumIn) :
-                accumulator(paramsIn, pubCoinIn.getDenomination(), accumulatorIn.getValue()),
+                accumulator(paramsIn, accumulatorIn.getValue()),
                 accumulatorWitness(paramsIn, accumulatorIn, pubCoinIn),
                 accumulatorChecksum(accumulatorChecksumIn), nCount(0) {}
 

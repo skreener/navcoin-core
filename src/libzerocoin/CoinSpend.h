@@ -93,12 +93,6 @@ public:
    */
     const CBigNum& getCoinSerialNumber() const { return this->coinValuePublic; }
 
-    /**Gets the denomination of the coin spent in this proof.
-   *
-   * @return the denomination
-   */
-    CoinDenomination getDenomination() const { return this->denomination; }
-
     /**Gets the checksum of the accumulator used in this proof.
    *
    * @return the checksum
@@ -127,12 +121,13 @@ public:
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
     {
-        READWRITE(denomination);
         READWRITE(ptxHash);
         READWRITE(accChecksum);
         READWRITE(accCommitmentToCoinValue);
         READWRITE(serialCommitmentToCoinValue);
+        READWRITE(commitmentToCoinValue);
         READWRITE(coinValuePublic);
+        READWRITE(amountCommitment);
         READWRITE(accumulatorPoK);
         READWRITE(serialNumberSoK);
         READWRITE(serialNumberSoK_small);
@@ -144,12 +139,13 @@ public:
 
 private:
     const uint256 signatureHash() const;
-    CoinDenomination denomination;
     uint256 accChecksum;
     uint256 ptxHash;
     CBigNum accCommitmentToCoinValue;
     CBigNum serialCommitmentToCoinValue;
+    CBigNum commitmentToCoinValue;
     CBigNum coinValuePublic;
+    CBigNum amountCommitment;
     AccumulatorProofOfKnowledge accumulatorPoK;
     SerialNumberSignatureOfKnowledge serialNumberSoK;
     SerialNumberSoK_small serialNumberSoK_small;

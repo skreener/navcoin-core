@@ -2832,8 +2832,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     if(pindex->pprev != NULL)
     {
-        pindex->mapZerocoinSupply
-                         = pindex->pprev->mapZerocoinSupply;
+//        pindex->mapZerocoinSupply
+//                         = pindex->pprev->mapZerocoinSupply;
     }
 
     pindex->vProposalVotes.clear();
@@ -3104,7 +3104,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
                 vPubCoinCheck.push_back(CPublicCoinCheck(pubCoin, IsInitialBlockDownload()));
 
-                pindex->mapZerocoinSupply[libzerocoin::AmountToZerocoinDenomination(out.nValue)]++;
+//                pindex->mapZerocoinSupply[libzerocoin::AmountToZerocoinDenomination(out.nValue)]++;
 
                 nZeroCreated += out.nValue;
 
@@ -3134,10 +3134,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     return state.DoS(100, false, REJECT_INVALID, "bad-zerocoin-spend");
 
                 vCoinSpendCheck.push_back(CCoinSpendCheck(coinSpend, accumulator));
-
-                pindex->mapZerocoinSupply[coinSpend.getDenomination()]--;
-
-                nZeroBurnt += libzerocoin::ZerocoinDenominationToAmount(coinSpend.getDenomination());
 
                 vZeroSpents.push_back(make_pair(coinSpend.getCoinSerialNumber(), tx.GetHash()));
 
@@ -3708,26 +3704,23 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     if(IsZerocoinEnabled(pindex->pprev, Params().GetConsensus()))
     {
-        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
+        Accumulator ac(&Params().GetConsensus().Zerocoin_Params);
         std::vector<std::pair<CBigNum, uint256>> vAccumulatedMints;
 
         if (pindex->pprev->nAccumulatorChecksum != uint256())
-            if (!accumulatorMap.Load(pindex->pprev->nAccumulatorChecksum))
-                return state.DoS(10, error("ContextualCheckBlock(): could not load previous accumulator checksum %s", pindex->pprev->nAccumulatorChecksum.ToString()),
-                                 REJECT_INVALID, "bad-zero-accumulator-checksum");
+            ac.setValue(pindex->pprev->nAccumulatorChecksum);
 
-        if(!CalculateAccumulatorChecksum(&block, accumulatorMap, vAccumulatedMints))
+        if(!CalculateAccumulatorChecksum(&block, ac, vAccumulatedMints))
             return state.DoS(10, error("ContextualCheckBlock(): could not verify zerocoin accumulator checksum."),
                              REJECT_INVALID, "bad-zero-accumulator-checksum");
 
         std::pair<int, uint256> blockLocator = std::make_pair(pindex->nHeight, pindex->GetBlockHash());
-        if (block.GetBlockHeader().nAccumulatorChecksum != accumulatorMap.GetChecksum())
+        if (block.GetBlockHeader().nAccumulatorChecksum != ac.getValue().getuint256())
         {
             return state.DoS(10, error("ContextualCheckBlock(): block accumulator checksum is not valid (valid=%d vs sent=%d)",
-                                       accumulatorMap.GetChecksum().ToString(), block.GetBlockHeader().nAccumulatorChecksum.ToString()),
+                                       ac.getValue().ToString(), block.GetBlockHeader().nAccumulatorChecksum.ToString()),
                              REJECT_INVALID, "bad-zero-accumulator-checksum");
-        } else if(!accumulatorMap.Save(blockLocator))
-            return AbortNode(state, "Failed to write zerocoin accumulator checksum");
+        }
     }
 
     int64_t nTime7 = GetTimeMicros();
@@ -3991,12 +3984,9 @@ bool static DisconnectTip(CValidationState& state, const CChainParams& chainpara
             return AbortNode(state, "Failed to write height of first Zerocoin block");
 
     if(pindexDelete->nAccumulatorChecksum != uint256() && (block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN) {
-        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
-        if(!accumulatorMap.Load(pindexDelete->nAccumulatorChecksum))
-            return AbortNode(state, "Could not read accumulator checksum");
+        Accumulator ac(&Params().GetConsensus().Zerocoin_Params);
+        ac.setValue(pindexDelete->nAccumulatorChecksum);
         std::pair<int,uint256> blockLocator = std::make_pair(pindexDelete->nHeight, pindexDelete->GetBlockHash());
-        if(!accumulatorMap.Disconnect(blockLocator))
-            return AbortNode(state, "Failed to remove zerocoin accumulator checksum");
     }
 
     std::vector<CFund::CPaymentRequest> vecPaymentRequest;
@@ -9257,23 +9247,23 @@ bool CheckProofOfStake(CBlockIndex* pindexPrev, const CTransaction& tx, const CC
         if(!TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, tx.vin[0], coinSpend))
             return error("%s : Could not convert tx in to Coinspend", __func__);
 
-        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
+//        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
 
-        if (!accumulatorMap.Load(coinSpend.getAccumulatorChecksum()))
-            return error("%s : Could not load coin spend accumulator checksum", __func__);
+//        if (!accumulatorMap.Load(coinSpend.getAccumulatorChecksum()))
+//            return error("%s : Could not load coin spend accumulator checksum", __func__);
 
-        if (accumulatorMap.GetFirstBlockHash() == uint256() || !mapBlockIndex.count(accumulatorMap.GetFirstBlockHash()))
-            return error("%s : Accumulator checksum does not refer a valid block", __func__);
+//        if (accumulatorMap.GetFirstBlockHash() == uint256() || !mapBlockIndex.count(accumulatorMap.GetFirstBlockHash()))
+//            return error("%s : Accumulator checksum does not refer a valid block", __func__);
 
-        CBlockIndex* pindex = mapBlockIndex[accumulatorMap.GetFirstBlockHash()];
+//        CBlockIndex* pindex = mapBlockIndex[accumulatorMap.GetFirstBlockHash()];
 
-        if (!chainActive.Contains(pindex))
-            return error("%s : Accumulator checksum refers a block not contained in the active chain", __func__);
+//        if (!chainActive.Contains(pindex))
+//            return error("%s : Accumulator checksum refers a block not contained in the active chain", __func__);
 
-        if ((pindexPrev->nHeight - pindex->nHeight + 1) < COINBASE_MATURITY)
-            return error("%s : Coin spend is not mature enough (%d)", __func__, (pindexPrev->nHeight - pindex->nHeight));
+//        if ((pindexPrev->nHeight - pindex->nHeight + 1) < COINBASE_MATURITY)
+//            return error("%s : Coin spend is not mature enough (%d)", __func__, (pindexPrev->nHeight - pindex->nHeight));
 
-        return CheckZeroStakeKernelHash(pindexPrev, nBits, tx.nTime, coinSpend.getCoinSerialNumber(), libzerocoin::ZerocoinDenominationToAmount(coinSpend.getDenomination()), hashProofOfStake, targetProofOfStake);
+        return CheckZeroStakeKernelHash(pindexPrev, nBits, tx.nTime, coinSpend.getCoinSerialNumber(), COIN, hashProofOfStake, targetProofOfStake);
     }
 
     // Kernel (input 0) must match the stake hash target per coin age (nBits)

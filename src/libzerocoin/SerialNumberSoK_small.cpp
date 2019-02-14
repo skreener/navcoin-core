@@ -22,7 +22,7 @@ SerialNumberSoK_small::SerialNumberSoK_small(const ZerocoinParams* ZCp) :
                 ComB(ZKP_M),
                 ComC(ZKP_M),
                 polyComm(ZCp),
-                innerProduct(ZCp)
+                innerProduct(&ZCp->serialNumberSoKCommitmentGroup)
 { }
 
 
@@ -33,7 +33,7 @@ SerialNumberSoK_small::SerialNumberSoK_small(const ZerocoinParams* ZCp, const CB
                 ComB(ZKP_M),
                 ComC(ZKP_M),
                 polyComm(ZCp),
-                innerProduct(ZCp)
+                innerProduct(&ZCp->serialNumberSoKCommitmentGroup)
 
 {
     // ---------------------------------- **** SoK PROVE **** -----------------------------------
@@ -94,17 +94,17 @@ SerialNumberSoK_small::SerialNumberSoK_small(const ZerocoinParams* ZCp, const CB
     // Commit to the assignment of the circuit: ComA[i] = pedersenCommitment(params, A[i], f_alpha[i]);
     transform(circuit.A.begin(), circuit.A.end(), f_alpha.begin(), ComA.begin(),
             [=] (CBN_vector A, CBigNum alpha) {
-        return pedersenCommitment(params, A, alpha);} );
+        return pedersenCommitment(&params->serialNumberSoKCommitmentGroup, A, alpha);} );
 
     transform(circuit.B.begin(), circuit.B.end(), f_beta.begin(), ComB.begin(),
             [=] (CBN_vector B, CBigNum beta) {
-        return pedersenCommitment(params, B, beta);} );
+        return pedersenCommitment(&params->serialNumberSoKCommitmentGroup, B, beta);} );
 
     transform(circuit.C.begin(), circuit.C.end(), f_gamma.begin(), ComC.begin(),
             [=] (CBN_vector C, CBigNum gamma) {
-        return pedersenCommitment(params, C, gamma);} );
+        return pedersenCommitment(&params->serialNumberSoKCommitmentGroup, C, gamma);} );
 
-    ComD = pedersenCommitment(params, D, f_delta);
+    ComD = pedersenCommitment(&params->serialNumberSoKCommitmentGroup, D, f_delta);
 
     // replace commitment y1 and blind value r
     ComC[m-1] = y1;
@@ -379,15 +379,15 @@ SerialNumberSoK_small::SerialNumberSoK_small(const ZerocoinParams* ZCp, const CB
 
 
     // Inner-product PROVE
-    CBigNum ComR = pedersenCommitment(params, r_vec, CBigNum(0));
-    comRdash = pedersenCommitment(params, rdash_vec2, CBigNum(0));
+    CBigNum ComR = pedersenCommitment(&params->serialNumberSoKCommitmentGroup, r_vec, CBigNum(0));
+    comRdash = pedersenCommitment(&params->serialNumberSoKCommitmentGroup, rdash_vec2, CBigNum(0));
 
     CBigNum Pinner = ComR.mul_mod(comRdash, p);
 
     CBigNum z = dotProduct(r_vec, rdash_vec1, q);
 
 
-    CBN_matrix ck_inner_g = ck_inner_gen(params);
+    CBN_matrix ck_inner_g = ck_inner_gen(&params->serialNumberSoKCommitmentGroup);
 
     CBN_matrix r1(1, CBN_vector(r_vec));
     CBN_matrix r2(1, CBN_vector(rdash_vec1));
@@ -656,7 +656,7 @@ bool SerialNumberSoKProof::BatchVerify(std::vector<SerialNumberSoKProof> &proofs
 
         rho = proofs2[w].signature.rho;
 
-        CBigNum ComR = pedersenCommitment(params, CBN_vector(1, CBigNum(0)), -rho);
+        CBigNum ComR = pedersenCommitment(&params->serialNumberSoKCommitmentGroup, CBN_vector(1, CBigNum(0)), -rho);
         ComR = ComR.mul_mod(ComD.pow_mod(proofs2[w].xPowersPos[2*m+1],p),p);
 
         for(int i=1; i<m+1; i++) {
@@ -752,7 +752,7 @@ bool SerialNumberSoKProof::BatchVerify(std::vector<SerialNumberSoKProof> &proofs
     }
 
 
-    CBigNum test = pedersenCommitment(proofs2[0].signature.params, test_vec, CBigNum(0));
+    CBigNum test = pedersenCommitment(&proofs2[0].signature.params->serialNumberSoKCommitmentGroup, test_vec, CBigNum(0));
 
     if(test != comTest) {
         LogPrintf("BatchVerify failed: different test and comTest\n");
@@ -764,7 +764,7 @@ bool SerialNumberSoKProof::BatchVerify(std::vector<SerialNumberSoKProof> &proofs
     // ******************************* FINAL STEP *********************************
     // ****************************************************************************
 
-    CBN_matrix ck_inner_g = ck_inner_gen(proofs2[0].signature.params);
+    CBN_matrix ck_inner_g = ck_inner_gen(&proofs2[0].signature.params->serialNumberSoKCommitmentGroup);
     bool valid = BatchBulletproofs(ck_inner_g, proofs2);
 
     return valid;

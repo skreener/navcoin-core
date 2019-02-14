@@ -35,7 +35,6 @@ static const char DB_LAST_BLOCK = 'l';
 static const char DB_ZEROCOIN_BLOCK = 'y';
 static const char DB_ZEROCOIN_MINTINDEX = 'M';
 static const char DB_ZEROCOIN_SPENDINDEX = 'S';
-static const char DB_ZEROCOIN_ACCUMULATOR = 'K';
 
 CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true, false, 64)
 {
@@ -210,22 +209,6 @@ bool CBlockTreeDB::EraseCoinSpend(CBigNum coinSerial) {
     uint256 hash = Hash(ss.begin(), ss.end());
 
     return Erase(make_pair(DB_ZEROCOIN_SPENDINDEX, hash));
-}
-
-bool CBlockTreeDB::ReadZerocoinAccumulator(uint256 accumulatorChecksum, std::pair<std::map<int, uint256>,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>> &accumulatorMap)
-{
-    return Read(make_pair(DB_ZEROCOIN_ACCUMULATOR, accumulatorChecksum), accumulatorMap);
-}
-
-bool CBlockTreeDB::WriteZerocoinAccumulator(uint256 accumulatorChecksum, std::pair<std::map<int, uint256>,std::vector<std::pair<libzerocoin::CoinDenomination,CBigNum>>> accumulatorMap)
-{
-    return Write(make_pair(DB_ZEROCOIN_ACCUMULATOR, accumulatorChecksum), accumulatorMap);
-}
-
-bool CBlockTreeDB::EraseZerocoinAccumulator(uint256 accumulatorChecksum)
-{
-    return Erase(make_pair(DB_ZEROCOIN_ACCUMULATOR, accumulatorChecksum));
-
 }
 
 CCoinsViewCursor *CCoinsViewDB::Cursor() const
@@ -598,8 +581,8 @@ bool CBlockTreeDB::LoadBlockIndexGuts(boost::function<CBlockIndex*(const uint256
                 //zerocoin
                 pindexNew->nAccumulatorChecksum
                                           = diskindex.nAccumulatorChecksum;
-                pindexNew->mapZerocoinSupply
-                                          = diskindex.mapZerocoinSupply;
+//                pindexNew->mapZerocoinSupply
+//                                          = diskindex.mapZerocoinSupply;
                 pindexNew->nAccumulatedPrivateFee
                                           = diskindex.nAccumulatedPrivateFee;
                 pindexNew->nAccumulatedPublicFee

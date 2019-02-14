@@ -31,7 +31,6 @@ CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, cons
                   &params->accumulatorParams.accumulatorPoKCommitmentGroup),
     spendType(spendType)
 {
-    denomination = coin.getPublicCoin().getDenomination();
     version = coin.getVersion();
 
     if (!static_cast<int>(version)) //todo: figure out why version does not make it here
@@ -42,6 +41,9 @@ CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, cons
     if (!(witness.VerifyWitness(a, coin.getPublicCoin()))) {
         throw std::runtime_error("Accumulator witness does not verify");
     }
+
+    CBigNum obfuscatedSerial = ((obfuscationJ.first*coin.getObfuscationValue())+obfuscationJ.second)%params->coinCommitmentGroup.groupOrder;
+    CBigNum obfuscatedRandomness = ((obfuscationK.first*coin.getObfuscationValue())+obfuscationK.second)%params->coinCommitmentGroup.groupOrder;
 
     // 1: Generate two separate commitments to the public coin (C), each under
     // a different set of public parameters. We do this because the RSA accumulator
@@ -55,6 +57,14 @@ CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, cons
     const Commitment fullCommitmentToCoinUnderAccParams(&params->accumulatorParams.accumulatorPoKCommitmentGroup, coin.getPublicCoin().getValue());
     this->accCommitmentToCoinValue = fullCommitmentToCoinUnderAccParams.getCommitmentValue();
 
+    // Generate a new amount commitment with a different randomness value
+    const Commitment amountCommitment(&params->coinCommitmentGroup, coin.getAmount(), 0, obfuscatedRandomness);
+
+    this->amountCommitment = amountCommitment.getCommitmentValue();
+
+    const Commitment valueCommitment(&params->serialNumberSoKCommitmentGroup, coin.getPublicCoin().getCoinValue());
+    this->commitmentToCoinValue = valueCommitment.getCommitmentValue();
+
     // 2. Generate a ZK proof that the two commitments contain the same public coin.
     this->commitmentPoK = CommitmentProofOfKnowledge(&params->serialNumberSoKCommitmentGroup, &params->accumulatorParams.accumulatorPoKCommitmentGroup, fullCommitmentToCoinUnderSerialParams, fullCommitmentToCoinUnderAccParams);
 
@@ -62,9 +72,6 @@ CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, cons
     // 3. Proves that the committed public coin is in the Accumulator (PoK of "witness")
     this->accumulatorPoK = AccumulatorProofOfKnowledge(&params->accumulatorParams, fullCommitmentToCoinUnderAccParams, witness, a);
 
-    // We generate the Coin Value Image and its generator
-    CBigNum obfuscatedSerial = (obfuscationJ.first*coin.getObfuscationValue())+obfuscationJ.second;
-    CBigNum obfuscatedRandomness = ((obfuscationK.first*coin.getObfuscationValue())+obfuscationK.second)%params->coinCommitmentGroup.groupOrder;
     Commitment publicSerialNumber(&params->coinCommitmentGroup, obfuscatedSerial, 0);
     this->coinValuePublic = publicSerialNumber.getCommitmentValue();
 
@@ -72,7 +79,7 @@ CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, cons
     // (This proof is bound to the coin 'metadata', i.e., transaction hash)
     uint256 hashSig = signatureHash();
     if (!fUseBulletproofs) {
-        this->serialNumberSoK = SerialNumberSignatureOfKnowledge(params, coin, fullCommitmentToCoinUnderSerialParams, publicSerialNumber, hashSig, obfuscatedRandomness);
+        this->serialNumberSoK = SerialNumberSignatureOfKnowledge(params, coin, fullCommitmentToCoinUnderSerialParams, publicSerialNumber, obfuscatedRandomness, amountCommitment, valueCommitment, hashSig);
     } else {
         this->serialNumberSoK_small = SerialNumberSoK_small(params, obfuscatedSerial, obfuscatedRandomness, fullCommitmentToCoinUnderSerialParams, hashSig);
     }
@@ -83,9 +90,6 @@ CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, cons
 
 bool CoinSpend::Verify(const Accumulator& a, bool fUseBulletproofs) const
 {
-    if (a.getDenomination() != this->denomination) {
-        return error("CoinsSpend::Verify: failed, denominations do not match");
-    }
 
     // Verify both of the sub-proofs using the given meta-data
     if (!commitmentPoK.Verify(serialCommitmentToCoinValue, accCommitmentToCoinValue)) {
@@ -97,7 +101,7 @@ bool CoinSpend::Verify(const Accumulator& a, bool fUseBulletproofs) const
     }
 
     if (!fUseBulletproofs) {
-        if (!serialNumberSoK.Verify(serialCommitmentToCoinValue, coinValuePublic, signatureHash())) {
+        if (!serialNumberSoK.Verify(serialCommitmentToCoinValue, coinValuePublic, amountCommitment, commitmentToCoinValue, signatureHash())) {
             return error("CoinsSpend::Verify: serialNumberSoK failed.");
         }
     } else {
@@ -117,7 +121,7 @@ const uint256 CoinSpend::signatureHash() const
 {
     CHashWriter h(0, 0);
     h << serialCommitmentToCoinValue << accCommitmentToCoinValue << commitmentPoK << accumulatorPoK << ptxHash
-      << coinValuePublic << accChecksum << denomination << spendType;
+      << coinValuePublic << accChecksum << spendType;
 
     return h.GetHash();
 }
@@ -125,7 +129,7 @@ const uint256 CoinSpend::signatureHash() const
 std::string CoinSpend::ToString() const
 {
     std::stringstream ss;
-    ss << "CoinSpend(" << coinValuePublic.ToString(16) << ", " << getDenomination() << ")";
+    ss << "CoinSpend(" << coinValuePublic.ToString(16) << ")";
     return ss.str();
 }
 

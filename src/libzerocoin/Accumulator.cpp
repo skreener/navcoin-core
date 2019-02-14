@@ -18,18 +18,8 @@
 
 namespace libzerocoin {
 
-//Accumulator class
-Accumulator::Accumulator(const AccumulatorAndProofParams* p, const CoinDenomination d): params(p) {
-    if (!(params->initialized)) {
-        throw std::runtime_error("Invalid parameters for accumulator");
-    }
-    denomination = d;
-    this->value = this->params->accumulatorBase;
-}
-
-Accumulator::Accumulator(const ZerocoinParams* p, const CoinDenomination d, const CBigNum bnValue) {
+Accumulator::Accumulator(const ZerocoinParams* p, const CBigNum bnValue) {
     this->params = &(p->accumulatorParams);
-    denomination = d;
 
     if (!(params->initialized)) {
         throw std::runtime_error("Invalid parameters for accumulator");
@@ -52,19 +42,11 @@ void Accumulator::accumulate(const PublicCoin& coin) {
         throw std::runtime_error("Accumulator is not initialized");
     }
 
-    if(this->denomination != coin.getDenomination()) {
-        throw std::runtime_error("Wrong denomination for coin");
-    }
-
     if(coin.isValid()) {
         increment(coin.getValue());
     } else {
         throw std::runtime_error("Coin is not valid");
     }
-}
-
-CoinDenomination Accumulator::getDenomination() const {
-    return this->denomination;
 }
 
 const CBigNum& Accumulator::getValue() const {
@@ -74,6 +56,10 @@ const CBigNum& Accumulator::getValue() const {
 //Manually set accumulator value
 void Accumulator::setValue(CBigNum bnValue) {
     this->value = bnValue;
+}
+
+void Accumulator::setValue(uint256 value) {
+    this->value = CBigNum(value);
 }
 
 Accumulator& Accumulator::operator += (const PublicCoin& c) {

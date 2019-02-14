@@ -9,6 +9,8 @@
 * @copyright  Copyright 2018 The PIVX Developers
 * @license    This project is released under the MIT license.
 **/
+// Copyright (c) 2018-2019 The NavCoin Core developers
+
 #include "hash.h"
 #include "Bulletproofs.h"
 #include <algorithm>
@@ -28,9 +30,9 @@ void Bulletproofs::Prove(const CBN_matrix ck_inner_g,
     // @init    final_a, final_b        :  final witness
     // @init    pi                      :  final shifted commitments
 
-    const CBigNum q = params->serialNumberSoKCommitmentGroup.groupOrder;
-    const CBigNum p = params->serialNumberSoKCommitmentGroup.modulus;
-    const CBigNum u_inner_prod = params->serialNumberSoKCommitmentGroup.u_inner_prod;
+    const CBigNum q = params->groupOrder;
+    const CBigNum p = params->modulus;
+    const CBigNum u_inner_prod = params->u_inner_prod;
 
     int s = 2;
 
@@ -114,7 +116,7 @@ void Bulletproofs::Prove(const CBN_matrix ck_inner_g,
 
 
 
-bool Bulletproofs::Verify(const ZerocoinParams* ZCp,
+bool Bulletproofs::Verify(const IntegerGroupParams* IGp,
         const CBN_matrix ck_inner_g, const CBN_matrix ck_inner_h,
         CBigNum A, CBigNum B, CBigNum z)
 {
@@ -126,9 +128,9 @@ bool Bulletproofs::Verify(const ZerocoinParams* ZCp,
     // @param   z       :  target value
     // @return  bool    :  result of the verification
 
-    const CBigNum q = params->serialNumberSoKCommitmentGroup.groupOrder;
-    const CBigNum p = params->serialNumberSoKCommitmentGroup.modulus;
-    const CBigNum u_inner_prod = params->serialNumberSoKCommitmentGroup.u_inner_prod;
+    const CBigNum q = params->groupOrder;
+    const CBigNum p = params->modulus;
+    const CBigNum u_inner_prod = params->u_inner_prod;
 
     CBigNum P_inner_prod = A.mul_mod(B, p);
 
@@ -194,7 +196,7 @@ CBN_matrix Bulletproofs::splitIntoSets(const CBN_matrix ck_inner_g, const int s)
 // Function for reduction when mu > 1
 pair<CBigNum, CBigNum> Bulletproofs::findcLcR(const CBN_matrix a_sets, const CBN_matrix b_sets)
 {
-    const CBigNum q = params->serialNumberSoKCommitmentGroup.groupOrder;
+    const CBigNum q = params->groupOrder;
 
     CBigNum cL = dotProduct(a_sets[0], b_sets[1], q);
     CBigNum cR = dotProduct(a_sets[1], b_sets[0], q);
@@ -210,8 +212,8 @@ pair<CBigNum, CBigNum> Bulletproofs::firstPreChallengeShifts(
         const CBN_matrix a_sets, const CBN_matrix b_sets, CBigNum cL, CBigNum cR,
         const CBN_vector ymPowers)
 {
-    const CBigNum p = params->serialNumberSoKCommitmentGroup.modulus;
-    const CBigNum q = params->serialNumberSoKCommitmentGroup.groupOrder;
+    const CBigNum p = params->modulus;
+    const CBigNum q = params->groupOrder;
 
     CBigNum Ak = u_inner.pow_mod(cL, p);
     const int n1 = g_sets[0].size();
@@ -233,8 +235,8 @@ pair<CBigNum, CBigNum> Bulletproofs::preChallengeShifts(
         const CBN_matrix g_sets, const CBN_matrix h_sets, const CBigNum u_inner,
         const CBN_matrix a_sets, const CBN_matrix b_sets, CBigNum cL, CBigNum cR)
 {
-    const CBigNum p = params->serialNumberSoKCommitmentGroup.modulus;
-    const CBigNum q = params->serialNumberSoKCommitmentGroup.groupOrder;
+    const CBigNum p = params->modulus;
+    const CBigNum q = params->groupOrder;
 
     CBigNum Ak = u_inner.pow_mod(cL, p);
     const int n1 = g_sets[0].size();
@@ -258,8 +260,8 @@ pair<CBigNum, CBigNum> Bulletproofs::preChallengeShifts(
 CBN_matrix Bulletproofs::first_get_new_hs(const CBN_matrix g_sets,
         const CBigNum x, const int m2, const CBN_vector ymPowers)
 {
-    const CBigNum q = params->serialNumberSoKCommitmentGroup.groupOrder;
-    const CBigNum p = params->serialNumberSoKCommitmentGroup.modulus;
+    const CBigNum q = params->groupOrder;
+    const CBigNum p = params->modulus;
     const int N1 = g_sets[0].size();
     CBN_matrix new_gs(1, CBN_vector());
     CBigNum new_g, x1, x2;  // temp
@@ -281,8 +283,8 @@ CBN_matrix Bulletproofs::first_get_new_hs(const CBN_matrix g_sets,
 CBN_matrix Bulletproofs::get_new_gs_hs(const CBN_matrix g_sets, const int sign,
         const CBigNum x, const int m2)
 {
-    const CBigNum q = params->serialNumberSoKCommitmentGroup.groupOrder;
-    const CBigNum p = params->serialNumberSoKCommitmentGroup.modulus;
+    const CBigNum q = params->groupOrder;
+    const CBigNum p = params->modulus;
     const int N1 = g_sets[0].size();
     CBN_matrix new_gs(1, CBN_vector());
     CBigNum new_g;
@@ -310,7 +312,7 @@ CBN_matrix Bulletproofs::get_new_gs_hs(const CBN_matrix g_sets, const int sign,
 CBN_matrix Bulletproofs::get_new_as_bs(const CBN_matrix a_sets, const int sign,
         const CBigNum x, const int m2)
 {
-    const CBigNum q = params->serialNumberSoKCommitmentGroup.groupOrder;
+    const CBigNum q = params->groupOrder;
     const int N1 = a_sets[0].size();
     CBN_matrix a2(1, CBN_vector(N1));
     CBigNum aj;
@@ -338,7 +340,7 @@ bool Bulletproofs::testComsCorrect(const CBN_vector gh_sets,
         const CBigNum u_inner, const CBigNum P_inner,
         const CBN_matrix final_a, const CBN_matrix final_b, const CBigNum z)
 {
-    const CBigNum p = params->serialNumberSoKCommitmentGroup.modulus;
+    const CBigNum p = params->modulus;
     CBigNum Ptest = gh_sets[0].pow_mod(final_a[0][0],p);
     Ptest = Ptest.mul_mod(gh_sets[1].pow_mod(final_b[0][0],p),p);
     Ptest = Ptest.mul_mod(u_inner.pow_mod(z,p),p);
@@ -349,8 +351,8 @@ bool Bulletproofs::testComsCorrect(const CBN_vector gh_sets,
 // Optimizations
 CBN_vector Bulletproofs::getFinal_gh(const CBN_vector gs, const CBN_vector hs, CBN_vector xlist)
 {
-    const CBigNum q = params->serialNumberSoKCommitmentGroup.groupOrder;
-    const CBigNum p = params->serialNumberSoKCommitmentGroup.modulus;
+    const CBigNum q = params->groupOrder;
+    const CBigNum p = params->modulus;
 
     const int logn = xlist.size();
     const int n = gs.size();

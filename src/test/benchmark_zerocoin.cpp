@@ -22,7 +22,6 @@
 #include <sys/time.h>
 #include "streams.h"
 #include "libzerocoin/ParamGeneration.h"
-#include "libzerocoin/Denominations.h"
 #include "libzerocoin/Coin.h"
 #include "libzerocoin/CoinSpend.h"
 #include "libzerocoin/Accumulator.h"
@@ -252,10 +251,10 @@ Testb_Accumulator()
     }
     try {
         // Accumulate the coin list from first to last into one accumulator
-        Accumulator accOne(&gg_Params->accumulatorParams,libzerocoin::CoinDenomination::ZQ_ONE);
-        Accumulator accTwo(&gg_Params->accumulatorParams,libzerocoin::CoinDenomination::ZQ_ONE);
-        Accumulator accThree(&gg_Params->accumulatorParams,libzerocoin::CoinDenomination::ZQ_ONE);
-        Accumulator accFour(&gg_Params->accumulatorParams,libzerocoin::CoinDenomination::ZQ_ONE);
+        Accumulator accOne(&gg_Params->accumulatorParams);
+        Accumulator accTwo(&gg_Params->accumulatorParams);
+        Accumulator accThree(&gg_Params->accumulatorParams);
+        Accumulator accFour(&gg_Params->accumulatorParams);
         AccumulatorWitness wThree(gg_Params, accThree, ggCoins[0]->getPublicCoin());
 
         for (uint32_t i = 0; i < TESTS_COINS_TO_ACCUMULATE; i++) {
@@ -301,8 +300,8 @@ Testb_MintCoin()
         timer.start();
         for (uint32_t i = 0; i < TESTS_COINS_TO_ACCUMULATE; i++) {
 
-            PublicCoin pubCoin(gg_Params,libzerocoin::CoinDenomination::ZQ_ONE,pubKey_,blindingCommitment_, "test");
-            ggCoins[i] = new PrivateCoin(gg_Params,pubCoin.getDenomination(),privKey_,pubCoin.getPubKey(),blindingCommitment_,pubCoin.getValue(), pubCoin.getPaymentId());
+            PublicCoin pubCoin(gg_Params,pubKey_,blindingCommitment_, "test", COIN);
+            ggCoins[i] = new PrivateCoin(gg_Params, privKey_,pubCoin.getPubKey(),blindingCommitment_,pubCoin.getValue(), pubCoin.getPaymentId(), pubCoin.getAmount());
         }
         timer.stop();
     } catch (exception &e) {
@@ -330,7 +329,7 @@ Testb_MintAndSpend()
         // Accumulate the list of generated coins into a fresh accumulator.
         // The first one gets marked as accumulated for a witness, the
         // others just get accumulated normally.
-        Accumulator acc(&gg_Params->accumulatorParams,CoinDenomination::ZQ_ONE);
+        Accumulator acc(&gg_Params->accumulatorParams);
         AccumulatorWitness wAcc(gg_Params, acc, ggCoins[0]->getPublicCoin());
 
         timer.start();

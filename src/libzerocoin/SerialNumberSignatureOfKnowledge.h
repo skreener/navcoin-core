@@ -44,7 +44,9 @@ public:
 	 * @param commitmentToCoin the commitment to the coin
 	 * @param msghash hash of meta data to create a signature of knowledge on.
 	 */
-  SerialNumberSignatureOfKnowledge(const ZerocoinParams* p, const PrivateCoin& coin, const Commitment& commitmentToCoin, const Commitment& commitmentToSerial, uint256 msghash, CBigNum obfuscatedRandomness);
+  SerialNumberSignatureOfKnowledge(const ZerocoinParams* p, const PrivateCoin& coin, const Commitment& commitmentToCoin,
+                                   const Commitment& commitmentToSerial, CBigNum obfuscatedRandomness, Commitment amountCommitment,
+                                   Commitment valueCommitment, uint256 msghash);
 
 	/** Verifies the Signature of knowledge.
 	 *
@@ -52,27 +54,40 @@ public:
 	 * @return
 	 */
   bool Verify(const CBigNum& valueOfCommitmentToCoin, const CBigNum& valueOfCommitmentToSerial,
-              const uint256 msghash) const;
+              CBigNum amountCommitment, CBigNum valueCommitment, const uint256 msghash) const;
 	ADD_SERIALIZE_METHODS;
   template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
-	    READWRITE(s_notprime);
-      READWRITE(sprime);
-      READWRITE(hash);
+      READWRITE(xi);
+      READWRITE(iota);
+      READWRITE(delta);
+      READWRITE(psi);
+      READWRITE(nu);
+      READWRITE(Omega);
+      READWRITE(eta);
+      READWRITE(omega);
   }
 private:
 	const ZerocoinParams* params;
 	// challenge hash
-  uint256 hash; //TODO For efficiency, should this be a bitset where Templates define params?
+  uint256 omega; //TODO For efficiency, should this be a bitset where Templates define params?
 
 	// challenge response values
 	// this is s_notprime instead of s
 	// because the serialization macros
 	// define something named s and it conflicts
-	vector<CBigNum> s_notprime;
-  vector<CBigNum> sprime;
+  vector<CBigNum> xi;
+  vector<CBigNum> iota;
+  vector<CBigNum> delta;
+  vector<CBigNum> psi;
+  vector<CBigNum> nu;
+  vector<CBigNum> Omega;
+  vector<CBigNum> eta;
   inline CBigNum challengeCalculation(const CBigNum& g, const CBigNum& a, const CBigNum& a_exp, const CBigNum& b,const CBigNum& b_exp,
-                                     const CBigNum& h, const CBigNum& h_exp) const;
+                                      const CBigNum& h, const CBigNum& h_exp) const;
+  inline CBigNum challengeCalculation(const CBigNum& g, const CBigNum& a, const CBigNum& a_exp, const CBigNum& b,const CBigNum& b_exp,
+                                      const CBigNum& c,const CBigNum& c_exp,const CBigNum& h, const CBigNum& h_exp) const;
   inline CBigNum challengeCalculation(const CBigNum& a,const CBigNum& a_exp,const CBigNum& b,const CBigNum& b_exp) const;
+  inline CBigNum challengeCalculation(const CBigNum& a,const CBigNum& a_exp,const CBigNum& b,const CBigNum& b_exp,const CBigNum& c,const CBigNum& c_exp) const;
 };
 
 } /* namespace libzerocoin */

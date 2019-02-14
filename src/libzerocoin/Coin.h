@@ -17,13 +17,13 @@
 
 #include "amount.h"
 #include "bignum.h"
-#include "Denominations.h"
 #include "Keys.h"
 #include "Params.h"
 #include "key.h"
 #include "streams.h"
 #include "util.h"
 #include "version.h"
+#include "zkplib.h"
 
 namespace libzerocoin
 {
@@ -33,9 +33,7 @@ void GetRandomnessBits(CBigNum randomness, std::vector<int> &randomness_bits);
 
 /** A Public coin is the part of a coin that
  * is published to the network and what is handled
- * by other clients. It contains only the value
- * of commitment to a serial number and the
- * denomination of the coin.
+ * by other clients.
  */
 class PublicCoin
 {
@@ -60,24 +58,27 @@ public:
    *
    * @brief Mint a new coin.
    * @param p cryptographic parameters
-   * @param d the denomination of the coin to mint
    * @param destPubKey the public key of the destination
    * @param blindingCommitment the bliding commitment from the destination
    * @throws ZerocoinException if the process takes too long
    **/
 
-    PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CPubKey destPubKey, const BlindingCommitment blindingCommitment, const std::string pid);
-    PublicCoin(const ZerocoinParams* p, const CoinDenomination d, const CBigNum value, const CPubKey pubKey, const CBigNum obfuscatedPid, bool fCheck = true);
+    PublicCoin(const ZerocoinParams* p, const CPubKey destPubKey, const BlindingCommitment blindingCommitment,
+               const std::string pid, const CAmount amount);
+    PublicCoin(const ZerocoinParams* p, const CBigNum value, const CPubKey pubKey, const CBigNum obfuscatedPid,
+               const CBigNum obfuscatedAmount, const CBigNum amountCommitment, bool fCheck = true);
 
-    const CBigNum& getValue() const { return this->value; }
+    const CBigNum getValue() const { CBigNum ret = this->amountcommitment.mul_mod(this->params->coinCommitmentGroup.h.pow_mod(this->value, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus); return ret; }
+    const CBigNum getCoinValue() const { return this->value; }
     const CPubKey& getPubKey() const { return this->pubKey; }
     const uint8_t& getVersion() const { return this->version; }
     const CBigNum& getPaymentId() const { return this->paymentId; }
-    CoinDenomination getDenomination() const { return this->denomination; }
+    const CBigNum& getAmount() const { return this->amount; }
+    const CBigNum& getAmountCommitment() const { return this->amountcommitment; }
 
     bool operator==(const PublicCoin& rhs) const
     {
-        return ((this->value == rhs.value) && (this->params == rhs.params) && (this->denomination == rhs.denomination) && (this->pubKey == rhs.pubKey) && (this->paymentId == rhs.paymentId));
+        return ((this->value == rhs.value) && (this->params == rhs.params) && (this->amountcommitment == rhs.amountcommitment) && (this->amount == rhs.amount) && (this->pubKey == rhs.pubKey) && (this->paymentId == rhs.paymentId));
     }
     bool operator!=(const PublicCoin& rhs) const { return !(*this == rhs); }
 
@@ -88,19 +89,21 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
     {
         READWRITE(version);
-        READWRITE(denomination);
-        READWRITE(value);
         READWRITE(pubKey);
+        READWRITE(value);
+        READWRITE(amountcommitment);
         READWRITE(paymentId);
+        READWRITE(amount);
     }
 
 private:
     const ZerocoinParams* params;
     uint8_t version;
     CBigNum value;
-    CoinDenomination denomination;
     CPubKey pubKey;
     CBigNum paymentId;
+    CBigNum amount;
+    CBigNum amountcommitment;
 };
 
 /**
@@ -141,9 +144,9 @@ public:
    * @param commitment_value the commitment value specified on the mint
    **/
 
-    PrivateCoin(const ZerocoinParams* p, const CoinDenomination denomination, const CKey privKey, const CPubKey mintPubKey,
+    PrivateCoin(const ZerocoinParams* p, const CKey privKey, const CPubKey mintPubKey,
                 const BlindingCommitment blindingCommitment, const CBigNum commitment_value, const CBigNum obfuscatedPid,
-                bool fCheck = true);
+                const CBigNum obfuscatedAmount, bool fCheck = true);
 
     const PublicCoin& getPublicCoin() const { return this->publicCoin; }
     const CBigNum& getObfuscationValue() const { return this->serialNumber; }
@@ -156,10 +159,12 @@ public:
         return ((bnObfuscationJ.first*this->serialNumber)+bnObfuscationJ.second) % params->coinCommitmentGroup.groupOrder;
     }
     const std::string getPaymentId() const;
+    CAmount getAmount() const;
+    CAmount getAmount(CBigNum obfValue, CBigNum obfAmount) const;
     const CBigNum& getRandomness() const { return this->randomness; }
     const uint8_t& getVersion() const { return this->version; }
 
-    static bool QuickCheckIsMine(const ZerocoinParams* p, const CKey privKey, const CPubKey mintPubKey, const BlindingCommitment blindingCommitment, const CBigNum commitment_value);
+    static bool QuickCheckIsMine(const ZerocoinParams* p, const CKey privKey, const CPubKey mintPubKey, const BlindingCommitment blindingCommitment, const CBigNum commitment_value, const CBigNum obfuscationAmount);
 
     bool isValid();
 
@@ -172,6 +177,7 @@ public:
         READWRITE(randomness);
         READWRITE(serialNumber);
         READWRITE(obfuscationPid);
+        READWRITE(obfuscationAmount);
     }
 
 private:
@@ -180,6 +186,7 @@ private:
     CBigNum randomness;
     CBigNum serialNumber;
     CBigNum obfuscationPid;
+    CBigNum obfuscationAmount;
     uint8_t version = 1;
     bool fValid = false;
 

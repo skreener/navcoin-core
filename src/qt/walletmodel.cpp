@@ -302,6 +302,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
 
             if (address.type() == typeid(libzerocoin::CPrivateAddress)) {
                 boost::get<libzerocoin::CPrivateAddress>(address).SetPaymentId(rcp.message.toStdString());
+                boost::get<libzerocoin::CPrivateAddress>(address).SetAmount(rcp.amount);
             }
 
             // Parse NavCoin address
@@ -404,6 +405,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
             } else if (!rcp.message.isEmpty())  // Message from normal navcoin:URI (navcoin:123...?message=example)
             {
                 newTx->vOrderForm.push_back(make_pair("Message", rcp.message.toStdString()));
+                newTx->vOrderForm.push_back(make_pair("Amount", to_string(rcp.amount)));
             }
         }
 

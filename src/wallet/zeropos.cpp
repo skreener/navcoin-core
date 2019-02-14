@@ -34,7 +34,7 @@ bool CheckZeroKernel(CBlockIndex* pindexPrev, const CCoinsViewCache& view, unsig
     if (!pwalletMain->GetBlindingCommitment(bc))
         return error("Could not get blinding commitment");
 
-    libzerocoin::PrivateCoin privateCoin(&Params().GetConsensus().Zerocoin_Params, pubCoin.getDenomination(), zk, pubCoin.getPubKey(), bc, pubCoin.getValue(), pubCoin.getPaymentId());
+    libzerocoin::PrivateCoin privateCoin(&Params().GetConsensus().Zerocoin_Params, zk, pubCoin.getPubKey(), bc, pubCoin.getValue(), pubCoin.getPaymentId(), pubCoin.getAmount());
 
     if (!privateCoin.isValid())
         return error("Private coin is not valid");
@@ -42,7 +42,7 @@ bool CheckZeroKernel(CBlockIndex* pindexPrev, const CCoinsViewCache& view, unsig
     if (!pwalletMain->GetObfuscationJ(oj))
         return error("Could not get obfuscation j");
 
-    nValue = libzerocoin::ZerocoinDenominationToAmount(pubCoin.getDenomination());
+    nValue = COIN; //libzerocoin::ZerocoinDenominationToAmount(pubCoin.getDenomination());
 
     return CheckZeroStakeKernelHash(pindexPrev, nBits, nTime, privateCoin.getPublicSerialNumber(oj), nValue, hashProofOfStake, targetProofOfStake);
 }

@@ -21,7 +21,6 @@
 #include <exception>
 #include "streams.h"
 #include "libzerocoin/ParamGeneration.h"
-#include "libzerocoin/Denominations.h"
 #include "libzerocoin/Coin.h"
 #include "libzerocoin/CoinSpend.h"
 #include "libzerocoin/Accumulator.h"
@@ -220,10 +219,10 @@ Test_Accumulator()
     }
     try {
         // Accumulate the coin list from first to last into one accumulator
-        Accumulator accOne(&g_Params->accumulatorParams, CoinDenomination::ZQ_ONE);
-        Accumulator accTwo(&g_Params->accumulatorParams,CoinDenomination::ZQ_ONE);
-        Accumulator accThree(&g_Params->accumulatorParams,CoinDenomination::ZQ_ONE);
-        Accumulator accFour(&g_Params->accumulatorParams,CoinDenomination::ZQ_ONE);
+        Accumulator accOne(&g_Params->accumulatorParams);
+        Accumulator accTwo(&g_Params->accumulatorParams);
+        Accumulator accThree(&g_Params->accumulatorParams);
+        Accumulator accFour(&g_Params->accumulatorParams);
         AccumulatorWitness wThree(g_Params, accThree, gCoins[0]->getPublicCoin());
 
         for (uint32_t i = 0; i < TESTS_COINS_TO_ACCUMULATE; i++) {
@@ -338,8 +337,8 @@ Test_MintCoin()
     try {
         // Generate a list of coins
         for (uint32_t i = 0; i < TESTS_COINS_TO_ACCUMULATE; i++) {
-            PublicCoin pubCoin(g_Params,libzerocoin::CoinDenomination::ZQ_ONE,pubKey,blindingCommitment, "");
-            gCoins[i] = new PrivateCoin(g_Params,pubCoin.getDenomination(),privKey,pubCoin.getPubKey(),blindingCommitment,pubCoin.getValue(), pubCoin.getPaymentId());
+            PublicCoin pubCoin(g_Params, pubKey, blindingCommitment, "", COIN);
+            gCoins[i] = new PrivateCoin(g_Params, privKey, pubCoin.getPubKey(), blindingCommitment, pubCoin.getValue(), pubCoin.getPaymentId(), pubCoin.getAmount());
             PublicCoin pc = gCoins[i]->getPublicCoin();
             CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
             ss << pc;
@@ -374,7 +373,7 @@ bool Test_InvalidCoin()
             return false;
         }
 
-        PublicCoin pubCoin2(g_Params, ZQ_ONE, coinValue, pubKey, CBigNum(1));
+        PublicCoin pubCoin2(g_Params, coinValue, pubKey, CBigNum(1), CBigNum(1), CBigNum(1));
         if (pubCoin2.isValid()) {
             // A non-prime coin should not be valid!
             return false;
@@ -420,7 +419,7 @@ Test_MintAndSpend()
         // Accumulate the list of generated coins into a fresh accumulator.
         // The first one gets marked as accumulated for a witness, the
         // others just get accumulated normally.
-        Accumulator acc(&g_Params->accumulatorParams,CoinDenomination::ZQ_ONE);
+        Accumulator acc(&g_Params->accumulatorParams);
         AccumulatorWitness wAcc(g_Params, acc, gCoins[0]->getPublicCoin());
 
         for (uint32_t i = 0; i < TESTS_COINS_TO_ACCUMULATE; i++) {

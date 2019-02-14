@@ -14,6 +14,7 @@
 #ifndef KEYS_H
 #define KEYS_H
 
+#include "amount.h"
 #include "key.h"
 #include "Params.h"
 
@@ -25,13 +26,13 @@ typedef std::pair<CBigNum,CBigNum> BlindingCommitment;
 class CPrivateAddress
 {
 public:
-    CPrivateAddress(const ZerocoinParams* p, std::string pid = "") : params(p), strPid(pid) { }
-    CPrivateAddress(const ZerocoinParams* p, BlindingCommitment blindingCommitment, CPubKey zeroKey, std::string pid = "") : params(p), bc1(blindingCommitment.first.getvch()), bc2(blindingCommitment.second.getvch()), zpk(zeroKey), strPid(pid) {
+    CPrivateAddress(const ZerocoinParams* p, std::string pid = "", CAmount amount = 0) : params(p), strPid(pid), nAmount(amount) { }
+    CPrivateAddress(const ZerocoinParams* p, BlindingCommitment blindingCommitment, CPubKey zeroKey, std::string pid = "", CAmount amount = 0) : params(p), bc1(blindingCommitment.first.getvch()), bc2(blindingCommitment.second.getvch()), zpk(zeroKey), strPid(pid), nAmount(amount) {
         unsigned int vectorSize = (params->coinCommitmentGroup.modulus.bitSize()/8)+1;
         bc1.resize(vectorSize);
         bc2.resize(vectorSize);
     }
-    CPrivateAddress(const ZerocoinParams* p, BlindingCommitment blindingCommitment, CKey zeroKey, std::string pid = "") : params(p), bc1(blindingCommitment.first.getvch()), bc2(blindingCommitment.second.getvch()), zpk(zeroKey.GetPubKey()), strPid(pid) {
+    CPrivateAddress(const ZerocoinParams* p, BlindingCommitment blindingCommitment, CKey zeroKey, std::string pid = "", CAmount amount = 0) : params(p), bc1(blindingCommitment.first.getvch()), bc2(blindingCommitment.second.getvch()), zpk(zeroKey.GetPubKey()), strPid(pid), nAmount(amount) {
         unsigned int vectorSize = (params->coinCommitmentGroup.modulus.bitSize()/8)+1;
         bc1.resize(vectorSize);
         bc2.resize(vectorSize);
@@ -46,6 +47,14 @@ public:
 
     std::string GetPaymentId() const {
         return strPid;
+    }
+
+    void SetAmount(CAmount amount) {
+        nAmount = amount;
+    }
+
+    CAmount GetAmount() const {
+        return nAmount;
     }
 
     const ZerocoinParams* GetParams() const { return params; }
@@ -73,6 +82,7 @@ private:
     std::vector<unsigned char> bc2;
     CPubKey zpk;
     std::string strPid;
+    CAmount nAmount;
 };
 class CPrivateViewKey
 {

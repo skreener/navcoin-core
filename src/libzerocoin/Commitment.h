@@ -39,19 +39,23 @@ public:
    */
     Commitment(const IntegerGroupParams* p, const CBigNum& value);
     explicit Commitment(const IntegerGroupParams* p, const CBigNum& bnSerial, const CBigNum& bnRandomness);
+    explicit Commitment(const IntegerGroupParams* p, const CBigNum& bnSerial, const CBigNum& bnRandomness, const CBigNum& extra);
     const CBigNum& getCommitmentValue() const;
     const CBigNum& getRandomness() const;
     const CBigNum& getContents() const;
+    const CBigNum& getExtra() const;
 private:
     const IntegerGroupParams *params;
     CBigNum commitmentValue;
     CBigNum randomness;
+    CBigNum extra;
     const CBigNum contents;
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
         READWRITE(commitmentValue);
         READWRITE(randomness);
         READWRITE(contents);
+        READWRITE(extra);
     }
 };
 

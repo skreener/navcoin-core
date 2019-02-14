@@ -20,203 +20,203 @@ void NavCoinWitnesser(const CChainParams& chainparams)
     try {
         while (true)
         {
-            while (!pwalletMain)
-            {
-                MilliSleep(1000);
-            }
+//            while (!pwalletMain)
+//            {
+//                MilliSleep(1000);
+//            }
 
 
-            std::map<CBigNum, PublicMintWitnessData> cachedMapWitness;
-            cachedMapWitness.clear();
-            {
-                LOCK(pwalletMain->cs_witnesser);
-                cachedMapWitness.insert(pwalletMain->mapWitness.begin(), pwalletMain->mapWitness.end());
-            }
+//            std::map<CBigNum, PublicMintWitnessData> cachedMapWitness;
+//            cachedMapWitness.clear();
+//            {
+//                LOCK(pwalletMain->cs_witnesser);
+//                cachedMapWitness.insert(pwalletMain->mapWitness.begin(), pwalletMain->mapWitness.end());
+//            }
 
-            for (std::pair<const CBigNum, PublicMintWitnessData> &it: cachedMapWitness)
-            {
-                PublicMintWitnessData witnessData = it.second;
+//            for (std::pair<const CBigNum, PublicMintWitnessData> &it: cachedMapWitness)
+//            {
+//                PublicMintWitnessData witnessData = it.second;
 
-                {
-                    LOCK2(cs_main, pwalletMain->cs_wallet);
+//                {
+//                    LOCK2(cs_main, pwalletMain->cs_wallet);
 
-                    if (pwalletMain->IsSpent(witnessData.GetChainData().GetTxHash(), witnessData.GetChainData().GetOutput()))
-                        continue;
+//                    if (pwalletMain->IsSpent(witnessData.GetChainData().GetTxHash(), witnessData.GetChainData().GetOutput()))
+//                        continue;
 
-                    if (!pwalletMain->mapWallet.count(witnessData.GetChainData().GetTxHash()))
-                        continue;
+//                    if (!pwalletMain->mapWallet.count(witnessData.GetChainData().GetTxHash()))
+//                        continue;
 
-                    CWalletTx pwtx = pwalletMain->mapWallet[witnessData.GetChainData().GetTxHash()];
+//                    CWalletTx pwtx = pwalletMain->mapWallet[witnessData.GetChainData().GetTxHash()];
 
-                    if (!pwtx.IsInMainChain())
-                        continue;
-                }
+//                    if (!pwtx.IsInMainChain())
+//                        continue;
+//                }
 
-                AccumulatorMap accumulatorMap(&chainparams.GetConsensus().Zerocoin_Params);
-                if (!accumulatorMap.Load(witnessData.GetChecksum()))
-                {
-                    witnessData.Recover();
-                    if (!accumulatorMap.Load(witnessData.GetChecksum()))
-                    {
-                        witnessData.Reset();
-                        {
-                            LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
-                            pwalletMain->WriteWitness(it.first, witnessData);
-                        }
-                        continue;
-                    }
-                }
+//                AccumulatorMap accumulatorMap(&chainparams.GetConsensus().Zerocoin_Params);
+//                if (!accumulatorMap.Load(witnessData.GetChecksum()))
+//                {
+//                    witnessData.Recover();
+//                    if (!accumulatorMap.Load(witnessData.GetChecksum()))
+//                    {
+//                        witnessData.Reset();
+//                        {
+//                            LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
+//                            pwalletMain->WriteWitness(it.first, witnessData);
+//                        }
+//                        continue;
+//                    }
+//                }
 
-                CBlockIndex *pindex;
+//                CBlockIndex *pindex;
 
-                {
-                    LOCK(cs_main);
-                    bool fReset = false;
+//                {
+//                    LOCK(cs_main);
+//                    bool fReset = false;
 
-                    if(accumulatorMap.GetBlockHash() == uint256() || !mapBlockIndex.count(accumulatorMap.GetBlockHash()))
-                    {
-                        if (witnessData.GetCount() == 0)
-                            continue;
+//                    if(accumulatorMap.GetBlockHash() == uint256() || !mapBlockIndex.count(accumulatorMap.GetBlockHash()))
+//                    {
+//                        if (witnessData.GetCount() == 0)
+//                            continue;
 
-                        witnessData.Recover();
+//                        witnessData.Recover();
 
-                        if (!accumulatorMap.Load(witnessData.GetChecksum()))
-                        {
-                            witnessData.Reset();
-                            {
-                                LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
-                                pwalletMain->WriteWitness(it.first, witnessData);
-                            }
-                            continue;
-                        }
+//                        if (!accumulatorMap.Load(witnessData.GetChecksum()))
+//                        {
+//                            witnessData.Reset();
+//                            {
+//                                LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
+//                                pwalletMain->WriteWitness(it.first, witnessData);
+//                            }
+//                            continue;
+//                        }
 
-                        if(accumulatorMap.GetBlockHash() == uint256() || !mapBlockIndex.count(accumulatorMap.GetBlockHash()))
-                        {
-                            witnessData.Reset();
-                            {
-                                LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
-                                pwalletMain->WriteWitness(it.first, witnessData);
-                            }
-                            continue;
-                        }
-                    }
+//                        if(accumulatorMap.GetBlockHash() == uint256() || !mapBlockIndex.count(accumulatorMap.GetBlockHash()))
+//                        {
+//                            witnessData.Reset();
+//                            {
+//                                LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
+//                                pwalletMain->WriteWitness(it.first, witnessData);
+//                            }
+//                            continue;
+//                        }
+//                    }
 
-                    pindex = mapBlockIndex[accumulatorMap.GetBlockHash()];
-                    pindex = chainActive.Next(pindex);
-                    if (!pindex)
-                        continue;
+//                    pindex = mapBlockIndex[accumulatorMap.GetBlockHash()];
+//                    pindex = chainActive.Next(pindex);
+//                    if (!pindex)
+//                        continue;
 
-                    CBlockIndex *plastindex = pindex;
-                    bool fShouldWrite = false;
-                    int nCount = GetArg("-witnesser_blocks_per_round", DEFAULT_BLOCKS_PER_ROUND);
+//                    CBlockIndex *plastindex = pindex;
+//                    bool fShouldWrite = false;
+//                    int nCount = GetArg("-witnesser_blocks_per_round", DEFAULT_BLOCKS_PER_ROUND);
 
-                    while (pindex && nCount > 0)
-                    {
-                        CBlock block;
-                        bool fRecover = false;
-                        bool fStake = (chainActive.Tip()->nHeight - pindex->nHeight) > COINBASE_MATURITY;
+//                    while (pindex && nCount > 0)
+//                    {
+//                        CBlock block;
+//                        bool fRecover = false;
+//                        bool fStake = (chainActive.Tip()->nHeight - pindex->nHeight) > COINBASE_MATURITY;
 
-                        if (GetStaking() && fStake && witnessData.GetCount() > 0)
-                            break;
+//                        if (GetStaking() && fStake && witnessData.GetCount() > 0)
+//                            break;
 
-                        if (!ReadBlockFromDisk(block, pindex, Params().GetConsensus()))
-                            fRecover = true;
+//                        if (!ReadBlockFromDisk(block, pindex, Params().GetConsensus()))
+//                            fRecover = true;
 
-                        if ((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) != VERSIONBITS_TOP_BITS_ZEROCOIN)
-                            fRecover = true;
+//                        if ((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) != VERSIONBITS_TOP_BITS_ZEROCOIN)
+//                            fRecover = true;
 
-                        if (fRecover)
-                        {
-                            witnessData.Recover();
-                            {
-                                LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
-                                pwalletMain->WriteWitness(it.first, witnessData);
-                            }
-                            break;
-                        }
+//                        if (fRecover)
+//                        {
+//                            witnessData.Recover();
+//                            {
+//                                LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
+//                                pwalletMain->WriteWitness(it.first, witnessData);
+//                            }
+//                            break;
+//                        }
 
-                        for (auto& tx : block.vtx)
-                        {
-                            for (auto& out : tx.vout)
-                            {
-                                if (!out.IsZerocoinMint())
-                                    continue;
+//                        for (auto& tx : block.vtx)
+//                        {
+//                            for (auto& out : tx.vout)
+//                            {
+//                                if (!out.IsZerocoinMint())
+//                                    continue;
 
-                                PublicCoin pubCoinOut(&Params().GetConsensus().Zerocoin_Params);
+//                                PublicCoin pubCoinOut(&Params().GetConsensus().Zerocoin_Params);
 
-                                if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, out, pubCoinOut))
-                                    continue;
+//                                if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, out, pubCoinOut))
+//                                    continue;
 
-                                if (pubCoinOut.getDenomination() != witnessData.GetPublicCoin().getDenomination())
-                                    continue;
+//                                if (pubCoinOut.getDenomination() != witnessData.GetPublicCoin().getDenomination())
+//                                    continue;
 
-                                witnessData.Accumulate(pubCoinOut.getValue());
-                                fShouldWrite = true;
-                            }
-                        }
+//                                witnessData.Accumulate(pubCoinOut.getValue());
+//                                fShouldWrite = true;
+//                            }
+//                        }
 
-                        if (witnessData.Verify())
-                            witnessData.SetChecksum(pindex->nAccumulatorChecksum);
-                        else
-                            fRecover = true;
+//                        if (witnessData.Verify())
+//                            witnessData.SetChecksum(pindex->nAccumulatorChecksum);
+//                        else
+//                            fRecover = true;
 
-                        if (!accumulatorMap.Load(pindex->nAccumulatorChecksum) || witnessData.GetAccumulator().getValue() != accumulatorMap.GetValue(witnessData.GetPublicCoin().getDenomination()))
-                            fRecover = true;
+//                        if (!accumulatorMap.Load(pindex->nAccumulatorChecksum) || witnessData.GetAccumulator().getValue() != accumulatorMap.GetValue(witnessData.GetPublicCoin().getDenomination()))
+//                            fRecover = true;
 
-                        if (fRecover)
-                        {
-                            witnessData.Recover();
-                            {
-                                LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
-                                pwalletMain->WriteWitness(it.first, witnessData);
-                            }
-                            break;
-                        }
+//                        if (fRecover)
+//                        {
+//                            witnessData.Recover();
+//                            {
+//                                LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
+//                                pwalletMain->WriteWitness(it.first, witnessData);
+//                            }
+//                            break;
+//                        }
 
-                        plastindex = pindex;
+//                        plastindex = pindex;
 
-                        pindex = chainActive.Next(pindex);
-                        nCount--;
-                    }
+//                        pindex = chainActive.Next(pindex);
+//                        nCount--;
+//                    }
 
-                    if (!witnessData.Verify())
-                    {
-                        witnessData.Recover();
-                        if (!witnessData.Verify())
-                            fReset = true;
-                    }
+//                    if (!witnessData.Verify())
+//                    {
+//                        witnessData.Recover();
+//                        if (!witnessData.Verify())
+//                            fReset = true;
+//                    }
 
-                    AccumulatorMap prevAccumulatorMap(&chainparams.GetConsensus().Zerocoin_Params);
-                    if (!prevAccumulatorMap.Load(witnessData.GetPrevChecksum()))
-                        fReset = true;
+//                    AccumulatorMap prevAccumulatorMap(&chainparams.GetConsensus().Zerocoin_Params);
+//                    if (!prevAccumulatorMap.Load(witnessData.GetPrevChecksum()))
+//                        fReset = true;
 
-                    if(!fReset && (prevAccumulatorMap.GetBlockHash() == uint256() || !mapBlockIndex.count(prevAccumulatorMap.GetBlockHash())))
-                        fReset = true;
+//                    if(!fReset && (prevAccumulatorMap.GetBlockHash() == uint256() || !mapBlockIndex.count(prevAccumulatorMap.GetBlockHash())))
+//                        fReset = true;
 
-                    if (fReset) {
-                        witnessData.Reset();
-                        {
-                            LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
-                            pwalletMain->WriteWitness(it.first, witnessData);
-                        }
-                        continue;
-                    }
+//                    if (fReset) {
+//                        witnessData.Reset();
+//                        {
+//                            LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
+//                            pwalletMain->WriteWitness(it.first, witnessData);
+//                        }
+//                        continue;
+//                    }
 
-                    CBlockIndex* pindexPrevState = mapBlockIndex[prevAccumulatorMap.GetBlockHash()];
+//                    CBlockIndex* pindexPrevState = mapBlockIndex[prevAccumulatorMap.GetBlockHash()];
 
-                    if (plastindex->nHeight - pindexPrevState->nHeight >= GetArg("-witnesser_block_snapshot", DEFAULT_BLOCK_SNAPSHOT))
-                    {
-                        witnessData.Backup();
-                        fShouldWrite = true;
-                    }
+//                    if (plastindex->nHeight - pindexPrevState->nHeight >= GetArg("-witnesser_block_snapshot", DEFAULT_BLOCK_SNAPSHOT))
+//                    {
+//                        witnessData.Backup();
+//                        fShouldWrite = true;
+//                    }
 
-                    if (fShouldWrite)
-                    {
-                        LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
-                        pwalletMain->WriteWitness(it.first, witnessData);
-                    }
-                }
-            }
+//                    if (fShouldWrite)
+//                    {
+//                        LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
+//                        pwalletMain->WriteWitness(it.first, witnessData);
+//                    }
+//                }
+//            }
             MilliSleep(250);
         }
     }

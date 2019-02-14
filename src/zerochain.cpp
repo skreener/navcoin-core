@@ -16,20 +16,20 @@ bool BlockToZerocoinMints(const ZerocoinParams *params, const CBlock* block, std
             if (!out.IsZerocoinMint())
                 continue;
 
-            PublicCoin pubCoin(params);
-
-            CoinDenomination denomination = AmountToZerocoinDenomination(out.nValue);
-            if (denomination == ZQ_ERROR)
-                return error("BlockToZerocoinMints(): txout.nValue is not a valid denomination value");
-
-            std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> i;
-            if(!out.scriptPubKey.ExtractZerocoinMintData(p, c, i))
+            std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> i;  std::vector<unsigned char> a;  std::vector<unsigned char> aco;
+            if(!out.scriptPubKey.ExtractZerocoinMintData(p, c, i, a, aco))
                 return error("BlockToZerocoinMints(): Could not extract Zerocoin mint data");
 
             CBigNum pid;
             pid.setvch(i);
 
-            PublicCoin checkPubCoin(params, denomination, CBigNum(c), p, pid);
+            CBigNum oa;
+            oa.setvch(a);
+
+            CBigNum ac;
+            ac.setvch(aco);
+
+            PublicCoin checkPubCoin(params, CBigNum(c), p, pid, oa, ac);
             vPubCoins.push_back(checkPubCoin);
         }
     }
@@ -78,13 +78,9 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const C
         *pCoinSpend = coinSpend;
 
     uint256 accumulatorChecksum = coinSpend.getAccumulatorChecksum();
-    AccumulatorMap accumulatorMap(params);
 
-    if (!accumulatorMap.Load(accumulatorChecksum))
-        return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Wrong accumulator checksum %s", accumulatorChecksum.ToString())));
-
-    Accumulator accumulator(params, coinSpend.getDenomination());
-    accumulator.setValue(accumulatorMap.GetValue(coinSpend.getDenomination()));
+    Accumulator accumulator(params);
+    accumulator.setValue(accumulatorChecksum);
 
     if (pAccumulator)
         *pAccumulator = accumulator;
@@ -132,7 +128,7 @@ bool VerifyCoinSpend(const CoinSpend& coinSpend, const Accumulator &accumulator,
     return true;
 }
 
-bool CountMintsFromHeight(unsigned int nInitialHeight, CoinDenomination denom, unsigned int& nRet)
+bool CountMintsFromHeight(unsigned int nInitialHeight, unsigned int& nRet)
 {
     nRet = 0;
     CBlockIndex* pindex = chainActive[nInitialHeight];
@@ -144,15 +140,10 @@ bool CountMintsFromHeight(unsigned int nInitialHeight, CoinDenomination denom, u
             return false;
 
         for (auto& tx: block.vtx)
-        {
             for (CTxOut& out: tx.vout)
-            {
-                if(out.IsZerocoinMint() && denom == AmountToZerocoinDenomination(out.nValue))
-                {
+                if(out.IsZerocoinMint())
                     nRet++;
-                }
-            }
-        }
+
         pindex = chainActive.Next(pindex);
     }
 
@@ -194,15 +185,13 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
         return false;
     }
 
-    AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
-
-    if(pindex->nAccumulatorChecksum != uint256() && !accumulatorMap.Load(pindex->nAccumulatorChecksum)) {
+    if(pindex->nAccumulatorChecksum != uint256()) {
         strError = strprintf("Could not load Accumulators data from checksum %s at height %d",
                              pindex->nAccumulatorChecksum.GetHex(), pindex->nHeight);
         return false;
     }
 
-    accumulator.setValue(accumulatorMap.GetValue(pubCoin.getDenomination()));
+    accumulator.setValue(pindex->nAccumulatorChecksum);
     accumulatorWitness.resetValue(accumulator, pubCoin);
 
     int nCount = 0;
@@ -234,9 +223,6 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
                         return false;
                     }
 
-                    if (pubCoinOut.getDenomination() != pubCoin.getDenomination())
-                        continue;
-
                     nCount++;
 
                     accumulatorWitness.AddElement(pubCoinOut);
@@ -246,12 +232,7 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
 
             accumulatorChecksum = pindex->nAccumulatorChecksum;
 
-
-            if (!accumulatorMap.Load(accumulatorChecksum)) {
-                return false;
-            }
-
-            assert(accumulator.getValue() == accumulatorMap.GetValue(pubCoin.getDenomination()));
+            assert(accumulator.getValue().getuint256() == accumulatorChecksum);
 
             if(!chainActive.Next(pindex) || (nRequiredMints > 0 && nCount >= nRequiredMints))
                 break;
@@ -260,13 +241,7 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
         }
     }
 
-    if (!accumulatorMap.Load(accumulatorChecksum)) {
-        strError = strprintf("Could not load Accumulators data from checksum %s of last block index",
-                             accumulatorChecksum.GetHex());
-        return false;
-    }
-
-    accumulator.setValue(accumulatorMap.GetValue(pubCoin.getDenomination()));
+    accumulator.setValue(accumulatorChecksum);
 
     if (!accumulatorWitness.VerifyWitness(accumulator, pubCoin)) {
         strError = "Witness did not verify";

@@ -393,7 +393,7 @@ void CWallet::AvailableZeroCoinsForStaking(vector<COutput>& vCoins, unsigned int
                 if(!GetBlindingCommitment(bc))
                     break;
 
-                libzerocoin::PrivateCoin privateCoin = libzerocoin::PrivateCoin(&Params().GetConsensus().Zerocoin_Params, pubCoin.getDenomination(), zk, p, bc, c, pubCoin.getPaymentId(), false);
+                libzerocoin::PrivateCoin privateCoin = libzerocoin::PrivateCoin(&Params().GetConsensus().Zerocoin_Params, zk, p, bc, c, pubCoin.getPaymentId(), pubCoin.getAmount(), false);
 
                 uint256 txHash;
                 int nHeight;
@@ -718,25 +718,14 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
         libzerocoin::CPrivateAddress pa(&Params().GetConsensus().Zerocoin_Params,bc,zk);
 
-        txNew.vout.push_back(CTxOut(nCredit-nReward, GetScriptForDestination(pa)));
+        pa.SetAmount(nCredit-nReward);
 
-        vector<CRecipient> vecSend;
-        bool fNeedsMinting = false;
+        txNew.vout.push_back(CTxOut(0, GetScriptForDestination(pa)));
 
         pa.SetPaymentId("Staking Reward");
+        pa.SetAmount(nReward);
 
-        // Parse NavCoin address
-        if (!DestinationToVecRecipients(nReward, pa, vecSend, false, false, fNeedsMinting, true)) {
-            return error("%s : could not convert to recipient's vector", __func__);
-        }
-
-        if (fNeedsMinting && !MintVecRecipients(pa, vecSend, false)) {
-            return error("%s : could not mint", __func__);
-        }
-
-        for (CRecipient& it: vecSend) {
-            txNew.vout.push_back(CTxOut(it.nAmount, it.scriptPubKey));
-        }
+        txNew.vout.push_back(CTxOut(0, GetScriptForDestination(pa)));
     }
 
     int64_t blockValue = nCredit;
@@ -818,7 +807,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
             if (!GetObfuscationJ(oj))
                 return error("%s : Could not read obfuscation value j from wallet", __func__);
 
-            libzerocoin::PrivateCoin privateCoin(&Params().GetConsensus().Zerocoin_Params, pubCoin.getDenomination(), zk, pubCoin.getPubKey(), bc, pubCoin.getValue(), pubCoin.getPaymentId());
+            libzerocoin::PrivateCoin privateCoin(&Params().GetConsensus().Zerocoin_Params, zk, pubCoin.getPubKey(), bc, pubCoin.getValue(), pubCoin.getPaymentId(), pubCoin.getAmount());
 
             if (!privateCoin.isValid()) {
                 return error("%s : The private coin did not validate", __func__);
@@ -1631,8 +1620,8 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletD
                 if (!GetBlindingCommitment(bc))
                     break;
 
-                libzerocoin::PrivateCoin privateCoin(&Params().GetConsensus().Zerocoin_Params, pubCoin.getDenomination(), zk, pubCoin.getPubKey(), bc, pubCoin.getValue(),
-                                                     pubCoin.getPaymentId());
+                libzerocoin::PrivateCoin privateCoin(&Params().GetConsensus().Zerocoin_Params, zk, pubCoin.getPubKey(), bc, pubCoin.getValue(),
+                                                     pubCoin.getPaymentId(), pubCoin.getAmount());
 
                 if (!privateCoin.isValid())
                     continue;
@@ -1655,30 +1644,30 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletD
                     if (!mapWitness.count(pubCoin.getValue()))
                     {
 
-                        if (!mapBlockIndex.count(wtx.hashBlock))
-                            continue;
+//                        if (!mapBlockIndex.count(wtx.hashBlock))
+//                            continue;
 
-                        CBlockIndex* pindex = mapBlockIndex[wtx.hashBlock];
+//                        CBlockIndex* pindex = mapBlockIndex[wtx.hashBlock];
 
-                        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
+//                        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
 
-                        if(!pindex->pprev)
-                            continue;
+//                        if(!pindex->pprev)
+//                            continue;
 
-                        if(!accumulatorMap.Load(pindex->pprev->nAccumulatorChecksum))
-                            continue;
+//                        if(!accumulatorMap.Load(pindex->pprev->nAccumulatorChecksum))
+//                            continue;
 
-                        Accumulator accumulator(&Params().GetConsensus().Zerocoin_Params.accumulatorParams, pubCoin.getDenomination());
+//                        Accumulator accumulator(&Params().GetConsensus().Zerocoin_Params.accumulatorParams, pubCoin.getDenomination());
 
-                        if (!accumulatorMap.Get(pubCoin.getDenomination(), accumulator))
-                            continue;
+//                        if (!accumulatorMap.Get(accumulator))
+//                            continue;
 
-                        assert(accumulator.getDenomination() == pubCoin.getDenomination());
+//                        assert(accumulator.getDenomination() == pubCoin.getDenomination());
 
-                        witnessToWrite.push_back(std::make_pair(pubCoin.getValue(),
-                                                                PublicMintWitnessData(&Params().GetConsensus().Zerocoin_Params,
-                                                                                      pubCoin, PublicMintChainData(outWrite, wtx.hashBlock),
-                                                                                      accumulator, accumulatorMap.GetChecksum())));
+//                        witnessToWrite.push_back(std::make_pair(pubCoin.getValue(),
+//                                                                PublicMintWitnessData(&Params().GetConsensus().Zerocoin_Params,
+//                                                                                      pubCoin, PublicMintChainData(outWrite, wtx.hashBlock),
+//                                                                                      accumulator, accumulatorMap.GetChecksum())));
                     }
                 }
             }
@@ -2836,8 +2825,9 @@ bool CWalletTx::IsTrusted() const
         for (const CTxOut& out: vout) {
             if (!out.IsZerocoinMint())
                 continue;
-            std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> i;
-            if(!out.scriptPubKey.ExtractZerocoinMintData(p, c, i))
+            std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> i; std::vector<unsigned char> a;
+             std::vector<unsigned char> ac;
+            if(!out.scriptPubKey.ExtractZerocoinMintData(p, c, i, a, ac))
                 continue;
             PublicMintChainData zeroMint;
             if (!pblocktree->ReadCoinMint(CBigNum(c), zeroMint) || zeroMint.GetTxHash() == uint256())
@@ -3135,8 +3125,9 @@ void CWallet::AvailablePrivateCoins(vector<COutput>& vCoins, bool fOnlyConfirmed
                 isminetype mine = IsMine(pcoin->vout[i]);
                 if (!pcoin->vout[i].IsZerocoinMint())
                     continue;
-                std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> id;
-                if(!pcoin->vout[i].scriptPubKey.ExtractZerocoinMintData(p, c, id))
+                std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> id;  std::vector<unsigned char> a;
+                std::vector<unsigned char> ac;
+                if(!pcoin->vout[i].scriptPubKey.ExtractZerocoinMintData(p, c, id, a, ac))
                     continue;
                 libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
 
@@ -3521,8 +3512,6 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
             nFeeRet = 0;
             // Start with no fee and loop until there is enough fee
             // Unless it's a private transaction and the fee is fixed so we can already add it for efficiency
-            if (fPrivate)
-                nValue += libzerocoin::ZerocoinDenominationToAmount(libzerocoin::GetSmallerDenomination());
             while (true)
             {
                 nChangePosInOut = nChangePosRequest;
@@ -3615,26 +3604,12 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
                         std::vector<CRecipient> vecChange;
 
-                        bool fNeedsMinting;
-
                         pa.SetPaymentId("Transaction Change");
+                        pa.SetAmount(nChange);
 
-                        if (!DestinationToVecRecipients(nChange, pa, vecChange, false, false, fNeedsMinting, fPrivate)) {
-                            strFailReason = _("The transaction failed while adding the change outputs.");
-                            return false;
-                        }
-
-                        if(fNeedsMinting && !MintVecRecipients(pa, vecChange)) {
-                            strFailReason = _("The transaction failed when adding the coin mint scripts to the change outputs.");
-                            return false;
-                        }
-
-                        for(auto& it: vecChange)
-                        {
-                            CTxOut newTxOut(it.nAmount, it.scriptPubKey);
-                            vector<CTxOut>::iterator position = txNew.vout.begin()+GetRandInt(txNew.vout.size()+1);
-                            txNew.vout.insert(position, newTxOut);
-                        }
+                        CTxOut newTxOut(0, GetScriptForDestination(pa));
+                        vector<CTxOut>::iterator position = txNew.vout.begin()+GetRandInt(txNew.vout.size()+1);
+                        txNew.vout.insert(position, newTxOut);
                     }
                     else
                     {
@@ -3808,8 +3783,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
                 if (fPrivate)
                 {
-                    nFeeNeeded = 0;
-                    nFeeRet = libzerocoin::ZerocoinDenominationToAmount(libzerocoin::GetSmallerDenomination());
+                    nFeeNeeded = nFeeNeeded > 100000 ? nFeeNeeded : 100000;
                 }
                 else
                 {

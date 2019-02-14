@@ -19,8 +19,8 @@
 #include <exception>
 #include "streams.h"
 #include "libzerocoin/bignum.h"
+#include "libzerocoin/bulletproof_rangeproof.h"
 #include "libzerocoin/ParamGeneration.h"
-#include "libzerocoin/Denominations.h"
 #include "libzerocoin/Coin.h"
 #include "libzerocoin/CoinSpend.h"
 #include "libzerocoin/Accumulator.h"
@@ -84,6 +84,25 @@ ZerocoinTutorial()
         privKey.MakeNewKey(false);
         pubKey = privKey.GetPubKey();
 
+        uint64_t nTime = GetTimeMillis();
+
+        BulletproofRangeproof bprp(&params->coinCommitmentGroup, 5);
+        std::vector<CBigNum> v;
+        v.push_back(CBigNum::randBignum(CBigNum(2).pow(10)));
+        std::vector<CBigNum> g;
+        g.push_back(CBigNum::randBignum(params->coinCommitmentGroup.groupOrder));
+        bool ret = bprp.Prove(v, g, 1);
+
+        uint64_t nTime2 = GetTimeMillis();
+
+        std::cout << "bulletproof proof took " << (nTime2 - nTime) * 0.001 << endl;
+
+        bool ret2 = bprp.Verify();
+
+        uint64_t nTime3 = GetTimeMillis();
+
+        std::cout << "bulletproof verify " << ret2 << " took " << (nTime3 - nTime2) * 0.001 << endl;
+
         // Generate obfuscation parameters and a blinding commitment
         CBigNum obfuscation_j1 = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
         CBigNum obfuscation_j2 = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
@@ -118,7 +137,7 @@ ZerocoinTutorial()
         // The following constructor does all the work of minting a brand
         // new zerocoin. You should embed this into a Zerocoin 'MINT' transaction
         // along with a series of currency inputs totaling the assigned value of one zerocoin.
-        libzerocoin::PublicCoin pubCoin(params,libzerocoin::CoinDenomination::ZQ_ONE, pubKey, blindingCommitment, "test_payment_id");
+        libzerocoin::PublicCoin pubCoin(params, pubKey, blindingCommitment, "test_payment_id", COIN);
 
 //        cout << "Successfully minted a zerocoin (Public Part):"
 //             << "\n   Commitment Value: " << pubCoin.getValue()
@@ -127,7 +146,7 @@ ZerocoinTutorial()
         // Use the public coin to construct the Private Coin as we own the private part of the key
         // the coin was created with. This object will include all the secret values to
         // later be able to generate the proof and spend the coin.
-        libzerocoin::PrivateCoin newCoin(params,libzerocoin::CoinDenomination::ZQ_ONE, privKey, pubCoin.getPubKey(), blindingCommitment, pubCoin.getValue(), pubCoin.getPaymentId());
+        libzerocoin::PrivateCoin newCoin(params, privKey, pubCoin.getPubKey(), blindingCommitment, pubCoin.getValue(), pubCoin.getPaymentId(), pubCoin.getAmount());
 
 //        cout << "Successfully minted a zerocoin (Private Part):"
 //             << "\n   Serial Number: " << newCoin.getObfuscationValue()
@@ -148,6 +167,11 @@ ZerocoinTutorial()
 
         if(newCoin.getPaymentId() != "test_payment_id") {
             cout << "The private coin and the public coin do not share the same payment id. " << newCoin.getPaymentId() << endl;
+            return false;
+        }
+
+        if(newCoin.getAmount() != COIN) {
+            cout << "The private coin and the public coin do not share the same amount. " << newCoin.getAmount() << endl;
             return false;
         }
 
@@ -197,11 +221,11 @@ ZerocoinTutorial()
         /********************************************************************/
 
         // Create an empty accumulator object
-        libzerocoin::Accumulator accumulator(params,libzerocoin::CoinDenomination::ZQ_ONE);
+        libzerocoin::Accumulator accumulator(params);
 
         // Add several coins to it (we'll generate them here on the fly).
         for (uint32_t i = 0; i < COINS_TO_ACCUMULATE; i++) {
-            libzerocoin::PublicCoin testCoin(params,libzerocoin::CoinDenomination::ZQ_ONE, pubKey, blindingCommitment, "");
+            libzerocoin::PublicCoin testCoin(params, pubKey, blindingCommitment, "", COIN);
             accumulator += testCoin;
         }
 
@@ -264,7 +288,7 @@ ZerocoinTutorial()
 
         // This is a sanity check. The CoinSpend object should always verify,
         // but why not check before we put it onto the wire?
-        if (!spend.Verify(accumulator)) {
+            if (!spend.Verify(accumulator)) {
             cout << "ERROR: Our new CoinSpend transaction did not verify!" << endl;
             return false;
         }
