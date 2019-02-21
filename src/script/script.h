@@ -192,6 +192,9 @@ enum opcodetype
     OP_ZEROCOINMINT = 0xc7,
     OP_ZEROCOINSPEND = 0xc8,
 
+    // zeroct
+    OP_FEE = 0xc9,
+
     // template matching params
     OP_SMALLDATA = 0xf9,
     OP_SMALLINTEGER = 0xfa,
@@ -700,6 +703,7 @@ public:
     bool IsPaymentRequestVoteNo() const;
     bool ExtractVote(uint256 &hash, bool &vote) const;
 
+    bool IsZeroCTFee() const;
     bool IsZerocoinMint() const;
     bool IsZerocoinSpend() const;
     bool ExtractZerocoinMintData(CPubKey &zkey, std::vector<unsigned char> &commitment, std::vector<unsigned char> &paymentid, std::vector<unsigned char> &obfamount, std::vector<unsigned char> &amcommitment) const;

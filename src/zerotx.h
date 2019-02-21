@@ -6,6 +6,7 @@
 #include "consensus/validation.h"
 #include "libzerocoin/Coin.h"
 #include "libzerocoin/CoinSpend.h"
+#include "libzerocoin/SerialNumberProofOfKnowledge.h"
 
 #ifndef ZEROTX_H
 #define ZEROTX_H

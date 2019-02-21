@@ -31,7 +31,7 @@ bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, v
       CFund::SetScriptForCommunityFundContribution(scriptPubKey);
 
     if (scriptPubKey.IsZerocoinMint()) {
-        CRecipient recipient = {scriptPubKey, nValue, false, ""};
+        CRecipient recipient = {scriptPubKey, 0, false, ""};
         vecSend.push_back(recipient);
     } else {
         CRecipient recipient = {scriptPubKey, nValue, fSubtractFeeFromAmount, ""};

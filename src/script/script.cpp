@@ -259,6 +259,13 @@ bool CScript::IsZerocoinMint() const
         (*this)[0] == OP_ZEROCOINMINT);
 }
 
+bool CScript::IsZeroCTFee() const
+{
+    return (this->size() == 2 &&
+            (*this)[0] == OP_RETURN &&
+            (*this)[1] == OP_FEE);
+}
+
 bool CScript::IsZerocoinSpend() const
 {
     if (this->empty())

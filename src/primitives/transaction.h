@@ -196,6 +196,11 @@ public:
         return scriptPubKey.IsZerocoinMint();
     }
 
+    bool IsZeroCTFee() const
+    {
+        return scriptPubKey.IsZeroCTFee();
+    }
+
     uint256 GetHash() const;
 
     CAmount GetDustThreshold(const CFeeRate &minRelayTxFee) const
@@ -381,6 +386,10 @@ inline void SerializeTransaction(TxType& tx, Stream& s, Operation ser_action, in
     READWRITE(*const_cast<uint32_t*>(&tx.nLockTime));
     if(tx.nVersion >= 2) {
       READWRITE(*const_cast<std::string*>(&tx.strDZeel)); }
+    if(tx.IsZeroCT()) {
+      READWRITE(*const_cast<std::vector<unsigned char>*>(&tx.vchTxSig));
+      READWRITE(*const_cast<std::vector<unsigned char>*>(&tx.vchRangeProof));
+    }
 }
 
 /** The basic transaction that is broadcasted on the network and contained in
@@ -419,6 +428,8 @@ public:
     const uint32_t nLockTime;
     std::string strDZeel;
     const uint256 hash;
+    std::vector<unsigned char> vchTxSig;
+    std::vector<unsigned char> vchRangeProof;
 
     /** Construct a CTransaction that qualifies as IsNull() */
     CTransaction();
@@ -492,6 +503,11 @@ public:
         return IsZerocoinSpend() || HasZerocoinMint();
     }
 
+    bool IsZeroCT() const
+    {
+        return nVersion & 0x80000000;
+    }
+
     friend bool operator==(const CTransaction& a, const CTransaction& b)
     {
         return a.hash == b.hash;
@@ -520,6 +536,8 @@ struct CMutableTransaction
     CTxWitness wit;
     uint32_t nLockTime;
     std::string strDZeel;
+    std::vector<unsigned char> vchTxSig;
+    std::vector<unsigned char> vchRangeProof;
 
     CMutableTransaction();
     CMutableTransaction(const CTransaction& tx);
@@ -540,6 +558,11 @@ struct CMutableTransaction
     {
         // ppcoin: the coin stake transaction is marked with the first output empty
         return (vin.size() > 0 && (!vin[0].prevout.IsNull()) && vout.size() >= 2 && vout[0].IsEmpty());
+    }
+
+    bool IsZeroCT() const
+    {
+        return nVersion & 0x80000000;
     }
 
     /** Compute the hash of this CMutableTransaction. This is computed on the

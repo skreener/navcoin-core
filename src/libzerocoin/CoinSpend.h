@@ -105,6 +105,7 @@ public:
    */
     uint256 getTxOutHash() const { return ptxHash; }
     CBigNum getAccCommitment() const { return accCommitmentToCoinValue; }
+    CBigNum getAmountCommitment() const { return amountCommitment; }
     CBigNum getSerialComm() const { return serialCommitmentToCoinValue; }
     uint8_t getVersion() const { return version; }
     SpendType getSpendType() const { return spendType; }

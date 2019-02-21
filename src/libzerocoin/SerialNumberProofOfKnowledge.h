@@ -26,9 +26,9 @@ class SerialNumberProofOfKnowledge
 {
 public:
     SerialNumberProofOfKnowledge(const IntegerGroupParams* p);
-    SerialNumberProofOfKnowledge(const IntegerGroupParams* p, const CBigNum serialNumber, const uint256 signatureHash);
+    SerialNumberProofOfKnowledge(const IntegerGroupParams* p, const CBigNum serialNumber, const uint256 signatureHash, CBigNum base=0);
 
-    bool Verify(const CBigNum& coinSerialNumberPubKey, const uint256 signatureHash) const;
+    bool Verify(const CBigNum& coinSerialNumberPubKey, const uint256 signatureHash, CBigNum base=0) const;
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
         READWRITE(t);

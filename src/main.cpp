@@ -1199,6 +1199,14 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state)
             return state.DoS(100, false, REJECT_INVALID, "cold-staking-not-enabled");
     }
 
+    if (tx.IsZeroCT()) {
+        if (!(tx.HasZerocoinMint() || tx.IsZerocoinSpend()))
+            return state.DoS(10, false, REJECT_INVALID, "bad-zeroct-tx-no-zerocoin");
+    } else {
+        if (tx.HasZerocoinMint() || tx.IsZerocoinSpend())
+            return state.DoS(10, false, REJECT_INVALID, "bad-normal-tx-has-zerocoin");
+    }
+
     // Check for duplicate/invalid inputs
     set<COutPoint> vInOutPoints;
     set<CScript> vZeroInOutPoints;
@@ -2252,6 +2260,9 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
 
 bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsViewCache &inputs, bool fScriptChecks, unsigned int flags, bool cacheStore, PrecomputedTransactionData& txdata, std::vector<CScriptCheck> *pvChecks)
 {
+    if (tx.IsZeroCT() && !VerifyZeroCTBalance(&Params().GetConsensus().Zerocoin_Params, tx, inputs))
+        return state.DoS(0, false, REJECT_INVALID, "invalid-zeroct-balance");
+
     if (tx.IsCoinBase() || tx.IsZerocoinSpend())
     {
         return true;

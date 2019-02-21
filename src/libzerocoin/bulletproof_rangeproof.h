@@ -26,10 +26,12 @@
 class BulletproofRangeproof
 {
 public:
-    BulletproofRangeproof(const libzerocoin::IntegerGroupParams* in_p, unsigned int in_nexp) : p(in_p), bulletproof(in_p), nexp(in_nexp) { n = pow(2,nexp); }
+    static const size_t maxN = 64;
+    static const size_t maxM = 16;
 
-    bool Prove(std::vector<CBigNum> v, std::vector<CBigNum> gamma, unsigned int logM);
+    BulletproofRangeproof(const libzerocoin::IntegerGroupParams* in_p) : params(in_p), bulletproof(in_p) {}
 
+    void Prove(std::vector<CBigNum> v, std::vector<CBigNum> gamma);
     bool Verify();
 
     ADD_SERIALIZE_METHODS;
@@ -48,12 +50,12 @@ public:
         READWRITE(t);
     }
 
-private:
-    const libzerocoin::IntegerGroupParams* p;
-    const libzerocoin::Bulletproofs bulletproof;
-
-    unsigned int nexp;
-    unsigned int n;
+    std::string ToString() const {
+        return "V: " + libzerocoin::toStringVector(V) + "\nL: "+ libzerocoin::toStringVector(L) + "\nR: " + libzerocoin::toStringVector(R)
+                + "\nA: " + A.ToString(16).substr(0,8)  + "\nS: " + S.ToString(16).substr(0,8)
+                 + "\nT1: " + T1.ToString(16).substr(0,8) + "\nT2: " + T2.ToString(16).substr(0,8) + "\ntaux: " + taux.ToString(16).substr(0,8) + "\nmu: " + mu.ToString(16).substr(0,8)
+                 + "\na: " + a.ToString(16).substr(0,8) + "\nb: " + b.ToString(16).substr(0,8) + "\nt: " + t.ToString(16).substr(0,8);
+    }
 
     std::vector<CBigNum> V;
     std::vector<CBigNum> L;
@@ -68,7 +70,11 @@ private:
     CBigNum b;
     CBigNum t;
 
+private:
+    const libzerocoin::IntegerGroupParams* params;
+    const libzerocoin::Bulletproofs bulletproof;
 };
 
+bool VerifyBulletproof(const libzerocoin::IntegerGroupParams* p, const std::vector<BulletproofRangeproof>& proof);
 
 #endif // BULLETPROOF_RANGEPROOF_H

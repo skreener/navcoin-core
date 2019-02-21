@@ -153,9 +153,18 @@ inline void printVector(const CBN_vector v)
 {
     std::cout << "[";
     for(unsigned int i=0; i<v.size()-1; i++)
-        std::cout << v[i] << ",  ";
+        std::cout << v[i].ToString(16) << ",  ";
     std::cout << v[v.size()-1] << "]";
 
+}
+
+inline std::string toStringVector(const CBN_vector v)
+{
+    std::string ret = "[";
+    for(unsigned int i=0; i<v.size()-1; i++)
+        ret += v[i].ToString(16) + ",  ";
+    ret += (v[v.size()-1] == 0 ? "0" : v[v.size()-1].ToString(16)) + "]";
+    return ret;
 }
 
 inline void printMatrix(const CBN_matrix w)

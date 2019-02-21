@@ -250,3 +250,57 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
 
     return true;
 }
+
+
+bool VerifyZeroCTBalance(const ZerocoinParams *params, const CTransaction& tx, const CCoinsViewCache& view)
+{
+    if (!tx.IsZeroCT())
+        return false;
+
+    CDataStream ss(tx.vchTxSig, SER_NETWORK, PROTOCOL_VERSION);
+    libzerocoin::SerialNumberProofOfKnowledge snpok(&params->coinCommitmentGroup);
+
+    ss >> snpok;
+
+    CBigNum bnInputs = 1;
+    CBigNum bnOutputs = 1;
+
+    for (auto &in: tx.vin)
+    {
+        if (in.scriptSig.IsZerocoinSpend())
+        {
+            libzerocoin::CoinSpend spend(params);
+
+            if (!ScriptToCoinSpend(params, in.scriptSig, spend))
+                return false;
+
+            bnInputs = bnInputs.mul_mod(spend.getAmountCommitment(), params->coinCommitmentGroup.modulus);
+        }
+        else
+        {
+            CAmount inputValue = view.GetOutputFor(in).nValue;
+            bnInputs = bnInputs.mul_mod(params->coinCommitmentGroup.g2.pow_mod(inputValue, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
+        }
+    }
+
+    for (auto &out: tx.vout)
+    {
+        if (out.IsZerocoinMint())
+        {
+            libzerocoin::PublicCoin pc(params);
+
+            if (!TxOutToPublicCoin(params, out, pc))
+                return false;
+
+            bnOutputs = bnOutputs.mul_mod(pc.getAmountCommitment(), params->coinCommitmentGroup.modulus);
+        }
+        else
+        {
+            bnOutputs = bnOutputs.mul_mod(params->coinCommitmentGroup.g2.pow_mod(out.nValue, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
+        }
+    }
+
+    CBigNum bnPubKey = bnInputs.mul_mod(bnOutputs.inverse(params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
+
+    return snpok.Verify(bnPubKey, tx.GetHash(), params->coinCommitmentGroup.g2);
+}

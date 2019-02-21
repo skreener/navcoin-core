@@ -28,4 +28,6 @@ bool CountMintsFromHeight(unsigned int nInitialHeight, unsigned int& nRet);
 bool CalculateWitnessForMint(const CTxOut& txout, const PublicCoin& pubCoin, Accumulator& accumulator, AccumulatorWitness& AccumulatorWitness, uint256& AccumulatorChecksum, std::string& strError, int nRequiredMints, int nMaxHeight);
 bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen = std::vector<std::pair<CBigNum, uint256>>(), CoinSpend* pCoinSpend = NULL, Accumulator* accumulator = NULL, bool fSpendCheck = true);
 bool VerifyCoinSpend(const CoinSpend& coinSpend, const Accumulator &accumulator, bool fWriteToCache);
+bool VerifyZeroCTBalance(const ZerocoinParams *params, const CTransaction& transaction, const CCoinsViewCache& view);
+
 #endif // ZEROCHAIN_H
