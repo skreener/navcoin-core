@@ -279,7 +279,7 @@ bool VerifyZeroCTBalance(const ZerocoinParams *params, const CTransaction& tx, c
         else
         {
             CAmount inputValue = view.GetOutputFor(in).nValue;
-            bnInputs = bnInputs.mul_mod(params->coinCommitmentGroup.g2.pow_mod(inputValue, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
+            bnInputs = bnInputs.mul_mod(params->coinCommitmentGroup.g.pow_mod(inputValue, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
         }
     }
 
@@ -296,7 +296,7 @@ bool VerifyZeroCTBalance(const ZerocoinParams *params, const CTransaction& tx, c
         }
         else
         {
-            bnOutputs = bnOutputs.mul_mod(params->coinCommitmentGroup.g2.pow_mod(out.nValue, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
+            bnOutputs = bnOutputs.mul_mod(params->coinCommitmentGroup.g.pow_mod(out.nValue, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
         }
     }
 

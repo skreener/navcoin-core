@@ -19,7 +19,7 @@
 #include <exception>
 #include "streams.h"
 #include "libzerocoin/bignum.h"
-#include "libzerocoin/bulletproof_rangeproof.h"
+#include "libzerocoin/BulletproofsRangeproof.h"
 #include "libzerocoin/ParamGeneration.h"
 #include "libzerocoin/Coin.h"
 #include "libzerocoin/CoinSpend.h"
@@ -83,58 +83,6 @@ ZerocoinTutorial()
         // Generate a new Key Pair
         privKey.MakeNewKey(false);
         pubKey = privKey.GetPubKey();
-
-        uint64_t nTime = GetTimeMicros();
-
-        BulletproofRangeproof bprp(&params->coinCommitmentGroup);
-        std::vector<CBigNum> v;
-        v.push_back(CBigNum::randBignum(CBigNum(2).pow(10)+1));
-        std::vector<CBigNum> g;
-        g.push_back(CBigNum::randBignum(params->coinCommitmentGroup.groupOrder));
-        bprp.Prove(v, g);
-
-        uint64_t nTime2 = GetTimeMicros();
-
-        std::cout << "bulletproof proof took " << (nTime2 - nTime) * 0.001 << endl;
-
-        std::vector<BulletproofRangeproof> proofs;
-        proofs.push_back(bprp);
-
-        bool ret2 = VerifyBulletproof(&params->coinCommitmentGroup, proofs);
-
-        uint64_t nTime3 = GetTimeMicros();
-
-        std::cout << "bulletproof verify " << ret2 << " took " << (nTime3 - nTime2) * 0.001 << endl;
-
-        uint64_t nTime4 = GetTimeMicros();
-
-        bool ret3 = bprp.Verify();
-
-        uint64_t nTime5 = GetTimeMicros();
-
-        std::cout << "bulletproof verify2 " << ret3 << " took " << (nTime5 - nTime4) * 0.001 << endl;
-
-
-//        v[0] = CBigNum::randBignum(CBigNum(2).pow(65));
-//        bprp.Prove(v, g);
-
-//        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-//        ss << bprp;
-//        uint32_t gProofSize = ss.size();
-
-//        uint64_t nTime4 = GetTimeMicros();
-
-//        std::cout << "bulletproof proof (" << to_string(gProofSize) << ") took " << (nTime4 - nTime3) * 0.001 << endl;
-
-//        std::vector<BulletproofRangeproof> proofs2;
-//        proofs2.push_back(bprp);
-
-//        bool ret3 = VerifyBulletproof(&params->coinCommitmentGroup, proofs2);
-
-//        uint64_t nTime5 = GetTimeMicros();
-
-
-//        std::cout << "bulletproof verify " << ret3 << " took " << (nTime5 - nTime4) * 0.001 << endl;
 
         // Generate obfuscation parameters and a blinding commitment
         CBigNum obfuscation_j1 = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);

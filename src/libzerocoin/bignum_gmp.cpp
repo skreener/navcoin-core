@@ -1,7 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2012 The Bitcoin developers
 // Copyright (c) 2017-2018 The PIVX developers
-// Copyright (c) 2018 The NavCoin Core developers
+// Copyright (c) 2018-2019 The NavCoin Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -85,6 +85,11 @@ CBigNum CBigNum::RandKBitBigum(const uint32_t k)
     if (ret < 0)
         mpz_neg(ret.bn, ret.bn);
     return ret;
+}
+
+int CBigNum::GetBit(unsigned int n) const
+{
+    return mpz_tstbit(bn, n);
 }
 
 /**Returns the size in bits of the underlying bignum.
