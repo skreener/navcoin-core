@@ -24,6 +24,7 @@ bool TestRange(std::vector<CBigNum> values, const libzerocoin::ZerocoinParams* p
     }
 
     BulletproofsRangeproof bprp(&params->coinCommitmentGroup);
+
     bprp.Prove(values, gamma);
 
     std::vector<BulletproofsRangeproof> proofs;
