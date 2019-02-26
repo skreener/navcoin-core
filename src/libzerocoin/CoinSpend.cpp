@@ -54,12 +54,12 @@ CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, cons
     // group with a significantly larger order.
     const Commitment fullCommitmentToCoinUnderSerialParams(&params->serialNumberSoKCommitmentGroup, coin.getPublicCoin().getValue());
     this->serialCommitmentToCoinValue = fullCommitmentToCoinUnderSerialParams.getCommitmentValue();
+
     const Commitment fullCommitmentToCoinUnderAccParams(&params->accumulatorParams.accumulatorPoKCommitmentGroup, coin.getPublicCoin().getValue());
     this->accCommitmentToCoinValue = fullCommitmentToCoinUnderAccParams.getCommitmentValue();
 
     // Generate a new amount commitment with a different randomness value
-    const Commitment amountCommitment(&params->coinCommitmentGroup, coin.getAmount(), 0, obfuscatedRandomness);
-
+    const Commitment amountCommitment(&params->coinCommitmentGroup, obfuscatedRandomness, 0, coin.getAmount());
     this->amountCommitment = amountCommitment.getCommitmentValue();
 
     const Commitment valueCommitment(&params->serialNumberSoKCommitmentGroup, coin.getPublicCoin().getCoinValue());
@@ -121,7 +121,7 @@ const uint256 CoinSpend::signatureHash() const
 {
     CHashWriter h(0, 0);
     h << serialCommitmentToCoinValue << accCommitmentToCoinValue << commitmentPoK << accumulatorPoK << ptxHash
-      << coinValuePublic << accChecksum << spendType;
+      << coinValuePublic << amountCommitment << commitmentToCoinValue << accChecksum << spendType;
 
     return h.GetHash();
 }

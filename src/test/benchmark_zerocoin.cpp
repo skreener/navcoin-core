@@ -295,19 +295,50 @@ Testb_Accumulator()
 bool
 Testb_MintCoin()
 {
+    int mintTotal = 0;
+    int bpproveTotal = 0;
+    int bpverifyTotal = 0;
     try {
         // Generate a list of coins
-        timer.start();
         for (uint32_t i = 0; i < TESTS_COINS_TO_ACCUMULATE; i++) {
-
-            PublicCoin pubCoin(gg_Params,pubKey_,blindingCommitment_, "test", COIN);
+            std::pair<CBigNum, CBigNum> rpdata;
+            timer.start();
+            PublicCoin pubCoin(gg_Params,pubKey_,blindingCommitment_, "test", COIN, rpdata);
+            timer.stop();
+            mintTotal += timer.duration();
             ggCoins[i] = new PrivateCoin(gg_Params, privKey_,pubCoin.getPubKey(),blindingCommitment_,pubCoin.getValue(), pubCoin.getPaymentId(), pubCoin.getAmount());
+
+            BulletproofsRangeproof bprp(&gg_Params->coinCommitmentGroup);
+
+            std::vector<CBigNum> values;
+            std::vector<CBigNum> gammas;
+
+            values.push_back(rpdata.first);
+            gammas.push_back(rpdata.second);
+
+            timer.start();
+            bprp.Prove(values, gammas);
+            timer.stop();
+
+            bpproveTotal += timer.duration();
+
+            std::vector<BulletproofsRangeproof> proofs;
+            proofs.push_back(bprp);
+
+            timer.start();
+            VerifyBulletproof(&gg_Params->coinCommitmentGroup, proofs);
+            timer.stop();
+
+            bpverifyTotal += timer.duration();
+
         }
-        timer.stop();
+
     } catch (exception &e) {
         return false;
     }
-    cout << "\tMINT ELAPSED TIME:\n\t\tTotal: " << timer.duration() << " ms\t" << timer.duration()*0.001 << " s\n\t\tPer Coin: " << timer.duration()/TESTS_COINS_TO_ACCUMULATE << " ms\t" << (timer.duration()/TESTS_COINS_TO_ACCUMULATE)*0.001 << " s" << endl;
+    cout << "\tMINT ELAPSED TIME:\n\t\tTotal: " << mintTotal << " ms\t" << mintTotal*0.001 << " s\n\t\tPer Coin: " << mintTotal/TESTS_COINS_TO_ACCUMULATE << " ms\t" << (mintTotal/TESTS_COINS_TO_ACCUMULATE)*0.001 << " s" << endl;
+    cout << "\tRANGEPROOF PROVE ELAPSED TIME:\n\t\tTotal: " << bpproveTotal << " ms\t" << bpproveTotal*0.001 << " s\n\t\tPer Coin: " << bpproveTotal/TESTS_COINS_TO_ACCUMULATE << " ms\t" << (bpproveTotal/TESTS_COINS_TO_ACCUMULATE)*0.001 << " s" << endl;
+    cout << "\tRANGEPROOF VERIFY ELAPSED TIME:\n\t\tTotal: " << bpverifyTotal << " ms\t" << bpverifyTotal*0.001 << " s\n\t\tPer Coin: " << bpverifyTotal/TESTS_COINS_TO_ACCUMULATE << " ms\t" << (bpverifyTotal/TESTS_COINS_TO_ACCUMULATE)*0.001 << " s" << endl;
 
     return true;
 }

@@ -96,14 +96,6 @@ ZerocoinTutorial()
         libzerocoin::ObfuscationValue obfuscation_k = make_pair(obfuscation_k1, obfuscation_k2);
         libzerocoin::BlindingCommitment blindingCommitment = make_pair(blindingCommitment1, blindingCommitment2);
 
-//        std::cout << "Generated Identity:" << endl
-//                  << " PrivKey: " << HexStr(privKey.begin(), privKey.end()) << endl
-//                  << " PubKey: " << HexStr(pubKey.begin(), pubKey.end()) << endl
-//                  << " ObfusJ: " << obfuscation_j << endl
-//                  << " ObfusK: " << obfuscation_k << endl
-//                  << " Blind Commit: " << blindingCommitment << endl << endl;
-
-
         /********************************************************************/
         // What is it:      Coin generation
         // Who does it:     ZEROCOIN CLIENTS
@@ -118,23 +110,11 @@ ZerocoinTutorial()
         // The following constructor does all the work of minting a brand
         // new zerocoin. You should embed this into a Zerocoin 'MINT' transaction
         // along with a series of currency inputs totaling the assigned value of one zerocoin.
-        libzerocoin::PublicCoin pubCoin(params, pubKey, blindingCommitment, "test_payment_id", COIN);
+        std::pair<CBigNum, CBigNum> rpdata;
 
-//        cout << "Successfully minted a zerocoin (Public Part):"
-//             << "\n   Commitment Value: " << pubCoin.getValue()
-//             << "\n   PublicKey: " << HexStr(pubCoin.getPubKey().begin(), pubCoin.getPubKey().end()) << endl << endl;
+        libzerocoin::PublicCoin pubCoin(params, pubKey, blindingCommitment, "test_payment_id", COIN, rpdata);
 
-        // Use the public coin to construct the Private Coin as we own the private part of the key
-        // the coin was created with. This object will include all the secret values to
-        // later be able to generate the proof and spend the coin.
         libzerocoin::PrivateCoin newCoin(params, privKey, pubCoin.getPubKey(), blindingCommitment, pubCoin.getValue(), pubCoin.getPaymentId(), pubCoin.getAmount());
-
-//        cout << "Successfully minted a zerocoin (Private Part):"
-//             << "\n   Serial Number: " << newCoin.getObfuscationValue()
-//             << "\n   Randomness: " << newCoin.getRandomness()
-//             << "\n   Commitment Value: " << newCoin.getPublicCoin().getValue()
-//             << "\n   PublicKey: " << HexStr(newCoin.getPublicCoin().getPubKey().begin(),
-//                                             newCoin.getPublicCoin().getPubKey().end()) << endl << endl;
 
         if (!newCoin.isValid()) {
             cout << "Error calculating private parameters of new zerocoin." << endl;
@@ -154,6 +134,39 @@ ZerocoinTutorial()
         if(newCoin.getAmount() != COIN) {
             cout << "The private coin and the public coin do not share the same amount. " << newCoin.getAmount() << endl;
             return false;
+        }
+
+        BulletproofsRangeproof bprp(&params->coinCommitmentGroup);
+
+        std::vector<CBigNum> values;
+        std::vector<CBigNum> gammas;
+
+        values.push_back(rpdata.first);
+        gammas.push_back(rpdata.second);
+
+        bprp.Prove(values, gammas);
+
+        std::cout << rpdata.first.ToString() << " "<< rpdata.second.ToString() << std::endl;
+
+        std::vector<BulletproofsRangeproof> proofs;
+        proofs.push_back(bprp);
+
+        if (!VerifyBulletproof(&params->coinCommitmentGroup, proofs)) {
+            cout << "The range proof could not get verified" << endl;
+            return false;
+        }
+
+        CDataStream serializedRangeProof(SER_NETWORK, PROTOCOL_VERSION);
+        serializedRangeProof << bprp;
+
+        BulletproofsRangeproof newbprp(&params->coinCommitmentGroup, serializedRangeProof);
+
+        std::vector<BulletproofsRangeproof> proofs2;
+        proofs2.push_back(newbprp);
+
+        if (!VerifyBulletproof(&params->coinCommitmentGroup, proofs2)) {
+            cout << "The serialized range proof could not get verified" << endl;
+            //return false;
         }
 
         // Serialize the public coin to a CDataStream object.
@@ -206,7 +219,7 @@ ZerocoinTutorial()
 
         // Add several coins to it (we'll generate them here on the fly).
         for (uint32_t i = 0; i < COINS_TO_ACCUMULATE; i++) {
-            libzerocoin::PublicCoin testCoin(params, pubKey, blindingCommitment, "", COIN);
+            libzerocoin::PublicCoin testCoin(params, pubKey, blindingCommitment, "", COIN, rpdata);
             accumulator += testCoin;
         }
 
@@ -269,7 +282,7 @@ ZerocoinTutorial()
 
         // This is a sanity check. The CoinSpend object should always verify,
         // but why not check before we put it onto the wire?
-            if (!spend.Verify(accumulator)) {
+        if (!spend.Verify(accumulator)) {
             cout << "ERROR: Our new CoinSpend transaction did not verify!" << endl;
             return false;
         }

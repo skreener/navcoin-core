@@ -504,6 +504,7 @@ struct CRecipient
     CAmount nAmount;
     bool fSubtractFeeFromAmount;
     std::string strDZeel;
+    CBigNum gamma;
 };
 
 

@@ -14,6 +14,8 @@
 
 #include "BulletproofsRangeproof.h"
 
+#include <iostream>
+
 CBN_vector oneN = VectorPowers(1, BulletproofsRangeproof::maxN);
 CBN_vector twoN = VectorPowers(2, BulletproofsRangeproof::maxN);
 CBigNum ip12 = InnerProduct(oneN, twoN);
@@ -42,7 +44,7 @@ void BulletproofsRangeproof::Prove(CBN_vector v, CBN_vector gamma)
 
     for (unsigned int j = 0; j < v.size(); j++)
     {
-        this->V[j] = params->g.pow_mod(gamma[j], p).mul_mod(params->h.pow_mod(v[j], p), p);
+        this->V[j] = params->g.pow_mod(gamma[j], p).mul_mod(params->g2.pow_mod(v[j], p), p);
         hasher << this->V[j];
     }
 
@@ -151,8 +153,8 @@ try_again:
     CBigNum tau1 = CBigNum::randBignum(q);
     CBigNum tau2 = CBigNum::randBignum(q);
 
-    this->T1 = params->h.pow_mod(t1, p).mul_mod(params->g.pow_mod(tau1, p), p);
-    this->T2 = params->h.pow_mod(t2, p).mul_mod(params->g.pow_mod(tau2, p), p);
+    this->T1 = params->g2.pow_mod(t1, p).mul_mod(params->g.pow_mod(tau1, p), p);
+    this->T2 = params->g2.pow_mod(t2, p).mul_mod(params->g.pow_mod(tau2, p), p);
 
     // PAPER LINES 54-56
     hasher << z;
@@ -251,9 +253,9 @@ try_again:
 
         // PAPER LINES 23-24
         tmp = cL.mul_mod(x_ip, q);
-        this->L[round] = CrossVectorExponent(nprime, gprime, nprime, hprime, 0, aprime, 0, bprime, nprime, scale, &params->h, &tmp, params);
+        this->L[round] = CrossVectorExponent(nprime, gprime, nprime, hprime, 0, aprime, 0, bprime, nprime, scale, &params->g2, &tmp, params);
         tmp = cR.mul_mod(x_ip, q);
-        this->R[round] = CrossVectorExponent(nprime, gprime, 0, hprime, nprime, aprime, nprime, bprime, 0, scale, &params->h, &tmp, params);
+        this->R[round] = CrossVectorExponent(nprime, gprime, 0, hprime, nprime, aprime, nprime, bprime, 0, scale, &params->g2, &tmp, params);
 
         // PAPER LINES 25-27
         hasher << this->L[round];
@@ -544,7 +546,7 @@ bool VerifyBulletproof(const libzerocoin::IntegerGroupParams* params, const std:
 
     tmp = z3 - y1;
 
-    multiexpdata.push_back({params->h, tmp});
+    multiexpdata.push_back({params->g2, tmp});
 
     for (size_t i = 0; i < maxMN; ++i)
     {

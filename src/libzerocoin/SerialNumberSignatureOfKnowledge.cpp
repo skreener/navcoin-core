@@ -115,12 +115,12 @@ SerialNumberSignatureOfKnowledge::SerialNumberSignatureOfKnowledge(const
         // compute g^{ {S b^r} h^v} mod p2
         t[i]    = challengeCalculation(g, a, coinValuePublic.getContents(), b, rho[i], h, zeta_expanded[i]);
 
-        // compute g^{ {a^thau b^gamma c^alpha} h^varpi} mod p2
+        // compute g^{ {a^alpha b^gamma c^tau} h^varpi} mod p2
         upsilon[i]
-                = challengeCalculation(g, a, tau[i], b, gamma[i], c, alpha[i], h, varpi_expanded[i]);
+                = challengeCalculation(g, a, alpha[i], b, gamma[i], c, tau[i], h, varpi_expanded[i]);
 
         // compute a^tau c^rho mod p1
-        mu[i]   = challengeCalculation(a, tau[i], 1, 1, c, rho[i]);
+        mu[i]   = challengeCalculation(a, rho[i], 1, 1, c, tau[i]);
 
         // compute g^gamma h^varpji mod p2
         kappa[i]
@@ -164,9 +164,9 @@ SerialNumberSignatureOfKnowledge::SerialNumberSignatureOfKnowledge(const
             nu[i]   = gamma[i] - coin.getPublicCoin().getCoinValue();
             Omega[i]
                     = varpi_expanded[i] - (commitmentToCoin.getRandomness().mul_mod(
-                                           a.pow_mod(iota[i], q), q).mul_mod(
+                                           a.pow_mod(delta[i], q), q).mul_mod(
                                            b.pow_mod(nu[i], q), q).mul_mod(
-                                           c.pow_mod(delta[i], q), q));
+                                           c.pow_mod(iota[i], q), q));
             eta[i]  = varphi_expanded[i] - commitmentToValue.getRandomness();
         }
     }
@@ -235,9 +235,9 @@ bool SerialNumberSignatureOfKnowledge::Verify(const CBigNum& valueOfCommitmentTo
 
             CBigNum varpi_expanded
                          = SeedTo1024(Omega[i].getuint256()) % q;
-            upsilon[i]   = challengeCalculation(g, a, iota[i], b, nu[i], c, delta[i], h, varpi_expanded);
+            upsilon[i]   = challengeCalculation(g, a, delta[i], b, nu[i], c, iota[i], h, varpi_expanded);
 
-            mu[i]        = challengeCalculation(a, iota[i], 1, 1, c, xi[i]);
+            mu[i]        = challengeCalculation(a, xi[i], 1, 1, c, iota[i]);
 
             CBigNum varphi_expanded
                          = SeedTo1024(eta[i].getuint256()) % q;
@@ -248,10 +248,10 @@ bool SerialNumberSignatureOfKnowledge::Verify(const CBigNum& valueOfCommitmentTo
             CBigNum exp  = b.pow_mod(xi[i], q);
             t[i]         = valueCommitment.pow_mod(exp, p).mul_mod(h.pow_mod(psi[i], p), p);
 
-            CBigNum exp2 = a.pow_mod(iota[i], q).mul_mod(b.pow_mod(nu[i], q), q).mul_mod(c.pow_mod(delta[i], q), q);
+            CBigNum exp2 = a.pow_mod(delta[i], q).mul_mod(b.pow_mod(nu[i], q), q).mul_mod(c.pow_mod(iota[i], q), q);
             upsilon[i]   = valueOfCommitmentToCoin.pow_mod(exp2, p).mul_mod(h.pow_mod(Omega[i], p), p);
 
-            CBigNum exp3 = a.pow_mod(iota[i], q).mul_mod(c.pow_mod(xi[i], q), q);
+            CBigNum exp3 = a.pow_mod(xi[i], q).mul_mod(c.pow_mod(iota[i], q), q);
             mu[i]        = amountCommitment.mul_mod(exp3, q);
 
             CBigNum exp4 = g.pow_mod(nu[i], p).mul_mod(h.pow_mod(eta[i], p), p);

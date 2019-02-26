@@ -17,6 +17,8 @@
 
 namespace libzerocoin {
 
+bnBaseBlockSignature.SetHex(BASE_BLOCK_SIGNATURE);
+
 SerialNumberProofOfKnowledge::SerialNumberProofOfKnowledge(const IntegerGroupParams* p): params(p) { }
 
 SerialNumberProofOfKnowledge::SerialNumberProofOfKnowledge(const IntegerGroupParams* p, const CBigNum serialNumber, const uint256 signatureHash, CBigNum base) : params(p)

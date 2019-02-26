@@ -15,6 +15,8 @@
 #include "univalue/include/univalue.h"
 #include "util.h"
 
+#define ZEROCT_TX_VERSION_FLAG 0x80
+
 static const int SERIALIZE_TRANSACTION_NO_WITNESS = 0x40000000;
 
 static const int WITNESS_SCALE_FACTOR = 4;
@@ -505,7 +507,7 @@ public:
 
     bool IsZeroCT() const
     {
-        return nVersion & 0x80000000;
+        return nVersion & ZEROCT_TX_VERSION_FLAG;
     }
 
     friend bool operator==(const CTransaction& a, const CTransaction& b)

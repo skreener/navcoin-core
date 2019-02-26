@@ -6,7 +6,7 @@
 #include "zerotx.h"
 
 bool DestinationToVecRecipients(CAmount nValue, const std::string &strAddress, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount,
-                                bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate, bool fReduceOutputs)
+                                bool fDonate, bool fShowDialog)
 {
     CNavCoinAddress a(strAddress);
 
@@ -15,66 +15,40 @@ bool DestinationToVecRecipients(CAmount nValue, const std::string &strAddress, v
 
     CTxDestination address = a.Get();
 
-    return DestinationToVecRecipients(nValue, address, vecSend, fSubtractFeeFromAmount, fDonate, fRetNeedsZeroMinting, fPrivate,
-                                      fReduceOutputs);
+    return DestinationToVecRecipients(nValue, address, vecSend, fSubtractFeeFromAmount, fDonate, fShowDialog);
 }
 
 bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount,
-                                bool fDonate, bool& fRetNeedsZeroMinting, bool fPrivate, bool fReduceOutputs)
+                                bool fDonate, bool fShowDialog)
 {
     vecSend.clear();
-    CScript scriptPubKey = GetScriptForDestination(address);
 
-    fRetNeedsZeroMinting = false;
+    if (fShowDialog)
+        uiInterface.ShowProgress(_("Constructing transaction..."), 0);
+
+    std::pair<CBigNum, CBigNum> rpval;
+
+    bool fPrivateDest = address.type() == typeid(libzerocoin::CPrivateAddress);
+
+    CScript scriptPubKey = GetScriptForDestination(address, fPrivateDest ? &rpval : NULL);
+
+    if (fShowDialog)
+        uiInterface.ShowProgress(_("Constructing transaction..."), 50);
 
     if(fDonate)
       CFund::SetScriptForCommunityFundContribution(scriptPubKey);
 
     if (scriptPubKey.IsZerocoinMint()) {
-        CRecipient recipient = {scriptPubKey, 0, false, ""};
+        CRecipient recipient = {scriptPubKey, nValue, false, "", rpval.second};
         vecSend.push_back(recipient);
+        if (fShowDialog)
+            uiInterface.ShowProgress(_("Constructing transaction..."), 100);
     } else {
-        CRecipient recipient = {scriptPubKey, nValue, fSubtractFeeFromAmount, ""};
+        CRecipient recipient = {scriptPubKey, nValue, fSubtractFeeFromAmount, "", 0};
         vecSend.push_back(recipient);
     }
 
     random_shuffle(vecSend.begin(), vecSend.end(), GetRandInt);
-
-    return true;
-}
-
-bool MintVecRecipients(const std::string &strAddress, vector<CRecipient> &vecSend, bool fShowDialog)
-{
-    CNavCoinAddress a(strAddress);
-
-    if(!a.IsValid())
-        return false;
-
-    CTxDestination address = a.Get();
-
-    return MintVecRecipients(address, vecSend, fShowDialog);
-}
-
-bool MintVecRecipients(const CTxDestination &address, vector<CRecipient> &vecSend, bool fShowDialog)
-{
-    unsigned int i = 0;
-
-    if (fShowDialog)
-        uiInterface.ShowProgress(_("Constructing transaction..."), 0);
-
-    for(auto& it: vecSend)
-    {
-        unsigned int nProgress = (i++)*100/vecSend.size();
-
-        if (nProgress > 0 && fShowDialog)
-            uiInterface.ShowProgress(_("Constructing transaction..."), nProgress);
-
-        CScript vMintScript = GetScriptForDestination(address);
-        it.scriptPubKey = vMintScript;
-    }
-
-    if (fShowDialog)
-        uiInterface.ShowProgress(_("Constructing transaction..."), 100);
 
     return true;
 }

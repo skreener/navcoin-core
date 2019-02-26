@@ -268,7 +268,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
                 const unsigned char* scriptStr = (const unsigned char*)out.script().data();
                 CScript scriptPubKey(scriptStr, scriptStr+out.script().size());
                 CAmount nAmount = out.amount();
-                CRecipient recipient = {scriptPubKey, nAmount, rcp.fSubtractFeeFromAmount, ""};
+                CRecipient recipient = {scriptPubKey, nAmount, rcp.fSubtractFeeFromAmount, "", 0};
                 vecSend.push_back(recipient);
             }
             if (subtotal <= 0)
@@ -306,12 +306,8 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
             }
 
             // Parse NavCoin address
-            if (!DestinationToVecRecipients(rcp.amount, address, vecSendTemp, rcp.fSubtractFeeFromAmount, false, fNeedsMinting, rcp.isanon)) {
+            if (!DestinationToVecRecipients(rcp.amount, address, vecSendTemp, rcp.fSubtractFeeFromAmount, false, true)) {
                 return InvalidAddress;
-            }
-
-            if(fNeedsMinting && !MintVecRecipients(address, vecSendTemp)) {
-                return TransactionCreationFailed;
             }
 
             vecSend.insert(vecSend.end(), vecSendTemp.begin(), vecSendTemp.end());

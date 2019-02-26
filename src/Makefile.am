@@ -397,6 +397,7 @@ libzerocoin_libnavcoin_zerocoin_a_SOURCES = \
   libzerocoin/CoinSpend.h \
   libzerocoin/Commitment.h \
   libzerocoin/Keys.h \
+  libzerocoin/Math.cpp \
   libzerocoin/Math.h \
   libzerocoin/ParamGeneration.h \
   libzerocoin/Params.h \

@@ -9,6 +9,7 @@
 #include "consensus/validation.h"
 #include "libzerocoin/Coin.h"
 #include "libzerocoin/CoinSpend.h"
+#include "libzerocoin/BulletproofsRangeproof.h"
 #include "main.h"
 #include "primitives/transaction.h"
 #include "zeromint.h"

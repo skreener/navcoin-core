@@ -361,7 +361,13 @@ class CScriptVisitor : public boost::static_visitor<bool>
 private:
     CScript *script;
 public:
-    CScriptVisitor(CScript *scriptin) { script = scriptin; }
+    std::pair<CBigNum, CBigNum>* rpval;
+
+    CScriptVisitor(CScript *scriptin) { script = scriptin; rpval = NULL; }
+    CScriptVisitor(CScript *scriptin, std::pair<CBigNum, CBigNum>* rpvalin) {
+        script = scriptin;
+        rpval = rpvalin;
+    }
 
     bool operator()(const CNoDestination &dest) const {
         script->clear();
@@ -392,19 +398,24 @@ public:
             return false;
         if(!dest.GetBlindingCommitment(bc))
             return false;
-        libzerocoin::PublicCoin pc(dest.GetParams(), zpk, bc, dest.GetPaymentId(), dest.GetAmount());
+        libzerocoin::PublicCoin pc(dest.GetParams(), zpk, bc, dest.GetPaymentId(), dest.GetAmount(), rpval);
         script->clear();
-        *script << OP_ZEROCOINMINT << pc.getPubKey() << pc.getValue().getvch() << pc.getAmountCommitment().getvch()  << pc.getPaymentId().getvch() << pc.getAmount().getvch();
+        *script << OP_ZEROCOINMINT << pc.getPubKey() << pc.getValue().getvch()
+                << pc.getAmountCommitment().getvch() << pc.getPaymentId().getvch()
+                << pc.getAmount().getvch();
         return true;
     }
 };
 }
 
-CScript GetScriptForDestination(const CTxDestination& dest)
+CScript GetScriptForDestination(const CTxDestination& dest, std::pair<CBigNum,CBigNum> *prpval)
 {
     CScript script;
 
-    boost::apply_visitor(CScriptVisitor(&script), dest);
+    if (prpval == NULL)
+        boost::apply_visitor(CScriptVisitor(&script), dest);
+    else
+        boost::apply_visitor(CScriptVisitor(&script, prpval), dest);
     return script;
 }
 

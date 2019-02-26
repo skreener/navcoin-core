@@ -64,7 +64,7 @@ public:
    **/
 
     PublicCoin(const ZerocoinParams* p, const CPubKey destPubKey, const BlindingCommitment blindingCommitment,
-               const std::string pid, const CAmount amount);
+               const std::string pid, const CAmount amount, std::pair<CBigNum,CBigNum>* prpval = NULL);
     PublicCoin(const ZerocoinParams* p, const CBigNum value, const CPubKey pubKey, const CBigNum obfuscatedPid,
                const CBigNum obfuscatedAmount, const CBigNum amountCommitment, bool fCheck = true);
 

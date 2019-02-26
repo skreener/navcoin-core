@@ -17,6 +17,7 @@
 
 #include "Params.h"
 #include "Math.h"
+#include "streams.h"
 
 #include "hash.h"
 
@@ -27,6 +28,13 @@ class BulletproofsRangeproof
 public:
     static const size_t maxN = 64;
     static const size_t maxM = 16;
+
+    template <typename Stream>
+    BulletproofsRangeproof(const libzerocoin::IntegerGroupParams* in_p, Stream& strm) : params(in_p)
+    {
+        Stream strmCopy = strm;
+        strmCopy >> *this;
+    }
 
     BulletproofsRangeproof(const libzerocoin::IntegerGroupParams* in_p) : params(in_p) {}
 

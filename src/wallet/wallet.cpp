@@ -386,6 +386,7 @@ void CWallet::AvailableZeroCoinsForStaking(vector<COutput>& vCoins, unsigned int
 
                 CPubKey p(vSolutions[0]); CBigNum c(vSolutions[1]);
                 CKey zk; libzerocoin::BlindingCommitment bc;
+                libzerocoin::ObfuscationValue oj;
 
                 if(!GetZeroKey(zk))
                     break;
@@ -393,12 +394,15 @@ void CWallet::AvailableZeroCoinsForStaking(vector<COutput>& vCoins, unsigned int
                 if(!GetBlindingCommitment(bc))
                     break;
 
+                if(!GetObfuscationJ(oj))
+                    break;
+
                 libzerocoin::PrivateCoin privateCoin = libzerocoin::PrivateCoin(&Params().GetConsensus().Zerocoin_Params, zk, p, bc, c, pubCoin.getPaymentId(), pubCoin.getAmount(), false);
 
                 uint256 txHash;
                 int nHeight;
 
-                if(pblocktree->ReadCoinSpend(privateCoin.getPublicSerialNumber(bc), txHash) && IsTransactionInChain(txHash, pcoinsTip, nHeight))
+                if(pblocktree->ReadCoinSpend(privateCoin.getPublicSerialNumber(oj), txHash) && IsTransactionInChain(txHash, pcoinsTip, nHeight))
                     continue;
 
                 if (!(IsSpent(wtxid,i)) && IsMine(pcoin->vout[i]) && pcoin->vout[i].nValue >= nMinimumInputValue && pcoin->vout[i].IsZerocoinMint()){
@@ -3384,7 +3388,7 @@ bool CWallet::FundTransaction(CMutableTransaction& tx, CAmount& nFeeRet, bool ov
     // Turn the txout set into a CRecipient vector
     BOOST_FOREACH(const CTxOut& txOut, tx.vout)
     {
-        CRecipient recipient = {txOut.scriptPubKey, txOut.nValue, false, ""};
+        CRecipient recipient = {txOut.scriptPubKey, txOut.nValue, false, "", 0};
         vecSend.push_back(recipient);
     }
 
@@ -3430,6 +3434,8 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
     CAmount nValue = 0;
     int nChangePosRequest = nChangePosInOut;
     unsigned int nSubtractFeeFromAmount = 0;
+    bool fZeroCT = false;
+
     BOOST_FOREACH (const CRecipient& recipient, vecSend)
     {
         if (nValue < 0 || recipient.nAmount < 0)
@@ -3441,7 +3447,11 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
         if (recipient.fSubtractFeeFromAmount)
             nSubtractFeeFromAmount++;
+
+        if (recipient.scriptPubKey.IsZerocoinMint())
+            fZeroCT = true;
     }
+
     if (vecSend.empty() || nValue < 0)
     {
         strFailReason = _("Transaction amounts must be positive");
@@ -3457,6 +3467,10 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
     txNew.nVersion = IsCommunityFundEnabled(pindexBestHeader,Params().GetConsensus()) ? CTransaction::TXDZEEL_VERSION_V2 : CTransaction::TXDZEEL_VERSION;
 
     if(wtxNew.nCustomVersion > 0) txNew.nVersion = wtxNew.nCustomVersion;
+
+    if (fZeroCT || fPrivate) {
+        txNew.nVersion |= ZEROCT_TX_VERSION_FLAG;
+    }
 
     txNew.strDZeel = (wtxNew.strDZeel != "" ? wtxNew.strDZeel : strDZeel).length() > 0 ?
                 (wtxNew.strDZeel != "" ? wtxNew.strDZeel : strDZeel) :
@@ -3520,6 +3534,9 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 wtxNew.fFromMe = true;
                 bool fFirst = true;
 
+                std::vector<CBigNum> values;
+                std::vector<CBigNum> gammas;
+
                 CAmount nValueToSelect = nValue;
                 if (nSubtractFeeFromAmount == 0)
                     nValueToSelect += nFeeRet;
@@ -3559,6 +3576,13 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                             return false;
                         }
                     }
+
+                    if (fZeroCT)
+                    {
+                        values.push_back(CBigNum(recipient.nAmount));
+                        gammas.push_back(CBigNum(recipient.gamma));
+                    }
+
                     txNew.vout.push_back(txout);
                 }
 
@@ -3607,9 +3631,12 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                         pa.SetPaymentId("Transaction Change");
                         pa.SetAmount(nChange);
 
-                        CTxOut newTxOut(0, GetScriptForDestination(pa));
-                        vector<CTxOut>::iterator position = txNew.vout.begin()+GetRandInt(txNew.vout.size()+1);
-                        txNew.vout.insert(position, newTxOut);
+                        std::pair<CBigNum, CBigNum> rpval;
+
+                        CTxOut newTxOut(0, GetScriptForDestination(pa, &rpval));
+                        txNew.vout.push_back(newTxOut);
+                        values.push_back(rpval.first);
+                        gammas.push_back(rpval.second);
                     }
                     else
                     {
@@ -3700,6 +3727,30 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                         txNew.nTime = coin.first->nTime;
                     txNew.vin.push_back(CTxIn(fPrivate?uint256():coin.first->GetHash(),fPrivate?0:coin.second,CScript(),
                                               std::numeric_limits<unsigned int>::max()-1));
+                }
+
+                if (fZeroCT) {
+                    uiInterface.ShowProgress(_("Constructing range proof..."), 0);
+
+                    BulletproofsRangeproof bprp(&Params().GetConsensus().Zerocoin_Params.coinCommitmentGroup);
+
+                    bprp.Prove(values, gammas);
+
+                    std::vector<BulletproofsRangeproof> proofs;
+                    proofs.push_back(bprp);
+
+                    if (!VerifyBulletproof(&Params().GetConsensus().Zerocoin_Params.coinCommitmentGroup, proofs)) {
+                        strFailReason = _("Range proof failed");
+                        return false;
+                    }
+
+                    CDataStream serializedRangeProof(SER_NETWORK, PROTOCOL_VERSION);
+                    serializedRangeProof << bprp;
+
+                    txNew.vchRangeProof.clear();
+                    txNew.vchRangeProof.insert(txNew.vchRangeProof.end(), serializedRangeProof.begin(), serializedRangeProof.end());
+
+                    uiInterface.ShowProgress(_("Constructing range proof..."), 100);
                 }
 
                 // Sign

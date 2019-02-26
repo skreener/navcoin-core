@@ -426,12 +426,8 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
     bool fNeedsMinting = false;
 
     // Parse NavCoin address
-    if (!DestinationToVecRecipients(nValue, address, vecSend, fSubtractFeeFromAmount, donate, fNeedsMinting, fPrivate)) {
+    if (!DestinationToVecRecipients(nValue, address, vecSend, fSubtractFeeFromAmount, donate, false)) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: Could not construct the vector of recipients!");
-    }
-
-    if(fNeedsMinting && !MintVecRecipients(address, vecSend)) {
-        throw JSONRPCError(RPC_WALLET_ERROR, "Error: Could not create Zerocoin Mints!");
     }
 
     // Create and send the transaction
@@ -1405,7 +1401,7 @@ UniValue sendmany(const UniValue& params, bool fHelp)
                 fSubtractFeeFromAmount = true;
         }
 
-        CRecipient recipient = {scriptPubKey, nAmount, fSubtractFeeFromAmount, ""};
+        CRecipient recipient = {scriptPubKey, nAmount, fSubtractFeeFromAmount, "", 0};
         vecSend.push_back(recipient);
     }
 
