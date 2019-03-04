@@ -337,8 +337,8 @@ Test_MintCoin()
     try {
         // Generate a list of coins
         for (uint32_t i = 0; i < TESTS_COINS_TO_ACCUMULATE; i++) {
-            std::pair<CBigNum, CBigNum> rpdata;
-            PublicCoin pubCoin(g_Params, pubKey, blindingCommitment, "", COIN, rpdata);
+            CBigNum rpdata;
+            PublicCoin pubCoin(g_Params, pubKey, blindingCommitment, "", COIN, &rpdata);
             gCoins[i] = new PrivateCoin(g_Params, privKey, pubCoin.getPubKey(), blindingCommitment, pubCoin.getValue(), pubCoin.getPaymentId(), pubCoin.getAmount());
             PublicCoin pc = gCoins[i]->getPublicCoin();
             CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);

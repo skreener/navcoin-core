@@ -110,9 +110,9 @@ ZerocoinTutorial()
         // The following constructor does all the work of minting a brand
         // new zerocoin. You should embed this into a Zerocoin 'MINT' transaction
         // along with a series of currency inputs totaling the assigned value of one zerocoin.
-        std::pair<CBigNum, CBigNum> rpdata;
+        CBigNum rpdata;
 
-        libzerocoin::PublicCoin pubCoin(params, pubKey, blindingCommitment, "test_payment_id", COIN, rpdata);
+        libzerocoin::PublicCoin pubCoin(params, pubKey, blindingCommitment, "test_payment_id", COIN, &rpdata);
 
         libzerocoin::PrivateCoin newCoin(params, privKey, pubCoin.getPubKey(), blindingCommitment, pubCoin.getValue(), pubCoin.getPaymentId(), pubCoin.getAmount());
 
@@ -141,12 +141,10 @@ ZerocoinTutorial()
         std::vector<CBigNum> values;
         std::vector<CBigNum> gammas;
 
-        values.push_back(rpdata.first);
-        gammas.push_back(rpdata.second);
+        values.push_back(newCoin.getAmount());
+        gammas.push_back(rpdata);
 
         bprp.Prove(values, gammas);
-
-        std::cout << rpdata.first.ToString() << " "<< rpdata.second.ToString() << std::endl;
 
         std::vector<BulletproofsRangeproof> proofs;
         proofs.push_back(bprp);
@@ -219,7 +217,7 @@ ZerocoinTutorial()
 
         // Add several coins to it (we'll generate them here on the fly).
         for (uint32_t i = 0; i < COINS_TO_ACCUMULATE; i++) {
-            libzerocoin::PublicCoin testCoin(params, pubKey, blindingCommitment, "", COIN, rpdata);
+            libzerocoin::PublicCoin testCoin(params, pubKey, blindingCommitment, "", COIN, &rpdata);
             accumulator += testCoin;
         }
 

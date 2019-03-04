@@ -423,7 +423,6 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
 
     CScript CFContributionScript;
     vector<CRecipient> vecSend;
-    bool fNeedsMinting = false;
 
     // Parse NavCoin address
     if (!DestinationToVecRecipients(nValue, address, vecSend, fSubtractFeeFromAmount, donate, false)) {
@@ -514,6 +513,7 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
     // Wallet comments
+    CTxDestination dest = address.Get();
     CWalletTx wtx;
     if (params.size() > 2 && !params[2].isNull() && !params[2].get_str().empty())
         wtx.mapValue["comment"] = params[2].get_str();
@@ -533,14 +533,12 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
 
     wtx.strDZeel = strDZeel;
 
-    CTxDestination dest = address.Get();
-
     if (dest.type() == typeid(libzerocoin::CPrivateAddress)) {
         boost::get<libzerocoin::CPrivateAddress>(dest).SetPaymentId(wtx.mapValue["comment"]);
         boost::get<libzerocoin::CPrivateAddress>(dest).SetAmount(nAmount);
     }
 
-    SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, strDZeel, false);
+    SendMoney(dest, nAmount, fSubtractFeeFromAmount, wtx, strDZeel, false);
 
     return wtx.GetHash().GetHex();
 }
@@ -3125,12 +3123,15 @@ int GetsStakeSubTotal(vStakePeriodRange_T& aRange)
         nElement++;
 
         // use the cached amount if available
-        if (pcoin->fCreditCached && pcoin->fDebitCached && pcoin->nPrivateCreditCached && pcoin->nPrivateDebitCached)
-            nAmount = (pcoin->nCreditCached + pcoin->nPrivateCreditCached) - (pcoin->nDebitCached + pcoin->nPrivateDebitCached);
-        else
-            nAmount = pcoin->GetCredit(ISMINE_SPENDABLE|ISMINE_SPENDABLE_PRIVATE) - pcoin->GetDebit(ISMINE_SPENDABLE|ISMINE_SPENDABLE_PRIVATE);
+        CAmount nCC = pcoin->fCreditCached ? pcoin->nCreditCached : pcoin->GetCredit(ISMINE_SPENDABLE) + pcoin->GetCredit(ISMINE_SPENDABLE_STAKABLE);
+        CAmount nPCC = pcoin->fPrivateCreditCached ? pcoin->nPrivateCreditCached : pcoin->GetCredit(ISMINE_SPENDABLE_PRIVATE);
+        CAmount nCSCC = pcoin->fColdStakingCreditCached ? pcoin->fColdStakingCreditCached : pcoin->GetCredit(ISMINE_STAKABLE);
 
+        CAmount nDC = pcoin->fDebitCached ? pcoin->nDebitCached : pcoin->GetDebit(ISMINE_SPENDABLE) + pcoin->GetDebit(ISMINE_SPENDABLE_STAKABLE);;
+        CAmount nPDC = pcoin->fPrivateDebitCached ? pcoin->nPrivateDebitCached : pcoin->GetDebit(ISMINE_SPENDABLE_PRIVATE);
+        CAmount nCSDC = pcoin->fColdStakingDebitCached ? pcoin->fColdStakingDebitCached : pcoin->GetDebit(ISMINE_STAKABLE);
 
+        nAmount = (nCC + nPCC + nCSCC) - (nDC + nPDC + nCSDC);
         // scan the range
         for(vIt=aRange.begin(); vIt != aRange.end(); vIt++)
         {

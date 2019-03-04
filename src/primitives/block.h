@@ -32,7 +32,6 @@ public:
     uint32_t nTime;
     uint32_t nBits;
     uint32_t nNonce;
-    uint256 nAccumulatorChecksum;
 
     CBlockHeader()
     {
@@ -49,8 +48,6 @@ public:
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
-        if((this->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
-            READWRITE(nAccumulatorChecksum);
     }
 
     void SetNull()
@@ -61,7 +58,6 @@ public:
         nTime = 0;
         nBits = 0;
         nNonce = 0;
-        nAccumulatorChecksum = 0;
     }
 
     bool IsNull() const
@@ -179,8 +175,6 @@ public:
         block.nTime          = nTime;
         block.nBits          = nBits;
         block.nNonce         = nNonce;
-        block.nAccumulatorChecksum
-                             = nAccumulatorChecksum;
         return block;
     }
 

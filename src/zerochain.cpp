@@ -77,10 +77,18 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const C
     if (pCoinSpend)
         *pCoinSpend = coinSpend;
 
-    uint256 accumulatorChecksum = coinSpend.getAccumulatorChecksum();
+    uint256 blockAccumulatorHash = coinSpend.getBlockAccumulatorHash();
+
+    if (!mapBlockIndex.count(blockAccumulatorHash))
+        return state.DoS(100, error("CheckZerocoinSpend() : coinspend refers an invalid block hash"));
+
+    CBlockIndex* pindex = mapBlockIndex[blockAccumulatorHash];
+
+    if (!chainActive.Contains(pindex))
+        return state.DoS(20, error("CheckZerocoinSpend() : coinspend refers a block not contained in the main chain"));
 
     Accumulator accumulator(params);
-    accumulator.setValue(accumulatorChecksum);
+    accumulator.setValue(pindex->nAccumulatorValue);
 
     if (pAccumulator)
         *pAccumulator = accumulator;
@@ -150,7 +158,7 @@ bool CountMintsFromHeight(unsigned int nInitialHeight, unsigned int& nRet)
     return true;
 }
 
-bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin& pubCoin, Accumulator& accumulator, AccumulatorWitness& accumulatorWitness, uint256& accumulatorChecksum, std::string& strError, int nRequiredMints, int nMaxHeight)
+bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin& pubCoin, Accumulator& accumulator, AccumulatorWitness& accumulatorWitness, CBigNum& accumulatorValue, uint256& blockAccumulatorHash, std::string& strError, int nRequiredMints, int nMaxHeight)
 {
     if (!txout.IsZerocoinMint()) {
         strError = "Transaction output script is not a zerocoin mint.";
@@ -185,13 +193,9 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
         return false;
     }
 
-    if(pindex->nAccumulatorChecksum != uint256()) {
-        strError = strprintf("Could not load Accumulators data from checksum %s at height %d",
-                             pindex->nAccumulatorChecksum.GetHex(), pindex->nHeight);
-        return false;
-    }
+    if(pindex->nAccumulatorValue != 0)
+        accumulator.setValue(pindex->nAccumulatorValue);
 
-    accumulator.setValue(pindex->nAccumulatorChecksum);
     accumulatorWitness.resetValue(accumulator, pubCoin);
 
     int nCount = 0;
@@ -230,9 +234,10 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
                 }
             }
 
-            accumulatorChecksum = pindex->nAccumulatorChecksum;
+            accumulatorValue = pindex->nAccumulatorValue;
+            blockAccumulatorHash = pindex->GetBlockHash();
 
-            assert(accumulator.getValue().getuint256() == accumulatorChecksum);
+            assert(accumulator.getValue() == accumulatorValue);
 
             if(!chainActive.Next(pindex) || (nRequiredMints > 0 && nCount >= nRequiredMints))
                 break;
@@ -241,7 +246,7 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
         }
     }
 
-    accumulator.setValue(accumulatorChecksum);
+    accumulator.setValue(accumulatorValue);
 
     if (!accumulatorWitness.VerifyWitness(accumulator, pubCoin)) {
         strError = "Witness did not verify";

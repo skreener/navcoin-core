@@ -10,7 +10,7 @@
  * @license    This project is released under the MIT license.
  **/
 // Copyright (c) 2017-2018 The PIVX developers
-// Copyright (c) 2018 The NavCoin Core developers
+// Copyright (c) 2018-2019 The NavCoin Core developers
 
 #ifndef COINSPEND_H_
 #define COINSPEND_H_
@@ -40,6 +40,7 @@ class CoinSpend
 {
 public:
     CoinSpend(const ZerocoinParams* params) :
+        p(params),
         accumulatorPoK(&params->accumulatorParams),
         serialNumberSoK(params),
         serialNumberSoK_small(params),
@@ -50,6 +51,7 @@ public:
     //! \param strm - a serialized CoinSpend
     template <typename Stream>
     CoinSpend(const ZerocoinParams* params, Stream& strm) :
+        p(params),
         accumulatorPoK(&params->accumulatorParams),
         serialNumberSoK(params),
         serialNumberSoK_small(params),
@@ -97,7 +99,7 @@ public:
    *
    * @return the checksum
    */
-    uint256 getAccumulatorChecksum() const { return this->accChecksum; }
+    uint256 getBlockAccumulatorHash() const { return blockAccumulatorHash; }
 
     /**Gets the txout hash used in this proof.
    *
@@ -111,7 +113,7 @@ public:
     SpendType getSpendType() const { return spendType; }
 
     bool Verify(const Accumulator& a, bool fUseBulletproofs = false) const;
-    bool HasValidPublicSerial(ZerocoinParams* params) const;
+    bool HasValidPublicSerial(const ZerocoinParams* params) const;
     bool HasValidSignature() const;
     CBigNum CalculateValidPublicSerial(ZerocoinParams* params);
     std::string ToString() const;
@@ -122,8 +124,9 @@ public:
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
     {
+        READWRITE(version);
         READWRITE(ptxHash);
-        READWRITE(accChecksum);
+        READWRITE(blockAccumulatorHash);
         READWRITE(accCommitmentToCoinValue);
         READWRITE(serialCommitmentToCoinValue);
         READWRITE(commitmentToCoinValue);
@@ -134,13 +137,13 @@ public:
         READWRITE(serialNumberSoK_small);
         READWRITE(serialNumberPoK);
         READWRITE(commitmentPoK);
-        READWRITE(version);
         READWRITE(spendType);
     }
 
 private:
     const uint256 signatureHash() const;
-    uint256 accChecksum;
+    const ZerocoinParams* p;
+    uint256 blockAccumulatorHash;
     uint256 ptxHash;
     CBigNum accCommitmentToCoinValue;
     CBigNum serialCommitmentToCoinValue;

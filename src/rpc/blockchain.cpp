@@ -66,7 +66,7 @@ UniValue blockheaderToJSON(const CBlockIndex* blockindex)
 //    result.push_back(Pair("privatemoneysupply", privateMoneySupply));
 //    totalMoneySupply += blockindex->nMoneySupply;
 //    result.push_back(Pair("totalmoneysupply", ValueFromAmount(totalMoneySupply)));
-    result.push_back(Pair("accumulatorschecksum", blockindex->nAccumulatorChecksum.GetHex()));
+    result.push_back(Pair("accumulatorvalue", blockindex->nAccumulatorValue.ToString(16)));
     result.push_back(Pair("nonce", (uint64_t)blockindex->nNonce));
     result.push_back(Pair("bits", strprintf("%08x", blockindex->nBits)));
     result.push_back(Pair("difficulty", GetDifficulty(blockindex)));

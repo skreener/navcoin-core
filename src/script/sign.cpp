@@ -449,7 +449,7 @@ bool DummySignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const 
 }
 
 bool DummySignatureCreator::CreateCoinSpend(const libzerocoin::ZerocoinParams* params, const libzerocoin::PublicCoin& pubCoin,
-                                            const libzerocoin::Accumulator a, const uint256 aChecksum, const libzerocoin::AccumulatorWitness aw,
+                                            const libzerocoin::Accumulator a, const uint256 blockAccumulatorHash, const libzerocoin::AccumulatorWitness aw,
                                             const CScript& scriptPubKey, CScript& scriptSig, std::string& strError) const
 {
     scriptSig = CScript() << OP_ZEROCOINSPEND;
@@ -457,7 +457,7 @@ bool DummySignatureCreator::CreateCoinSpend(const libzerocoin::ZerocoinParams* p
 }
 
 bool TransactionSignatureCreator::CreateCoinSpend(const libzerocoin::ZerocoinParams* params, const libzerocoin::PublicCoin& pubCoin,
-                                                  const libzerocoin::Accumulator a, const uint256 aChecksum, const libzerocoin::AccumulatorWitness aw,
+                                                  const libzerocoin::Accumulator a, const uint256 blockAccumulatorHash, const libzerocoin::AccumulatorWitness aw,
                                                   const CScript& scriptPubKey, CScript& scriptSig, std::string& strError) const
 {
     try {
@@ -492,7 +492,7 @@ bool TransactionSignatureCreator::CreateCoinSpend(const libzerocoin::ZerocoinPar
 
         uint256 txhash = SignatureHash(scriptPubKey, *txTo, nIn, nHashType, amount, SIGVERSION_BASE);
 
-        libzerocoin::CoinSpend cs(params, privateCoin, a, aChecksum, aw, txhash, libzerocoin::SpendType::SPEND, oj, ok);
+        libzerocoin::CoinSpend cs(params, privateCoin, a, blockAccumulatorHash, aw, txhash, libzerocoin::SpendType::SPEND, oj, ok);
 
         CDataStream serializedCoinSpend(SER_NETWORK, PROTOCOL_VERSION);
         serializedCoinSpend << cs;

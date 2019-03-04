@@ -9,15 +9,13 @@
 * @copyright  Copyright 2018 alex v
 * @license    This project is released under the MIT license.
 **/
-// Copyright (c) 2018 The NavCoin Core developers
+// Copyright (c) 2018-2019 The NavCoin Core developers
 
 #include "SerialNumberProofOfKnowledge.h"
 #include <iostream>
 #include <sstream>
 
 namespace libzerocoin {
-
-bnBaseBlockSignature.SetHex(BASE_BLOCK_SIGNATURE);
 
 SerialNumberProofOfKnowledge::SerialNumberProofOfKnowledge(const IntegerGroupParams* p): params(p) { }
 

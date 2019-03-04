@@ -152,6 +152,7 @@ const char* GetOpName(opcodetype opcode)
     // zerocoin
     case OP_ZEROCOINMINT           : return "OP_ZEROCOINMINT";
     case OP_ZEROCOINSPEND          : return "OP_ZEROCOINSPEND";
+    case OP_FEE                    : return "OP_FEE";
 
     case OP_INVALIDOPCODE          : return "OP_INVALIDOPCODE";
 
@@ -259,11 +260,10 @@ bool CScript::IsZerocoinMint() const
         (*this)[0] == OP_ZEROCOINMINT);
 }
 
-bool CScript::IsZeroCTFee() const
+bool CScript::IsFee() const
 {
-    return (this->size() == 2 &&
-            (*this)[0] == OP_RETURN &&
-            (*this)[1] == OP_FEE);
+    return (this->size() == 1 &&
+        (*this)[0] == OP_FEE);
 }
 
 bool CScript::IsZerocoinSpend() const
@@ -348,14 +348,29 @@ bool CScript::ExtractZerocoinMintData(CPubKey &zkey, std::vector<unsigned char> 
 {
     if(!IsZerocoinMint())
         return false;
+
     CPubKey key;
     key.Set(this->begin()+2, this->begin()+2+(*this)[1]);
     if(!key.IsValid())
         return false;
     zkey = key;
-    commitment = std::vector<unsigned char>(this->begin()+4+(*this)[1], this->begin()+4+(*this)[1]+(*this)[3+(*this)[1]]);
-    amcommitment = std::vector<unsigned char>(this->begin()+5+(*this)[1]+(*this)[3+(*this)[1]], this->begin()+5+(*this)[1]+(*this)[3+(*this)[1]+(*this)[3+(*this)[1]]]);
-    paymentid = std::vector<unsigned char>(this->begin()+6+(*this)[1]+(*this)[3+(*this)[1]+(*this)[3+(*this)[1]]], this->end());
+
+    auto begin = this->begin()+3+(*this)[1];
+    auto end = begin + 1 + (*begin);
+    commitment = std::vector<unsigned char>(begin+1, end);
+
+    begin = end + 1;
+    end = begin + 1 + (*begin);
+    amcommitment = std::vector<unsigned char>(begin + 1, end);
+
+    begin = end;
+    end = begin + 1 + (*begin);
+    paymentid = std::vector<unsigned char>(begin + 1, end);
+
+    begin = end;
+    end = begin + 1 + (*begin);
+    obfamount = std::vector<unsigned char>(begin + 1, end);
+
     return true;
 }
 

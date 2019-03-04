@@ -579,8 +579,8 @@ bool CBlockTreeDB::LoadBlockIndexGuts(boost::function<CBlockIndex*(const uint256
                 pindexNew->nMoneySupply   = diskindex.nMoneySupply;
 
                 //zerocoin
-                pindexNew->nAccumulatorChecksum
-                                          = diskindex.nAccumulatorChecksum;
+                pindexNew->nAccumulatorValue
+                                          = diskindex.nAccumulatorValue;
 //                pindexNew->mapZerocoinSupply
 //                                          = diskindex.mapZerocoinSupply;
                 pindexNew->nAccumulatedPrivateFee

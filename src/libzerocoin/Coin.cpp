@@ -28,19 +28,22 @@ PublicCoin::PublicCoin(const ZerocoinParams* p):
     }
 };
 
-PublicCoin::PublicCoin(const ZerocoinParams* p, const CBigNum value, const CPubKey pubKey, const CBigNum pid,
-                       CBigNum obfuscatedAmount, CBigNum amountCommitment, bool fCheck) : params(p), value(value),
-                       pubKey(pubKey), paymentId(pid), amount(obfuscatedAmount), amountcommitment(amountCommitment) {
+PublicCoin::PublicCoin(const ZerocoinParams* p, const CBigNum valueIn, const CPubKey pubKeyIn, const CBigNum pid,
+                       CBigNum obfuscatedAmount, CBigNum amountCommitment, bool fCheck) : params(p), value(valueIn),
+                       pubKey(pubKeyIn), paymentId(pid), amount(obfuscatedAmount), amountcommitment(amountCommitment) {
     if (this->params->initialized == false) {
         throw std::runtime_error("Params are not initialized");
     }
+
+    this->coincommitment = amountcommitment.mul_mod(
+                this->params->coinCommitmentGroup.h.pow_mod(value, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus);
 
     if (fCheck && !isValid())
         throw std::runtime_error("Commitment Value of Public Coin is invalid");
 }
 
 PublicCoin::PublicCoin(const ZerocoinParams* p, const CPubKey destPubKey, const BlindingCommitment blindingCommitment,
-                       const std::string pid, CAmount amount, std::pair<CBigNum,CBigNum>* rpval): params(p) {
+                       const std::string pid, CAmount amount, CBigNum* rpval): params(p) {
     // Verify that the parameters are valid
     if(this->params->initialized == false)
         throw std::runtime_error("Params are not initialized");
@@ -69,9 +72,11 @@ PublicCoin::PublicCoin(const ZerocoinParams* p, const CPubKey destPubKey, const 
                                   blindingCommitment.second, this->params->coinCommitmentGroup.modulus);
 
         // epsilon = C(w,c,sigma)
-        CBigNum epsilon = this->params->coinCommitmentGroup.g2.pow_mod(amount, this->params->coinCommitmentGroup.modulus).mul_mod(
-                    this->params->coinCommitmentGroup.h.pow_mod(c, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus).mul_mod(
+        CBigNum ac = this->params->coinCommitmentGroup.g2.pow_mod(amount, this->params->coinCommitmentGroup.modulus).mul_mod(
                     this->params->coinCommitmentGroup.g.pow_mod(sigma, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus);
+
+        CBigNum epsilon = ac.mul_mod(
+                    this->params->coinCommitmentGroup.h.pow_mod(c, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus);
 
         // First verify that the commitment is a prime number
         // in the appropriate range. If not, we repeat the process.
@@ -79,20 +84,20 @@ PublicCoin::PublicCoin(const ZerocoinParams* p, const CPubKey destPubKey, const 
                 epsilon >= params->accumulatorParams.minCoinValue &&
                 epsilon <= params->accumulatorParams.maxCoinValue) {
             // Found a valid coin. Store it.
+            this->pubKey = key.GetPubKey();
+            this->value = c;
+            this->amountcommitment = ac;
+            this->coincommitment = epsilon;
+            this->version = CURRENT_VERSION;
+
             uint256 varrho(Hash(pre_sigma.begin(), pre_sigma.end()));
             uint256 o(Hash(varrho.begin(), varrho.end()));
 
-            this->pubKey = key.GetPubKey();
-            this->value = c;
-            this->amountcommitment = this->params->coinCommitmentGroup.g2.pow_mod(amount, this->params->coinCommitmentGroup.modulus).mul_mod(
-                        this->params->coinCommitmentGroup.g.pow_mod(sigma, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus);
-            this->version = CURRENT_VERSION;
             this->amount = XorObfuscate(std::to_string(amount), CBigNum(varrho), 20);
             this->paymentId = XorObfuscate(pid, CBigNum(o), 32);
 
             if (rpval != NULL) {
-                rpval->first = amount;
-                rpval->second = sigma;
+                *rpval = sigma;
             }
 
             pre_chi = uint256();
@@ -111,6 +116,11 @@ PublicCoin::PublicCoin(const ZerocoinParams* p, const CPubKey destPubKey, const 
     // MAX_COINMINT_ATTEMPTS. Throw an exception.
     if(!fFound)
         throw std::runtime_error("Unable to mint a new Zerocoin (too many attempts)");
+}
+
+const CBigNum PublicCoin::getValue() const
+{
+    return this->coincommitment;
 }
 
 
@@ -164,9 +174,11 @@ PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CKey privKey, const CPub
     CBigNum amount = getAmount(CBigNum(varrho), obfuscatedAmount);
 
     // epsilon = C(w,c,sigma)
-    CBigNum epsilon = this->params->coinCommitmentGroup.g2.pow_mod(amount, this->params->coinCommitmentGroup.modulus).mul_mod(
-                this->params->coinCommitmentGroup.h.pow_mod(c, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus).mul_mod(
+    CBigNum ac = this->params->coinCommitmentGroup.g2.pow_mod(amount, this->params->coinCommitmentGroup.modulus).mul_mod(
                 this->params->coinCommitmentGroup.g.pow_mod(sigma, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus);
+
+    CBigNum epsilon = ac.mul_mod(
+                this->params->coinCommitmentGroup.h.pow_mod(c, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus);
 
     if (epsilon.isPrime(ZEROCOIN_MINT_PRIME_PARAM) &&
             epsilon >= params->accumulatorParams.minCoinValue &&
@@ -178,12 +190,10 @@ PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CKey privKey, const CPub
         this->serialNumber = chi;
         this->randomness = sigma;
         this->obfuscationAmount = CBigNum(varrho);
+
         this->obfuscationPid = CBigNum(o);
 
         o = uint256();
-
-        CBigNum ac = this->params->coinCommitmentGroup.g2.pow_mod(amount, this->params->coinCommitmentGroup.modulus).mul_mod(
-                    this->params->coinCommitmentGroup.g.pow_mod(sigma, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus);
 
         this->publicCoin = PublicCoin(p, c, mintPubKey, obfuscatedPid, obfuscatedAmount, ac, fCheck);
         fValid = true;
@@ -198,8 +208,8 @@ PrivateCoin::PrivateCoin(const ZerocoinParams* p, const CKey privKey, const CPub
     this->version = CURRENT_VERSION;
 }
 
-bool PrivateCoin::QuickCheckIsMine(const ZerocoinParams* p, const CKey privKey, const CPubKey mintPubKey,
-                         const BlindingCommitment blindingCommitment, const CBigNum commitment_value, const CBigNum obfuscationAmount)
+bool PrivateCoin::QuickCheckIsMine(const ZerocoinParams* p, const CKey& privKey, const CPubKey& mintPubKey, const BlindingCommitment& blindingCommitment,
+                                   const CBigNum& commitment_value, const CBigNum& obfuscationAmount, const CBigNum& amountCommitment)
 {
     // Verify that the parameters are valid
     if(!p->initialized)
@@ -213,24 +223,27 @@ bool PrivateCoin::QuickCheckIsMine(const ZerocoinParams* p, const CKey privKey, 
     uint256 pre_sigma(Hash(pre_chi.begin(), pre_chi.end()));
 
     CBigNum chi = CBigNum(pre_chi) % (p->coinCommitmentGroup.groupOrder);
-    CBigNum sigma = CBigNum(pre_sigma) % (p->coinCommitmentGroup.groupOrder);
 
     // c = bc2 * (bc1 ^ z) mod p
     CBigNum c = blindingCommitment.first.pow_mod(chi, p->coinCommitmentGroup.modulus, false).mul_mod(
                               blindingCommitment.second, p->coinCommitmentGroup.modulus);
 
+    if (c != commitment_value)
+        return false;
+
+    CBigNum sigma = CBigNum(pre_sigma) % (p->coinCommitmentGroup.groupOrder);
     CBigNum varrho(CBigNum(Hash(pre_sigma.begin(), pre_sigma.end())));
 
-    CBigNum bnPid = CBigNum(obfuscationAmount.getuint256().Get64()).Xor(varrho);
-    CAmount am(bnPid.getuint256().Get64());
-    CBigNum a(am);
+    CBigNum bnPAm = obfuscationAmount.Xor(varrho);
+    std::vector<unsigned char> vPAm = bnPAm.getvch();
+    std::string strAmount(vPAm.begin()+1,vPAm.end());
+    strAmount = strAmount.substr(0, (unsigned int)vPAm[0]);
+    CAmount am = stoll(strAmount);
 
-    // epsilon = C(w,c,sigma)
-    CBigNum epsilon = p->coinCommitmentGroup.g2.pow_mod(a, p->coinCommitmentGroup.modulus).mul_mod(
-                p->coinCommitmentGroup.h.pow_mod(c, p->coinCommitmentGroup.modulus), p->coinCommitmentGroup.modulus).mul_mod(
+    CBigNum w = p->coinCommitmentGroup.g2.pow_mod(am, p->coinCommitmentGroup.modulus).mul_mod(
                 p->coinCommitmentGroup.g.pow_mod(sigma, p->coinCommitmentGroup.modulus), p->coinCommitmentGroup.modulus);
 
-    return (epsilon == commitment_value);
+    return (w == amountCommitment);
 }
 
 const std::string PrivateCoin::getPaymentId() const {

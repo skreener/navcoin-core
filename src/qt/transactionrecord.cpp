@@ -54,6 +54,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
         // Credit
         //
         unsigned int i = 0;
+        unsigned int j = -1;
         bool fZero = false;
         BOOST_FOREACH(const CTxOut& txout, wtx.vout)
         {
@@ -95,18 +96,23 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     sub.credit = nNet > 0 ? nNet : wtx.GetValueOut() - nDebit - wtx.GetValueOutCFund();
                     hashPrev = hash;
                 }
-                if(wtx.fAnon || txout.scriptPubKey.IsZerocoinMint())
+                if(txout.scriptPubKey.IsZerocoinMint())
                 {
+                    j++;
                     sub.type = TransactionRecord::AnonTxRecv;
+                    unsigned int k = -1;
+                    unsigned int h = -1;
                     for (auto &it: wtx.vOrderForm)
                         if (it.first == "Message") {
-                            sub.paymentId = it.second;
-                            break;
+                            k++;
+                            if (k == j)
+                                sub.paymentId = it.second;
                         }
                     for (auto &it: wtx.vOrderForm)
                         if (it.first == "Amount") {
-                            sub.credit = stoll(it.second);
-                            break;
+                            h++;
+                            if (h == j)
+                                sub.credit = stoll(it.second);
                         }
                     fZero = true;
                 }
@@ -119,28 +125,28 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             }
             i++;
         }
-        if (fZero)
-        {
-            TransactionRecord sub(hash, nTime);
-            bool fInit = false;
-            QList<TransactionRecord>::iterator it = parts.begin();
-            while (it != parts.end())
-            {
-                if (it->type == TransactionRecord::AnonTxRecv) {
-                    if (!fInit) {
-                        fInit = true;
-                        sub = *it;
-                    } else {
-                        sub.credit += it->credit;
-                    }
-                    it = parts.erase(it);
-                } else {
-                    ++it;
-                }
-            }
-            if (fInit)
-                parts.append(sub);
-        }
+//        if (fZero)
+//        {
+//            TransactionRecord sub(hash, nTime);
+//            bool fInit = false;
+//            QList<TransactionRecord>::iterator it = parts.begin();
+//            while (it != parts.end())
+//            {
+//                if (it->type == TransactionRecord::AnonTxRecv) {
+//                    if (!fInit) {
+//                        fInit = true;
+//                        sub = *it;
+//                    } else {
+//                        sub.credit += it->credit;
+//                    }
+//                    it = parts.erase(it);
+//                } else {
+//                    ++it;
+//                }
+//            }
+//            if (fInit)
+//                parts.append(sub);
+//        }
     }
     else
     {
@@ -178,13 +184,16 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             CAmount nTxFee = nDebit - wtx.GetValueOut();
 
             bool fZero = false;
+            unsigned int j = -1;
 
             for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
             {
                 const CTxOut& txout = wtx.vout[nOut];
 
-                if(txout.scriptPubKey.IsZerocoinMint())
+                if(txout.scriptPubKey.IsZerocoinMint()) {
+                    j++;
                     fZero = true;
+                }
 
                 TransactionRecord sub(hash, nTime);
 
@@ -223,15 +232,19 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 if(txout.scriptPubKey.IsZerocoinMint())
                 {
                     sub.type = TransactionRecord::AnonTxSend;
+                    unsigned int k = -1;
+                    unsigned int h = -1;
                     for (auto &it: wtx.vOrderForm)
                         if (it.first == "Message") {
-                            sub.paymentId = it.second;
-                            break;
+                            k++;
+                            if (k == j)
+                                sub.paymentId = it.second;
                         }
                     for (auto &it: wtx.vOrderForm)
                         if (it.first == "Amount") {
-                            sub.debit = stoll(it.second);
-                            break;
+                            h++;
+                            if (h == j)
+                                sub.debit = stoll(it.second);
                         }
                 }
 
@@ -240,7 +253,8 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     sub.type = TransactionRecord::CFund;
                 }
 
-
+                if (txout.IsFee())
+                    sub.type = TransactionRecord::Fee;
 
                 parts.append(sub);
             }

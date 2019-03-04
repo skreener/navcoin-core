@@ -703,7 +703,7 @@ public:
     bool IsPaymentRequestVoteNo() const;
     bool ExtractVote(uint256 &hash, bool &vote) const;
 
-    bool IsZeroCTFee() const;
+    bool IsFee() const;
     bool IsZerocoinMint() const;
     bool IsZerocoinSpend() const;
     bool ExtractZerocoinMintData(CPubKey &zkey, std::vector<unsigned char> &commitment, std::vector<unsigned char> &paymentid, std::vector<unsigned char> &obfamount, std::vector<unsigned char> &amcommitment) const;

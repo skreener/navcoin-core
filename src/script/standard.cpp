@@ -82,6 +82,7 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
         vSolutionsRet.push_back(vp);
         vSolutionsRet.push_back(c);
         vSolutionsRet.push_back(a);
+        vSolutionsRet.push_back(ac);
         return true;
     }
 
@@ -398,9 +399,14 @@ public:
             return false;
         if(!dest.GetBlindingCommitment(bc))
             return false;
-        libzerocoin::PublicCoin pc(dest.GetParams(), zpk, bc, dest.GetPaymentId(), dest.GetAmount(), rpval);
+
+        CBigNum tempdata;
+        libzerocoin::PublicCoin pc(dest.GetParams(), zpk, bc, dest.GetPaymentId(), dest.GetAmount(), &tempdata);
+
+        dest.SetGamma(tempdata);
         script->clear();
-        *script << OP_ZEROCOINMINT << pc.getPubKey() << pc.getValue().getvch()
+
+        *script << OP_ZEROCOINMINT << pc.getPubKey() << pc.getCoinValue().getvch()
                 << pc.getAmountCommitment().getvch() << pc.getPaymentId().getvch()
                 << pc.getAmount().getvch();
         return true;
@@ -408,14 +414,12 @@ public:
 };
 }
 
-CScript GetScriptForDestination(const CTxDestination& dest, std::pair<CBigNum,CBigNum> *prpval)
+CScript GetScriptForDestination(const CTxDestination& dest)
 {
     CScript script;
 
-    if (prpval == NULL)
-        boost::apply_visitor(CScriptVisitor(&script), dest);
-    else
-        boost::apply_visitor(CScriptVisitor(&script, prpval), dest);
+    boost::apply_visitor(CScriptVisitor(&script), dest);
+
     return script;
 }
 

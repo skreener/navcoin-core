@@ -10,7 +10,7 @@
 * @license    This project is released under the MIT license.
 **/
 // Copyright (c) 2017 The PIVX developers
-// Copyright (c) 2018 The NavCoin Core developers
+// Copyright (c) 2018-2019 The NavCoin Core developers
 
 #include <streams.h>
 #include "SerialNumberSignatureOfKnowledge.h"
@@ -56,14 +56,13 @@ SerialNumberSignatureOfKnowledge::SerialNumberSignatureOfKnowledge(const
         throw std::runtime_error("Groups are not structured correctly.");
     }
 
-    CBigNum a = params->coinCommitmentGroup.g;
-    CBigNum b = params->coinCommitmentGroup.h;
-    CBigNum c = params->coinCommitmentGroup.g2;
-    CBigNum g = params->serialNumberSoKCommitmentGroup.g;
-    CBigNum h = params->serialNumberSoKCommitmentGroup.h;
+    const CBigNum& a = params->coinCommitmentGroup.g;
+    const CBigNum& b = params->coinCommitmentGroup.h;
+    const CBigNum& c = params->coinCommitmentGroup.g2;
+    const CBigNum& g = params->serialNumberSoKCommitmentGroup.g;
+    const CBigNum& h = params->serialNumberSoKCommitmentGroup.h;
 
-    CBigNum q = params->serialNumberSoKCommitmentGroup.groupOrder;
-    CBigNum p2 = params->serialNumberSoKCommitmentGroup.modulus;
+    const CBigNum& q = params->serialNumberSoKCommitmentGroup.groupOrder;
 
     CHashWriter hasher(0,0);
     hasher << *params << commitmentToCoin.getCommitmentValue() << coinValuePublic.getCommitmentValue() << amountCommitment.getCommitmentValue() << commitmentToValue.getCommitmentValue() << msghash;
@@ -202,14 +201,14 @@ inline CBigNum SerialNumberSignatureOfKnowledge::challengeCalculation(const CBig
 
 bool SerialNumberSignatureOfKnowledge::Verify(const CBigNum& valueOfCommitmentToCoin, const CBigNum& valueOfPublicCoin,
                                               CBigNum amountCommitment, CBigNum valueCommitment, const uint256 msghash) const {
-    CBigNum a = params->coinCommitmentGroup.g;
-    CBigNum b = params->coinCommitmentGroup.h;
-    CBigNum c = params->coinCommitmentGroup.g2;
-    CBigNum g = params->serialNumberSoKCommitmentGroup.g;
-    CBigNum h = params->serialNumberSoKCommitmentGroup.h;
+    const CBigNum& a = params->coinCommitmentGroup.g;
+    const CBigNum& b = params->coinCommitmentGroup.h;
+    const CBigNum& c = params->coinCommitmentGroup.g2;
+    const CBigNum& g = params->serialNumberSoKCommitmentGroup.g;
+    const CBigNum& h = params->serialNumberSoKCommitmentGroup.h;
 
-    CBigNum q = params->serialNumberSoKCommitmentGroup.groupOrder;
-    CBigNum p = params->serialNumberSoKCommitmentGroup.modulus;
+    const CBigNum& q = params->serialNumberSoKCommitmentGroup.groupOrder;
+    const CBigNum& p = params->serialNumberSoKCommitmentGroup.modulus;
 
     CHashWriter hasher(0,0);
     hasher << *params << valueOfCommitmentToCoin << valueOfPublicCoin << amountCommitment << valueCommitment << msghash;

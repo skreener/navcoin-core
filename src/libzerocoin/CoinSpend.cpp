@@ -10,7 +10,7 @@
  * @license    This project is released under the MIT license.
  **/
 // Copyright (c) 2017-2018 The PIVX developers
-// Copyright (c) 2018 The NavCoin Core developers
+// Copyright (c) 2018-2019 The NavCoin Core developers
 
 #include "Keys.h"
 #include "CoinSpend.h"
@@ -19,10 +19,12 @@
 
 namespace libzerocoin
 {
-CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, const Accumulator& a, const uint256& checksum,
+CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, const Accumulator& a, const uint256& blockHash,
                      const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType,
                      const libzerocoin::ObfuscationValue obfuscationJ, const libzerocoin::ObfuscationValue obfuscationK,
-                     bool fUseBulletproofs) : accChecksum(checksum),
+                     bool fUseBulletproofs) :
+    p(params),
+    blockAccumulatorHash(blockHash),
     ptxHash(ptxHash),
     accumulatorPoK(&params->accumulatorParams),
     serialNumberSoK(params),
@@ -90,6 +92,9 @@ CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, cons
 
 bool CoinSpend::Verify(const Accumulator& a, bool fUseBulletproofs) const
 {
+    if (!HasValidPublicSerial(p)) {
+        return error("CoinsSpend::Verify: invalid Public Serial");
+    }
 
     // Verify both of the sub-proofs using the given meta-data
     if (!commitmentPoK.Verify(serialCommitmentToCoinValue, accCommitmentToCoinValue)) {
@@ -121,7 +126,7 @@ const uint256 CoinSpend::signatureHash() const
 {
     CHashWriter h(0, 0);
     h << serialCommitmentToCoinValue << accCommitmentToCoinValue << commitmentPoK << accumulatorPoK << ptxHash
-      << coinValuePublic << amountCommitment << commitmentToCoinValue << accChecksum << spendType;
+      << coinValuePublic << amountCommitment << commitmentToCoinValue << blockAccumulatorHash << spendType;
 
     return h.GetHash();
 }
@@ -139,7 +144,7 @@ uint256 CoinSpend::GetHash() const {
     return h.GetHash();
 }
 
-bool CoinSpend::HasValidPublicSerial(ZerocoinParams* params) const
+bool CoinSpend::HasValidPublicSerial(const ZerocoinParams* params) const
 {
     return IsValidPublicSerial(params, coinValuePublic);
 }

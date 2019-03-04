@@ -274,8 +274,10 @@ CBigNum CBigNum::pow_mod(const CBigNum& e, const CBigNum& m, bool fCache) const
 {
     CBigNum ret;
 
-    if (mapCachePowMod.count(std::make_pair(*this,std::make_pair(e,m))) != 0)
-        return mapCachePowMod[std::make_pair(*this,std::make_pair(e,m))];
+    std::pair<CBigNum, std::pair<CBigNum, CBigNum>> key = std::make_pair(*this, std::make_pair(e,m));
+
+    if (mapCachePowMod.count(key) != 0)
+        return mapCachePowMod[key];
 
     if (e > CBigNum(0) && mpz_odd_p(m.bn))
         mpz_powm_sec (ret.bn, bn, e.bn, m.bn);
@@ -285,7 +287,7 @@ CBigNum CBigNum::pow_mod(const CBigNum& e, const CBigNum& m, bool fCache) const
     if (mapCachePowMod.size() > POW_MOD_CACHE_SIZE)
         mapCachePowMod.clear();
     else if (fCache)
-        mapCachePowMod[std::make_pair(*this,std::make_pair(e,m))] = ret;
+        mapCachePowMod[key] = ret;
 
     return ret;
 }

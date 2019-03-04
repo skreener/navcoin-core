@@ -9,7 +9,7 @@
 * @copyright  Copyright 2018 alex v
 * @license    This project is released under the MIT license.
 **/
-// Copyright (c) 2018 The NavCoin Core developers
+// Copyright (c) 2018-2019 The NavCoin Core developers
 
 #ifndef KEYS_H
 #define KEYS_H
@@ -57,6 +57,14 @@ public:
         return nAmount;
     }
 
+    void SetGamma(CBigNum gamma) const {
+        bnGamma = gamma;
+    }
+
+    CBigNum GetGamma() const {
+        return bnGamma;
+    }
+
     const ZerocoinParams* GetParams() const { return params; }
 
     bool operator<(const CPrivateAddress& rhs) const {
@@ -83,6 +91,7 @@ private:
     CPubKey zpk;
     std::string strPid;
     CAmount nAmount;
+    mutable CBigNum bnGamma;
 };
 class CPrivateViewKey
 {

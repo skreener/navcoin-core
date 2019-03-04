@@ -234,7 +234,7 @@ public:
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
     uint32_t nSequenceId;
 
-    uint256 nAccumulatorChecksum;
+    CBigNum nAccumulatorValue;
     CAmount nMoneySupply;
     CAmount nAccumulatedPrivateFee;
     CAmount nAccumulatedPublicFee;
@@ -269,7 +269,7 @@ public:
         vProposalVotes.clear();
         vPaymentRequestVotes.clear();
         nMoneySupply = 0;
-        nAccumulatorChecksum = 0;
+        nAccumulatorValue = 0;
         nAccumulatedPrivateFee = 0;
         nAccumulatedPublicFee = 0;
     }
@@ -288,8 +288,6 @@ public:
         nTime          = block.nTime;
         nBits          = block.nBits;
         nNonce         = block.nNonce;
-        if((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
-            nAccumulatorChecksum = block.nAccumulatorChecksum;
     }
 
     CBlockIndex(const CBlock& block)
@@ -313,8 +311,6 @@ public:
         nTime          = block.nTime;
         nBits          = block.nBits;
         nNonce         = block.nNonce;
-        if((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
-            nAccumulatorChecksum = block.nAccumulatorChecksum;
     }
 
     uint256 GetBlockTrust() const
@@ -356,8 +352,6 @@ public:
         block.nTime          = nTime;
         block.nBits          = nBits;
         block.nNonce         = nNonce;
-        if((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
-            block.nAccumulatorChecksum = nAccumulatorChecksum;
         return block;
     }
 
@@ -543,7 +537,7 @@ public:
         READWRITE(vProposalVotes);
         READWRITE(nMoneySupply);
         if((this->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN) {
-            READWRITE(nAccumulatorChecksum);
+            READWRITE(nAccumulatorValue);
             READWRITE(nAccumulatedPrivateFee);
             READWRITE(nAccumulatedPublicFee);
         }
@@ -558,8 +552,6 @@ public:
         block.nTime           = nTime;
         block.nBits           = nBits;
         block.nNonce          = nNonce;
-        if((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN)
-            block.nAccumulatorChecksum = nAccumulatorChecksum;
 
         const_cast<CDiskBlockIndex*>(this)->blockHash = block.GetHash();
 

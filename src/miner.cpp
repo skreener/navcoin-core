@@ -311,16 +311,6 @@ CBlockTemplate* BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bo
     pblock->nNonce         = 0;
     pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(pblock->vtx[0]);
 
-    if(!fProofOfStake && IsZerocoinEnabled(pindexPrev, Params().GetConsensus()))
-    {
-        Accumulator ac(&Params().GetConsensus().Zerocoin_Params);
-        std::vector<std::pair<CBigNum, uint256>> vDummy;
-        if (pindexPrev->nAccumulatorChecksum != uint256())
-            ac.setValue(pindexPrev->nAccumulatorChecksum);
-        CalculateAccumulatorChecksum(pblock, ac, vDummy);
-        pblock->nAccumulatorChecksum = ac.getValue().getuint256();
-    }
-
     if (pFees)
         *pFees = nFees;
 
@@ -451,7 +441,7 @@ void BlockAssembler::AddToBlock(CTxMemPool::txiter iter)
     nBlockWeight += iter->GetTxWeight();
     ++nBlockTx;
     nBlockSigOpsCost += iter->GetSigOpCost();
-    if (iter->GetTx().IsZerocoinSpend())
+    if (iter->GetTx().IsZerocoinSpend() || iter->GetTx().HasZerocoinMint())
         nPrivateFees += iter->GetFee();
     else
         nFees += iter->GetFee();
@@ -967,16 +957,6 @@ bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees, int64_t nPrivateF
                       LogPrintf("Tried to force a wrong transaction in a block: %s\n", vForcedTransactions[i]);
                   else
                       pblock->vtx.insert(pblock->vtx.begin() + 2, forcedTx);
-              }
-
-              if(IsZerocoinEnabled(chainActive.Tip(), Params().GetConsensus()))
-              {
-                  Accumulator ac(&Params().GetConsensus().Zerocoin_Params);
-                  if (chainActive.Tip()->nAccumulatorChecksum != uint256())
-                      ac.setValue(chainActive.Tip()->nAccumulatorChecksum);
-                  std::vector<std::pair<CBigNum, uint256>> vDummy;
-                  CalculateAccumulatorChecksum(pblock, ac, vDummy);
-                  pblock->nAccumulatorChecksum = ac.getValue().getuint256();
               }
 
               pblock->vtx[0].UpdateHash();

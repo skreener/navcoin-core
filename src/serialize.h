@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <ios>
+#include <iostream>
 #include <limits>
 #include <map>
 #include <set>
@@ -312,7 +313,9 @@ uint64_t ReadCompactSize(Stream& is)
             throw std::ios_base::failure("non-canonical ReadCompactSize()");
     }
     if (nSizeRet > (uint64_t)MAX_SIZE)
-        throw std::ios_base::failure("ReadCompactSize(): size too large");
+        std::cout << "size is " << nSizeRet << std::endl;
+        //throw std::ios_base::failure("ReadCompactSize(): size too large");
+
     return nSizeRet;
 }
 

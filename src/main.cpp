@@ -1469,6 +1469,8 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
 
         CAmount nValueOut = tx.GetValueOut();
         CAmount nFees = (!tx.IsCoinStake())?nValueIn-nValueOut:0;
+        if (tx.HasZerocoinMint())
+            nFees = tx.GetFee();
         // nModifiedFees includes any fee deltas from PrioritiseTransaction
         CAmount nModifiedFees = nFees;
         double nPriorityDummy = 0;
@@ -1496,6 +1498,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
             if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, txout, view, state))
                 return state.DoS(100, false, REJECT_INVALID, "bad-zerocoin-mint");
         }
+
         CTxMemPoolEntry entry(tx, nFees, GetTime(), dPriority, chainActive.Height(), pool.HasNoInputsOf(tx), inChainInputValue, fSpendsCoinbase, nSigOpsCost, lp);
         unsigned int nSize = entry.GetTxSize();
 
@@ -2212,46 +2215,53 @@ int GetSpendHeight(const CCoinsViewCache& inputs)
 namespace Consensus {
 bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoinsViewCache& inputs, int nSpendHeight)
 {
-        // This doesn't trigger the DoS code on purpose; if it did, it would make it easier
-        // for an attacker to attempt to split the network.
-        if (!inputs.HaveInputs(tx))
-            return state.Invalid(false, 0, "", "Inputs unavailable");
-        CAmount nValueIn = 0;
-        CAmount nFees = 0;
-        for (unsigned int i = 0; i < tx.vin.size(); i++)
-        {
-            const COutPoint &prevout = tx.vin[i].prevout;
-            const CCoins *coins = inputs.AccessCoins(prevout.hash);
-            assert(coins);
+    // This doesn't trigger the DoS code on purpose; if it did, it would make it easier
+    // for an attacker to attempt to split the network.
+    if (!inputs.HaveInputs(tx))
+        return state.Invalid(false, 0, "", "Inputs unavailable");
+    CAmount nValueIn = 0;
+    CAmount nFees = 0;
+    for (unsigned int i = 0; i < tx.vin.size(); i++)
+    {
+        const COutPoint &prevout = tx.vin[i].prevout;
+        const CCoins *coins = inputs.AccessCoins(prevout.hash);
+        assert(coins);
 
-            // If prev is coinbase, check that it's matured
-            if (coins->IsCoinBase() || coins->IsCoinStake()) {
-                if (nSpendHeight - coins->nHeight < COINBASE_MATURITY && nSpendHeight - coins->nHeight > 0)
-                    return state.Invalid(false,
-                        REJECT_INVALID, "bad-txns-premature-spend-of-coinbase",
-                        strprintf("tried to spend %s at depth %d", coins->IsCoinBase() ?"coinbase":"coinstake",nSpendHeight - coins->nHeight));
-            }
-
-            // Check for negative or overflow input values
-            nValueIn += coins->vout[prevout.n].nValue;
-            if (!MoneyRange(coins->vout[prevout.n].nValue) || !MoneyRange(nValueIn))
-                return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
-
+        // If prev is coinbase, check that it's matured
+        if (coins->IsCoinBase() || coins->IsCoinStake()) {
+            if (nSpendHeight - coins->nHeight < COINBASE_MATURITY && nSpendHeight - coins->nHeight > 0)
+                return state.Invalid(false,
+                                     REJECT_INVALID, "bad-txns-premature-spend-of-coinbase",
+                                     strprintf("tried to spend %s at depth %d", coins->IsCoinBase() ?"coinbase":"coinstake",nSpendHeight - coins->nHeight));
         }
 
-        if(!tx.IsCoinBase() && !tx.IsCoinStake()){
-          if (nValueIn < tx.GetValueOut())
-              return state.DoS(100, false, REJECT_INVALID, "bad-txns-in-belowout", false,
-                  strprintf("value in (%s) < value out (%s)", FormatMoney(nValueIn), FormatMoney(tx.GetValueOut())));
+        // Check for negative or overflow input values
+        nValueIn += coins->vout[prevout.n].nValue;
+        if (!MoneyRange(coins->vout[prevout.n].nValue) || !MoneyRange(nValueIn))
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
 
-          // Tally transaction fees
-          CAmount nTxFee = nValueIn - tx.GetValueOut();
-          if (nTxFee < 0)
-              return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-negative");
-          nFees += nTxFee;
-          if (!MoneyRange(nFees))
-              return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-outofrange");
-        }
+    }
+
+    if (tx.HasZerocoinMint()) {
+        CAmount nTxFee = tx.GetFee();
+        if (nTxFee < 0)
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-negative");
+        nFees += nTxFee;
+        if (!MoneyRange(nFees))
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-outofrange");
+    } else if (!tx.IsCoinBase() && !tx.IsCoinStake()){
+        if (nValueIn < tx.GetValueOut())
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-in-belowout", false,
+                             strprintf("value in (%s) < value out (%s)", FormatMoney(nValueIn), FormatMoney(tx.GetValueOut())));
+
+        // Tally transaction fees
+        CAmount nTxFee = nValueIn - tx.GetValueOut();
+        if (nTxFee < 0)
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-negative");
+        nFees += nTxFee;
+        if (!MoneyRange(nFees))
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-outofrange");
+    }
 
 
     return true;
@@ -2260,8 +2270,8 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
 
 bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsViewCache &inputs, bool fScriptChecks, unsigned int flags, bool cacheStore, PrecomputedTransactionData& txdata, std::vector<CScriptCheck> *pvChecks)
 {
-    if (tx.IsZeroCT() && !VerifyZeroCTBalance(&Params().GetConsensus().Zerocoin_Params, tx, inputs))
-        return state.DoS(0, false, REJECT_INVALID, "invalid-zeroct-balance");
+    //if (tx.IsZeroCT() && !VerifyZeroCTBalance(&Params().GetConsensus().Zerocoin_Params, tx, inputs))
+    //    return state.DoS(0, false, REJECT_INVALID, "invalid-zeroct-balance");
 
     if (tx.IsCoinBase() || tx.IsZerocoinSpend())
     {
@@ -3242,54 +3252,52 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
         txdata.emplace_back(tx);
 
-        if (!tx.IsCoinBase() && !tx.IsZerocoinSpend())
+        if (!tx.IsCoinBase())
         {
 
-            if (!tx.IsCoinStake())
-              nFees += view.GetValueIn(tx) - tx.GetValueOut();
+            if (tx.HasZerocoinMint())
+                nFees += tx.GetFee();
+            else if (!tx.IsCoinStake())
+                nFees += view.GetValueIn(tx) - tx.GetValueOut();
+
             if (tx.IsCoinStake())
             {
 
-              nStakeReward = tx.GetValueOut() - view.GetValueIn(tx);
-              pindex->strDZeel = tx.strDZeel;
+                nStakeReward = tx.GetValueOut() - view.GetValueIn(tx);
+                pindex->strDZeel = tx.strDZeel;
 
-              if(IsCommunityFundAccumulationEnabled(pindex->pprev, Params().GetConsensus(), false))
-              {
+                if(IsCommunityFundAccumulationEnabled(pindex->pprev, Params().GetConsensus(), false))
+                {
 
-                  int nMultiplier = 1;
+                    int nMultiplier = 1;
 
-                  if(IsCommunityFundAccumulationSpreadEnabled(pindex->pprev, Params().GetConsensus()))
-                  {
-                      nMultiplier = (pindex->nHeight % Params().GetConsensus().nBlockSpreadCFundAccumulation) == 0 ? Params().GetConsensus().nBlockSpreadCFundAccumulation : 0;
+                    if(IsCommunityFundAccumulationSpreadEnabled(pindex->pprev, Params().GetConsensus()))
+                        nMultiplier = (pindex->nHeight % Params().GetConsensus().nBlockSpreadCFundAccumulation) == 0 ? Params().GetConsensus().nBlockSpreadCFundAccumulation : 0;
 
-                  }
-
-                  if(!tx.vout[tx.vout.size() - 1].IsCommunityFundContribution() && nMultiplier > 0)
-                    return state.DoS(100, error("ConnectBlock(): block does not contribute to the community fund"),
-                                     REJECT_INVALID, "no-cf-amount");
+                    if(!tx.vout[tx.vout.size() - 1].IsCommunityFundContribution() && nMultiplier > 0)
+                        return state.DoS(100, error("ConnectBlock(): block does not contribute to the community fund"),
+                                         REJECT_INVALID, "no-cf-amount");
 
 
-                  if(IsCommunityFundAmountV2Enabled(pindex->pprev, Params().GetConsensus())) {
-                      if(tx.vout[tx.vout.size() - 1].nValue != Params().GetConsensus().nCommunityFundAmountV2 * nMultiplier && nMultiplier > 0)
-                        return state.DoS(100, error("ConnectBlock(): block pays incorrect amount to community fund (actual=%d vs consensus=%d)",
-                                                    tx.vout[tx.vout.size() - 1].nValue, Params().GetConsensus().nCommunityFundAmountV2 * nMultiplier),
-                            REJECT_INVALID, "bad-cf-amount");
-                  } else {
-                      if(tx.vout[tx.vout.size() - 1].nValue != Params().GetConsensus().nCommunityFundAmount * nMultiplier && nMultiplier > 0)
-                        return state.DoS(100, error("ConnectBlock(): block pays incorrect amount to community fund (actual=%d vs consensus=%d)",
-                                                    tx.vout[tx.vout.size() - 1].nValue, Params().GetConsensus().nCommunityFundAmount * nMultiplier),
-                            REJECT_INVALID, "bad-cf-amount");
-                  }
+                    if(IsCommunityFundAmountV2Enabled(pindex->pprev, Params().GetConsensus())) {
+                        if(tx.vout[tx.vout.size() - 1].nValue != Params().GetConsensus().nCommunityFundAmountV2 * nMultiplier && nMultiplier > 0)
+                            return state.DoS(100, error("ConnectBlock(): block pays incorrect amount to community fund (actual=%d vs consensus=%d)",
+                                                        tx.vout[tx.vout.size() - 1].nValue, Params().GetConsensus().nCommunityFundAmountV2 * nMultiplier),
+                                    REJECT_INVALID, "bad-cf-amount");
+                    } else {
+                        if(tx.vout[tx.vout.size() - 1].nValue != Params().GetConsensus().nCommunityFundAmount * nMultiplier && nMultiplier > 0)
+                            return state.DoS(100, error("ConnectBlock(): block pays incorrect amount to community fund (actual=%d vs consensus=%d)",
+                                                        tx.vout[tx.vout.size() - 1].nValue, Params().GetConsensus().nCommunityFundAmount * nMultiplier),
+                                    REJECT_INVALID, "bad-cf-amount");
+                    }
 
 
-                  if(IsCommunityFundAmountV2Enabled(pindex->pprev, Params().GetConsensus()))
-                  {
-                    nStakeReward -= Params().GetConsensus().nCommunityFundAmountV2 * nMultiplier;
-                  } else {
-                    nStakeReward -= Params().GetConsensus().nCommunityFundAmount * nMultiplier;
-                  }
+                    if(IsCommunityFundAmountV2Enabled(pindex->pprev, Params().GetConsensus()))
+                        nStakeReward -= Params().GetConsensus().nCommunityFundAmountV2 * nMultiplier;
+                    else
+                        nStakeReward -= Params().GetConsensus().nCommunityFundAmount * nMultiplier;
 
-              }
+                }
 
             }
 
@@ -3306,8 +3314,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                              tx.nTime, block.nTime);
         }
         if(!tx.IsCoinStake() && !tx.IsCoinBase()) {
-            if (tx.IsZerocoinSpend()) {
-                pindex->nAccumulatedPrivateFee += view.GetValueIn(tx) - tx.GetValueOut();
+            if (tx.IsZerocoinSpend() || tx.HasZerocoinMint()) {
+                pindex->nAccumulatedPrivateFee += tx.HasZerocoinMint() ? tx.GetFee() : view.GetValueIn(tx) - tx.GetValueOut();
             } else {
                 pindex->nAccumulatedPublicFee += view.GetValueIn(tx) - tx.GetValueOut();
             }
@@ -3718,20 +3726,14 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         Accumulator ac(&Params().GetConsensus().Zerocoin_Params);
         std::vector<std::pair<CBigNum, uint256>> vAccumulatedMints;
 
-        if (pindex->pprev->nAccumulatorChecksum != uint256())
-            ac.setValue(pindex->pprev->nAccumulatorChecksum);
+        if (pindex->pprev->nAccumulatorValue != 0)
+            ac.setValue(pindex->pprev->nAccumulatorValue);
 
         if(!CalculateAccumulatorChecksum(&block, ac, vAccumulatedMints))
-            return state.DoS(10, error("ContextualCheckBlock(): could not verify zerocoin accumulator checksum."),
+            return state.DoS(10, error("ContextualCheckBlock(): could not compute zerocoin accumulator value."),
                              REJECT_INVALID, "bad-zero-accumulator-checksum");
 
-        std::pair<int, uint256> blockLocator = std::make_pair(pindex->nHeight, pindex->GetBlockHash());
-        if (block.GetBlockHeader().nAccumulatorChecksum != ac.getValue().getuint256())
-        {
-            return state.DoS(10, error("ContextualCheckBlock(): block accumulator checksum is not valid (valid=%d vs sent=%d)",
-                                       ac.getValue().ToString(), block.GetBlockHeader().nAccumulatorChecksum.ToString()),
-                             REJECT_INVALID, "bad-zero-accumulator-checksum");
-        }
+        pindex->nAccumulatorValue = ac.getValue();
     }
 
     int64_t nTime7 = GetTimeMicros();
@@ -3928,9 +3930,9 @@ void static UpdateTip(CBlockIndex *pindexNew, const CChainParams& chainParams) {
     }
     hashBestChain = chainActive.Tip()->GetBlockHash();
 
-    LogPrintf("%s: new best=%s height=%d version=0x%08x acchecksum=%s log2_work=%.8g tx=%lu date='%s' progress=%f cache=%.1fMiB(%utx)", __func__,
+    LogPrintf("%s: new best=%s height=%d version=0x%08x accvalue=%s log2_work=%.8g tx=%lu date='%s' progress=%f cache=%.1fMiB(%utx)", __func__,
       chainActive.Tip()->GetBlockHash().ToString(), chainActive.Height(), chainActive.Tip()->nVersion,
-      chainActive.Tip()->nAccumulatorChecksum.ToString(),
+      chainActive.Tip()->nAccumulatorValue.ToString(16).substr(0,16),
       log(chainActive.Tip()->nChainWork.getdouble())/log(2.0), (unsigned long)chainActive.Tip()->nChainTx,
       DateTimeStrFormat("%Y-%m-%d %H:%M:%S", chainActive.Tip()->GetBlockTime()),
       Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), chainActive.Tip()), pcoinsTip->DynamicMemoryUsage() * (1.0 / (1<<20)), pcoinsTip->GetCacheSize());
@@ -3993,12 +3995,6 @@ bool static DisconnectTip(CValidationState& state, const CChainParams& chainpara
     if(firstZero.first == pindexDelete->nHeight)
         if(!pblocktree->WriteFirstZerocoinBlock(make_pair(0, uint256())))
             return AbortNode(state, "Failed to write height of first Zerocoin block");
-
-    if(pindexDelete->nAccumulatorChecksum != uint256() && (block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN) {
-        Accumulator ac(&Params().GetConsensus().Zerocoin_Params);
-        ac.setValue(pindexDelete->nAccumulatorChecksum);
-        std::pair<int,uint256> blockLocator = std::make_pair(pindexDelete->nHeight, pindexDelete->GetBlockHash());
-    }
 
     std::vector<CFund::CPaymentRequest> vecPaymentRequest;
     std::vector<CFund::CProposal> vecProposal;
@@ -9261,21 +9257,18 @@ bool CheckProofOfStake(CBlockIndex* pindexPrev, const CTransaction& tx, const CC
         if(!TxInToCoinSpend(&Params().GetConsensus().Zerocoin_Params, tx.vin[0], coinSpend))
             return error("%s : Could not convert tx in to Coinspend", __func__);
 
-//        AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
+        uint256 blockAccumulatorHash = coinSpend.getBlockAccumulatorHash();
 
-//        if (!accumulatorMap.Load(coinSpend.getAccumulatorChecksum()))
-//            return error("%s : Could not load coin spend accumulator checksum", __func__);
+        if (!mapBlockIndex.count(blockAccumulatorHash))
+            return error("%s : coinspend refers an invalid block hash", __func__);
 
-//        if (accumulatorMap.GetFirstBlockHash() == uint256() || !mapBlockIndex.count(accumulatorMap.GetFirstBlockHash()))
-//            return error("%s : Accumulator checksum does not refer a valid block", __func__);
+        CBlockIndex* pindex = mapBlockIndex[blockAccumulatorHash];
 
-//        CBlockIndex* pindex = mapBlockIndex[accumulatorMap.GetFirstBlockHash()];
+        if (!chainActive.Contains(pindex))
+            return error("%s : Accumulator checksum refers a block not contained in the active chain", __func__);
 
-//        if (!chainActive.Contains(pindex))
-//            return error("%s : Accumulator checksum refers a block not contained in the active chain", __func__);
-
-//        if ((pindexPrev->nHeight - pindex->nHeight + 1) < COINBASE_MATURITY)
-//            return error("%s : Coin spend is not mature enough (%d)", __func__, (pindexPrev->nHeight - pindex->nHeight));
+        if ((pindexPrev->nHeight - pindex->nHeight + 1) < COINBASE_MATURITY)
+            return error("%s : Coin spend is not mature enough (%d)", __func__, (pindexPrev->nHeight - pindex->nHeight));
 
         return CheckZeroStakeKernelHash(pindexPrev, nBits, tx.nTime, coinSpend.getCoinSerialNumber(), COIN, hashProofOfStake, targetProofOfStake);
     }

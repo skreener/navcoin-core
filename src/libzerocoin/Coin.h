@@ -64,11 +64,11 @@ public:
    **/
 
     PublicCoin(const ZerocoinParams* p, const CPubKey destPubKey, const BlindingCommitment blindingCommitment,
-               const std::string pid, const CAmount amount, std::pair<CBigNum,CBigNum>* prpval = NULL);
+               const std::string pid, const CAmount amount, CBigNum* prpval = NULL);
     PublicCoin(const ZerocoinParams* p, const CBigNum value, const CPubKey pubKey, const CBigNum obfuscatedPid,
                const CBigNum obfuscatedAmount, const CBigNum amountCommitment, bool fCheck = true);
 
-    const CBigNum getValue() const { CBigNum ret = this->amountcommitment.mul_mod(this->params->coinCommitmentGroup.h.pow_mod(this->value, this->params->coinCommitmentGroup.modulus), this->params->coinCommitmentGroup.modulus); return ret; }
+    const CBigNum getValue() const;
     const CBigNum getCoinValue() const { return this->value; }
     const CPubKey& getPubKey() const { return this->pubKey; }
     const uint8_t& getVersion() const { return this->version; }
@@ -92,6 +92,7 @@ public:
         READWRITE(pubKey);
         READWRITE(value);
         READWRITE(amountcommitment);
+        READWRITE(coincommitment);
         READWRITE(paymentId);
         READWRITE(amount);
     }
@@ -104,6 +105,7 @@ private:
     CBigNum paymentId;
     CBigNum amount;
     CBigNum amountcommitment;
+    CBigNum coincommitment;
 };
 
 /**
@@ -164,7 +166,8 @@ public:
     const CBigNum& getRandomness() const { return this->randomness; }
     const uint8_t& getVersion() const { return this->version; }
 
-    static bool QuickCheckIsMine(const ZerocoinParams* p, const CKey privKey, const CPubKey mintPubKey, const BlindingCommitment blindingCommitment, const CBigNum commitment_value, const CBigNum obfuscationAmount);
+    static bool QuickCheckIsMine(const ZerocoinParams* p, const CKey& privKey, const CPubKey& mintPubKey, const BlindingCommitment& blindingCommitment,
+                                 const CBigNum& commitment_value, const CBigNum& obfuscationAmount, const CBigNum& amountCommitment);
 
     bool isValid();
 

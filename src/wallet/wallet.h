@@ -518,10 +518,11 @@ public:
     bool fSpendable;
     bool fSolvable;
     std::string sPaymentId;
+    CAmount nAmount;
 
-    COutput(const CWalletTx *txIn, int iIn, int nDepthIn, bool fSpendableIn, bool fSolvableIn, std::string sPaymentIdIn = "")
+    COutput(const CWalletTx *txIn, int iIn, int nDepthIn, bool fSpendableIn, bool fSolvableIn, std::string sPaymentIdIn = "", CAmount nAmountIn = 0)
     {
-        tx = txIn; i = iIn; nDepth = nDepthIn; fSpendable = fSpendableIn; fSolvable = fSolvableIn; sPaymentId = sPaymentIdIn;
+        tx = txIn; i = iIn; nDepth = nDepthIn; fSpendable = fSpendableIn; fSolvable = fSolvableIn; sPaymentId = sPaymentIdIn; nAmount = nAmountIn;
     }
 
     COutput(const CWalletTx *txIn, const CTransaction *ptxIn, int iIn, int nDepthIn, bool fSpendableIn, bool fSolvableIn, std::string sPaymentIdIn = "")

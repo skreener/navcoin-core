@@ -301,9 +301,9 @@ Testb_MintCoin()
     try {
         // Generate a list of coins
         for (uint32_t i = 0; i < TESTS_COINS_TO_ACCUMULATE; i++) {
-            std::pair<CBigNum, CBigNum> rpdata;
+            CBigNum rpdata;
             timer.start();
-            PublicCoin pubCoin(gg_Params,pubKey_,blindingCommitment_, "test", COIN, rpdata);
+            PublicCoin pubCoin(gg_Params,pubKey_,blindingCommitment_, "test", COIN, &rpdata);
             timer.stop();
             mintTotal += timer.duration();
             ggCoins[i] = new PrivateCoin(gg_Params, privKey_,pubCoin.getPubKey(),blindingCommitment_,pubCoin.getValue(), pubCoin.getPaymentId(), pubCoin.getAmount());
@@ -313,8 +313,8 @@ Testb_MintCoin()
             std::vector<CBigNum> values;
             std::vector<CBigNum> gammas;
 
-            values.push_back(rpdata.first);
-            gammas.push_back(rpdata.second);
+            values.push_back(CBigNum(ggCoins[i]->getAmount()));
+            gammas.push_back(rpdata);
 
             timer.start();
             bprp.Prove(values, gammas);

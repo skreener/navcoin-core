@@ -198,9 +198,9 @@ public:
         return scriptPubKey.IsZerocoinMint();
     }
 
-    bool IsZeroCTFee() const
+    bool IsFee() const
     {
-        return scriptPubKey.IsZeroCTFee();
+        return scriptPubKey.IsFee();
     }
 
     uint256 GetHash() const;
@@ -239,7 +239,7 @@ public:
 
     bool IsDust(const CFeeRate &minRelayTxFee) const
     {
-        return (nValue < GetDustThreshold(minRelayTxFee));
+        return (!IsZerocoinMint() && nValue < GetDustThreshold(minRelayTxFee));
     }
 
     friend bool operator==(const CTxOut& a, const CTxOut& b)
@@ -498,6 +498,17 @@ public:
                 return true;
         }
         return false;
+    }
+
+    CAmount GetFee() const
+    {
+        if (!HasZerocoinMint())
+            return 0;
+        for(const CTxOut& txout : vout) {
+            if (txout.scriptPubKey.IsFee())
+                return txout.nValue;
+        }
+        return 0;
     }
 
     bool ContainsZerocoins() const

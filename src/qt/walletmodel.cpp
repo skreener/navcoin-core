@@ -291,7 +291,6 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
             ++nAddresses;
 
             vector<CRecipient> vecSendTemp;
-            bool fNeedsMinting = false;
 
             CNavCoinAddress a(rcp.address.toStdString());
 
@@ -742,7 +741,7 @@ void WalletModel::listZeroCoins(std::map<QString, std::vector<COutput> >& mapCoi
         while (wallet->IsChange(cout.tx->vout[cout.i]) && cout.tx->vin.size() > 0 && wallet->IsMine(cout.tx->vin[0]))
         {
             if (!wallet->mapWallet.count(cout.tx->vin[0].prevout.hash)) break;
-            cout = COutput(&wallet->mapWallet[cout.tx->vin[0].prevout.hash], cout.tx->vin[0].prevout.n, 0, true, true);
+            cout = COutput(&wallet->mapWallet[cout.tx->vin[0].prevout.hash], cout.tx->vin[0].prevout.n, 0, true, true, "", out.nAmount);
         }
 
         CTxDestination address;

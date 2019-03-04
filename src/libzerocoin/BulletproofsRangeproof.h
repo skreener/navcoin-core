@@ -45,7 +45,7 @@ public:
         READWRITE(V);
         READWRITE(L);
         READWRITE(R);
-        READWRITE(a);
+        READWRITE(A);
         READWRITE(S);
         READWRITE(T1);
         READWRITE(T2);
