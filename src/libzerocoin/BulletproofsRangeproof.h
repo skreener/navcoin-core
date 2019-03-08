@@ -17,9 +17,10 @@
 
 #include "Params.h"
 #include "Math.h"
-#include "streams.h"
 
 #include "hash.h"
+#include "streams.h"
+#include "univalue/include/univalue.h"
 
 #include <cmath>
 
@@ -42,7 +43,6 @@ public:
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
-        READWRITE(V);
         READWRITE(L);
         READWRITE(R);
         READWRITE(A);
@@ -55,6 +55,10 @@ public:
         READWRITE(b);
         READWRITE(t);
     }
+
+    std::vector<CBigNum> GetValueCommitments() const { return V; }
+
+    void ToJson(UniValue& ret) const;
 
     std::vector<CBigNum> V;
     std::vector<CBigNum> L;
@@ -73,7 +77,7 @@ private:
     const libzerocoin::IntegerGroupParams* params;
 };
 
-bool VerifyBulletproof(const libzerocoin::IntegerGroupParams* p, const std::vector<BulletproofsRangeproof>& proof);
+bool VerifyBulletproof(const libzerocoin::IntegerGroupParams* p, const std::vector<BulletproofsRangeproof>& proof, CBN_matrix v);
 CBigNum CrossVectorExponent(size_t size, const std::vector<CBigNum> &A, size_t Ao, const std::vector<CBigNum> &B, size_t Bo, const std::vector<CBigNum> &a, size_t ao, const std::vector<CBigNum> &b, size_t bo, const std::vector<CBigNum> *scale, const CBigNum *extra_point, const CBigNum *extra_scalar, const libzerocoin::IntegerGroupParams* p);
 
 #endif // BULLETPROOFS_RANGEPROOF_H

@@ -386,11 +386,14 @@ inline void SerializeTransaction(TxType& tx, Stream& s, Operation ser_action, in
         }
     }
     READWRITE(*const_cast<uint32_t*>(&tx.nLockTime));
-    if(tx.nVersion >= 2) {
-      READWRITE(*const_cast<std::string*>(&tx.strDZeel)); }
-    if(tx.IsZeroCT()) {
-      READWRITE(*const_cast<std::vector<unsigned char>*>(&tx.vchTxSig));
-      READWRITE(*const_cast<std::vector<unsigned char>*>(&tx.vchRangeProof));
+    if (tx.nVersion >= 2) {
+        READWRITE(*const_cast<std::string*>(&tx.strDZeel));
+    }
+    if (tx.IsZeroCT()) {
+        if (!(nType & SER_GETHASHNOTXSIG)) {
+            READWRITE(*const_cast<std::vector<unsigned char>*>(&tx.vchTxSig));
+        }
+        READWRITE(*const_cast<std::vector<unsigned char>*>(&tx.vchRangeProof));
     }
 }
 
@@ -454,6 +457,8 @@ public:
     bool IsNull() const {
         return vin.empty() && vout.empty();
     }
+
+    uint256 GetHashAmountSig() const;
 
     const uint256& GetHash() const {
         return hash;
@@ -582,6 +587,7 @@ struct CMutableTransaction
      * fly, as opposed to GetHash() in CTransaction, which uses a cached result.
      */
     uint256 GetHash() const;
+    uint256 GetHashAmountSig() const;
     std::string ToString() const;
 };
 

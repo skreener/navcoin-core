@@ -103,6 +103,8 @@ public:
 
     bool GetCoins(const uint256 &txid, CCoins &coins) const;
     bool HaveCoins(const uint256 &txid) const;
+    bool HaveMint(const CBigNum &mintValue) const;
+    bool HaveSpendSerial(const CBigNum &spendSerial) const;
     uint256 GetBestBlock() const;
     bool BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock);
     CCoinsViewCursor *Cursor() const;

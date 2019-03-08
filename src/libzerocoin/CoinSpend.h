@@ -87,7 +87,7 @@ public:
     CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, const Accumulator& a, const uint256& checksum,
               const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType,
               const libzerocoin::ObfuscationValue obfuscationJ, const libzerocoin::ObfuscationValue obfuscationK,
-              bool fUseBulletproofs = false);
+              CBigNum& r, bool fUseBulletproofs = false);
 
     /** Returns the serial number of the coin spend by this proof.
    *

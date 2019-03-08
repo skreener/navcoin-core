@@ -258,7 +258,6 @@ public:
         {
             if (nReadPosNext > vch.size())
             {
-                std::cout << "read " << nReadPosNext << " - " <<  vch.size() << std::endl;
                 throw std::ios_base::failure("CDataStream::read(): end of data");
             }
             memcpy(pch, &vch[nReadPos], nSize);

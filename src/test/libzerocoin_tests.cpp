@@ -42,7 +42,6 @@ uint32_t    gSuccessfulTests = 0;
 
 // Proof size
 uint32_t    gProofSize			= 0;
-uint32_t    gCoinSize			= 0;
 uint32_t	gSerialNumberSize	= 0;
 
 // Global coin array
@@ -332,8 +331,6 @@ Test_EqualityPoK()
 bool
 Test_MintCoin()
 {
-    gCoinSize = 0;
-
     try {
         // Generate a list of coins
         for (uint32_t i = 0; i < TESTS_COINS_TO_ACCUMULATE; i++) {
@@ -341,12 +338,7 @@ Test_MintCoin()
             PublicCoin pubCoin(g_Params, pubKey, blindingCommitment, "", COIN, &rpdata);
             gCoins[i] = new PrivateCoin(g_Params, privKey, pubCoin.getPubKey(), blindingCommitment, pubCoin.getValue(), pubCoin.getPaymentId(), pubCoin.getAmount());
             PublicCoin pc = gCoins[i]->getPublicCoin();
-            CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-            ss << pc;
-            gCoinSize += ss.size();
         }
-
-        gCoinSize /= TESTS_COINS_TO_ACCUMULATE;
 
     } catch (exception &e) {
         return false;
@@ -434,7 +426,9 @@ Test_MintAndSpend()
         cc << *gCoins[0];
         PrivateCoin myCoin(g_Params,cc);
 
-        CoinSpend spend(g_Params, myCoin, acc, 0, wAcc, 0, SpendType::SPEND, obfuscation_j, obfuscation_k);
+        CBigNum r;
+
+        CoinSpend spend(g_Params, myCoin, acc, 0, wAcc, 0, SpendType::SPEND, obfuscation_j, obfuscation_k, r);
         spend.Verify(acc);
 
         // Serialize the proof and deserialize into newSpend
@@ -497,8 +491,7 @@ Test_RunAllTests()
     LogTestResult("the commitment equality PoK works", Test_EqualityPoK);
     LogTestResult("a minted coin can be spent", Test_MintAndSpend);
 
-    cout << endl << "Average coin size is " << gCoinSize << " bytes." << endl;
-    cout << "Serial number size is " << gSerialNumberSize << " bytes." << endl;
+    cout << endl << "Serial number size is " << gSerialNumberSize << " bytes." << endl;
     cout << "Spend proof size is " << gProofSize << " bytes." << endl;
 
     // Summarize test results

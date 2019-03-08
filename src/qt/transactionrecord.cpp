@@ -125,28 +125,6 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             }
             i++;
         }
-//        if (fZero)
-//        {
-//            TransactionRecord sub(hash, nTime);
-//            bool fInit = false;
-//            QList<TransactionRecord>::iterator it = parts.begin();
-//            while (it != parts.end())
-//            {
-//                if (it->type == TransactionRecord::AnonTxRecv) {
-//                    if (!fInit) {
-//                        fInit = true;
-//                        sub = *it;
-//                    } else {
-//                        sub.credit += it->credit;
-//                    }
-//                    it = parts.erase(it);
-//                } else {
-//                    ++it;
-//                }
-//            }
-//            if (fInit)
-//                parts.append(sub);
-//        }
     }
     else
     {
@@ -162,6 +140,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
         isminetype fAllToMe = ISMINE_SPENDABLE;
         BOOST_FOREACH(const CTxOut& txout, wtx.vout)
         {
+            if (txout.IsFee()) continue;
             isminetype mine = wallet->IsMine(txout);
             if(mine & ISMINE_WATCH_ONLY) involvesWatchAddress = true;
             if(fAllToMe > mine) fAllToMe = mine;
@@ -257,28 +236,6 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     sub.type = TransactionRecord::Fee;
 
                 parts.append(sub);
-            }
-            if (fZero)
-            {
-                TransactionRecord sub(hash, nTime);
-                bool fInit = false;
-                QList<TransactionRecord>::iterator it = parts.begin();
-                while (it != parts.end())
-                {
-                    if (it->type == TransactionRecord::AnonTxSend) {
-                        if (!fInit) {
-                            fInit = true;
-                            sub = *it;
-                        } else {
-                            sub.debit += it->debit;
-                        }
-                        it = parts.erase(it);
-                    } else {
-                        ++it;
-                    }
-                }
-                if (fInit)
-                    parts.append(sub);
             }
         }
         else

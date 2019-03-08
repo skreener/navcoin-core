@@ -448,17 +448,17 @@ bool DummySignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const 
     return true;
 }
 
-bool DummySignatureCreator::CreateCoinSpend(const libzerocoin::ZerocoinParams* params, const libzerocoin::PublicCoin& pubCoin,
+bool DummySignatureCreator::CreateCoinSpendScript(const libzerocoin::ZerocoinParams* params, const libzerocoin::PublicCoin& pubCoin,
                                             const libzerocoin::Accumulator a, const uint256 blockAccumulatorHash, const libzerocoin::AccumulatorWitness aw,
-                                            const CScript& scriptPubKey, CScript& scriptSig, std::string& strError) const
+                                            const CScript& scriptPubKey, CScript& scriptSig, CBigNum& r, std::string& strError) const
 {
     scriptSig = CScript() << OP_ZEROCOINSPEND;
     return true;
 }
 
-bool TransactionSignatureCreator::CreateCoinSpend(const libzerocoin::ZerocoinParams* params, const libzerocoin::PublicCoin& pubCoin,
+bool TransactionSignatureCreator::CreateCoinSpendScript(const libzerocoin::ZerocoinParams* params, const libzerocoin::PublicCoin& pubCoin,
                                                   const libzerocoin::Accumulator a, const uint256 blockAccumulatorHash, const libzerocoin::AccumulatorWitness aw,
-                                                  const CScript& scriptPubKey, CScript& scriptSig, std::string& strError) const
+                                                  const CScript& scriptPubKey, CScript& scriptSig, CBigNum& r, std::string& strError) const
 {
     try {
         CKey zk; libzerocoin::BlindingCommitment bc; libzerocoin::ObfuscationValue oj; libzerocoin::ObfuscationValue ok;
@@ -492,11 +492,11 @@ bool TransactionSignatureCreator::CreateCoinSpend(const libzerocoin::ZerocoinPar
 
         uint256 txhash = SignatureHash(scriptPubKey, *txTo, nIn, nHashType, amount, SIGVERSION_BASE);
 
-        libzerocoin::CoinSpend cs(params, privateCoin, a, blockAccumulatorHash, aw, txhash, libzerocoin::SpendType::SPEND, oj, ok);
+        libzerocoin::CoinSpend cs(params, privateCoin, a, blockAccumulatorHash, aw, txhash, libzerocoin::SpendType::SPEND, oj, ok, r);
 
         CDataStream serializedCoinSpend(SER_NETWORK, PROTOCOL_VERSION);
         serializedCoinSpend << cs;
-        scriptSig = CScript() << OP_ZEROCOINSPEND << serializedCoinSpend.size();
+        scriptSig = CScript() << OP_ZEROCOINSPEND;
         scriptSig.insert(scriptSig.end(), serializedCoinSpend.begin(), serializedCoinSpend.end());
     }
     catch(std::runtime_error& e) {

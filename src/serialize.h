@@ -171,6 +171,7 @@ enum
     SER_NETWORK         = (1 << 0),
     SER_DISK            = (1 << 1),
     SER_GETHASH         = (1 << 2),
+    SER_GETHASHNOTXSIG  = (1 << 3),
     SER_BLOCKHEADERONLY = (1 << 17),
 };
 
@@ -313,8 +314,7 @@ uint64_t ReadCompactSize(Stream& is)
             throw std::ios_base::failure("non-canonical ReadCompactSize()");
     }
     if (nSizeRet > (uint64_t)MAX_SIZE)
-        std::cout << "size is " << nSizeRet << std::endl;
-        //throw std::ios_base::failure("ReadCompactSize(): size too large");
+        throw std::ios_base::failure("ReadCompactSize(): size too large");
 
     return nSizeRet;
 }

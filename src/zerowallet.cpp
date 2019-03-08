@@ -50,8 +50,8 @@ bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, v
     return true;
 }
 
-bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript& scriptPubKey, const CAmount& amount,
-                             CScript& sigdata, bool fStake)
+bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const std::map<CBigNum, PublicMintWitnessData>& mapWitness, const CScript& scriptPubKey, const CAmount& amount,
+                             CScript& sigdata, CBigNum& r, bool fStake)
 {
     if (!scriptPubKey.IsZerocoinMint())
         return error(strprintf("Transaction output script is not a zerocoin mint."));
@@ -60,8 +60,8 @@ bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript&
     libzerocoin::Accumulator a(&Params().GetConsensus().Zerocoin_Params);
     libzerocoin::AccumulatorWitness aw(&Params().GetConsensus().Zerocoin_Params, a,
                                        libzerocoin::PublicCoin(&Params().GetConsensus().Zerocoin_Params));
-    CBigNum ac;
     uint256 bah;
+    CBigNum ac;
 
     CTxOut txout(amount, scriptPubKey);
 
@@ -73,69 +73,52 @@ bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript&
     bool fFoundWitness = false;
     int nEntropy = rand() % WITNESS_ADDED_ENTROPY;
 
+    if (mapWitness.count(pubCoin.getValue()))
     {
-        LOCK(pwalletMain->cs_witnesser);
-        if (pwalletMain->mapWitness.count(pubCoin.getValue()))
+        PublicMintWitnessData witnessData = pwalletMain->mapWitness.at(pubCoin.getValue());
+
+        int nCalculatedBlocksAgo = std::numeric_limits<unsigned int>::max();
+
+        bah = witnessData.GetBlockAccumulatorHash();
+        aw = witnessData.GetAccumulatorWitness();
+        a = witnessData.GetAccumulator();
+
+        if (mapBlockIndex.count(bah))
         {
-            //            PublicMintWitnessData witnessData = pwalletMain->mapWitness.at(pubCoin.getValue());
-            //            AccumulatorMap accumulatorMap(&Params().GetConsensus().Zerocoin_Params);
-            //            uint256 blockHash = accumulatorMap.GetBlockHash();
-            //            uint256 firstBlockHash = accumulatorMap.GetFirstBlockHash();
-
-            //            int nCalculatedBlocksAgo = std::numeric_limits<unsigned int>::max();
-            //            int nCalculatedFirstBlocksAgo = 0;
-
-            //            ac = witnessData.GetChecksum();
-            //            aw = witnessData.GetAccumulatorWitness();
-            //            a = witnessData.GetAccumulator();
-
-            //            if (mapBlockIndex.count(blockHash))
-            //            {
-            //                LOCK(cs_main);
-            //                CBlockIndex* pindex = mapBlockIndex[blockHash];
-            //                if (chainActive.Contains(pindex))
-            //                    nCalculatedBlocksAgo = chainActive.Height() - pindex->nHeight;
-            //            }
-
-            //            if (mapBlockIndex.count(firstBlockHash))
-            //            {
-            //                LOCK(cs_main);
-            //                CBlockIndex* pindex = mapBlockIndex[firstBlockHash];
-            //                if (chainActive.Contains(pindex))
-            //                    nCalculatedFirstBlocksAgo = chainActive.Height() - pindex->nHeight;
-            //            }
-
-            //            if (witnessData.Verify() && accumulatorMap.Load(ac) &&
-            //               (witnessData.GetCount() > (MIN_MINT_SECURITY + nEntropy) || nCalculatedBlocksAgo < (MIN_MINT_SECURITY/2)))
-            //                fFoundWitness = true;
-
-            //            if (fStake && nCalculatedFirstBlocksAgo < COINBASE_MATURITY)
-            //                fFoundWitness = false;
-
-            //            if (blockHash == uint256() || firstBlockHash == uint256())
-            //                fFoundWitness = false;
-
+            LOCK(cs_main);
+            CBlockIndex* pindex = mapBlockIndex[bah];
+            if (chainActive.Contains(pindex))
+                nCalculatedBlocksAgo = chainActive.Height() - pindex->nHeight;
         }
+
+        if (witnessData.Verify() &&
+                (witnessData.GetCount() > (MIN_MINT_SECURITY + nEntropy) || nCalculatedBlocksAgo < (MIN_MINT_SECURITY/2)))
+            fFoundWitness = true;
+
+        if (bah == uint256())
+            fFoundWitness = false;
     }
 
     if (!fFoundWitness && !CalculateWitnessForMint(txout, pubCoin, a, aw, ac, bah, strError, MIN_MINT_SECURITY + nEntropy,
                                                    chainActive.Tip()->nHeight - (fStake ? COINBASE_MATURITY : 0)))
         return error(strprintf("Error calculating witness for mint: %s", strError));
 
-    if (!creator.CreateCoinSpend(&Params().GetConsensus().Zerocoin_Params, pubCoin, a, bah, aw, scriptPubKey, sigdata, strError))
+    if (!creator.CreateCoinSpendScript(&Params().GetConsensus().Zerocoin_Params, pubCoin, a, bah, aw, scriptPubKey, sigdata, r, strError))
         return error(strprintf("Error creating coin spend: %s", strError));
 
     return true;
 }
 
-bool ProduceCoinSpend(const BaseSignatureCreator& creator, const CScript& fromPubKey, SignatureData& sigdata, bool fCoinStake, CAmount amount)
+bool ProduceCoinSpend(const BaseSignatureCreator& creator, const std::map<CBigNum, PublicMintWitnessData>& mapWitness, const CScript& fromPubKey, SignatureData& sigdata, bool fCoinStake, CAmount amount)
 {
     CScript script = fromPubKey;
     bool solved = true;
     CScript result;
-    solved = PrepareAndSignCoinSpend(creator, script, amount, result, fCoinStake);
+    CBigNum r;
+    solved = PrepareAndSignCoinSpend(creator, mapWitness, script, amount, result, r, fCoinStake);
     sigdata.scriptWitness.stack.clear();
     sigdata.scriptSig = result;
+    sigdata.r = r;
 
     // Test solution
     return solved;

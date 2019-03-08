@@ -339,6 +339,10 @@ public:
     //! This may (but cannot always) return true for fully spent transactions
     virtual bool HaveCoins(const uint256 &txid) const;
 
+    //! Zerocoin
+    virtual bool HaveMint(const CBigNum &mintValue) const;
+    virtual bool HaveSpendSerial(const CBigNum &spendSerial) const;
+
     //! Retrieve the block hash whose state this CCoinsView currently represents
     virtual uint256 GetBestBlock() const;
 

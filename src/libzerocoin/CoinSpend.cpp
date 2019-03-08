@@ -22,7 +22,7 @@ namespace libzerocoin
 CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, const Accumulator& a, const uint256& blockHash,
                      const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType,
                      const libzerocoin::ObfuscationValue obfuscationJ, const libzerocoin::ObfuscationValue obfuscationK,
-                     bool fUseBulletproofs) :
+                     CBigNum& r, bool fUseBulletproofs) :
     p(params),
     blockAccumulatorHash(blockHash),
     ptxHash(ptxHash),
@@ -85,6 +85,8 @@ CoinSpend::CoinSpend(const ZerocoinParams* params, const PrivateCoin& coin, cons
     } else {
         this->serialNumberSoK_small = SerialNumberSoK_small(params, obfuscatedSerial, obfuscatedRandomness, fullCommitmentToCoinUnderSerialParams, hashSig);
     }
+
+    r = obfuscatedRandomness;
 
     //5. Zero knowledge proof of the serial number
     this->serialNumberPoK = SerialNumberProofOfKnowledge(&params->coinCommitmentGroup, obfuscatedSerial, hashSig);

@@ -19,7 +19,7 @@
 // NEEDS UNIT TEST
 bool DestinationToVecRecipients(CAmount nValue, const std::string &address, vector<CRecipient> &vecSend,  bool fSubtractFeeFromAmount, bool fDonate, bool fShowDialog=false);
 bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, vector<CRecipient> &vecSend, bool fSubtractFeeFromAmount, bool fDonate, bool fShowDialog=false);
-bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const CScript& scriptPubKey, const CAmount& amount, CScript& ret, bool fStake);
-bool ProduceCoinSpend(const BaseSignatureCreator& creator, const CScript& fromPubKey, SignatureData& sigdata, bool fCoinStake, CAmount amount);
+bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const std::map<CBigNum, PublicMintWitnessData>& mapWitness, const CScript& scriptPubKey, const CAmount& amount, CScript& ret, CBigNum& r, bool fStake);
+bool ProduceCoinSpend(const BaseSignatureCreator& creator, const std::map<CBigNum, PublicMintWitnessData>& mapWitness, const CScript& fromPubKey, SignatureData& sigdata, bool fCoinStake, CAmount amount);
 
 #endif // ZEROWALLET_H

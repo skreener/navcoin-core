@@ -146,10 +146,14 @@ ZerocoinTutorial()
 
         bprp.Prove(values, gammas);
 
+        CBN_matrix mValueCommitments;
         std::vector<BulletproofsRangeproof> proofs;
-        proofs.push_back(bprp);
+        std::vector<CBigNum> valueCommitments = bprp.GetValueCommitments();
 
-        if (!VerifyBulletproof(&params->coinCommitmentGroup, proofs)) {
+        proofs.push_back(bprp);
+        mValueCommitments.push_back(valueCommitments);
+
+        if (!VerifyBulletproof(&params->coinCommitmentGroup, proofs, mValueCommitments)) {
             cout << "The range proof could not get verified" << endl;
             return false;
         }
@@ -162,7 +166,7 @@ ZerocoinTutorial()
         std::vector<BulletproofsRangeproof> proofs2;
         proofs2.push_back(newbprp);
 
-        if (!VerifyBulletproof(&params->coinCommitmentGroup, proofs2)) {
+        if (!VerifyBulletproof(&params->coinCommitmentGroup, proofs2, mValueCommitments)) {
             cout << "The serialized range proof could not get verified" << endl;
             //return false;
         }
@@ -274,9 +278,11 @@ ZerocoinTutorial()
         // send to the network. This network should include a set of outputs
         // totalling to the value of one zerocoin (minus transaction fees).
 
+        CBigNum r;
+
         // Construct the CoinSpend object. This acts like a signature on the
         // transaction.
-        libzerocoin::CoinSpend spend(params, newCoin, accumulator, 0, witness, 0, libzerocoin::SpendType::SPEND, obfuscation_j, obfuscation_k);//(0) - Presstab
+        libzerocoin::CoinSpend spend(params, newCoin, accumulator, 0, witness, 0, libzerocoin::SpendType::SPEND, obfuscation_j, obfuscation_k, r);
 
         // This is a sanity check. The CoinSpend object should always verify,
         // but why not check before we put it onto the wire?

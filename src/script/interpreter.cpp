@@ -1156,7 +1156,6 @@ public:
         // Serialize strDZeel
         ::Serialize(s, txTo.strDZeel, nType, nVersion);
         if (txTo.IsZeroCT()) {
-            ::Serialize(s, txTo.vchTxSig, nType, nVersion);
             ::Serialize(s, txTo.vchRangeProof, nType, nVersion);
         }
     }

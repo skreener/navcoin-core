@@ -10,6 +10,13 @@
 #include "zerotx.h"
 #include "zerowitnesser.h"
 
+typedef std::function<bool(std::pair<const CBigNum, PublicMintWitnessData>, std::pair<const CBigNum, PublicMintWitnessData>)> Comparator;
+
+Comparator compare =
+        [](std::pair<const CBigNum, PublicMintWitnessData> a, std::pair<const CBigNum, PublicMintWitnessData> b)
+{
+    return a.second.GetCount() < b.second.GetCount();
+};
 
 void NavCoinWitnesser(const CChainParams& chainparams)
 {
@@ -27,19 +34,21 @@ void NavCoinWitnesser(const CChainParams& chainparams)
 
             boost::this_thread::interruption_point();
 
-            std::map<CBigNum, PublicMintWitnessData> cachedMapWitness;
-            cachedMapWitness.clear();
+            std::set<std::pair<const CBigNum, PublicMintWitnessData>, Comparator> cachedMapWitness;
+
             {
                 LOCK(pwalletMain->cs_witnesser);
-                cachedMapWitness.insert(pwalletMain->mapWitness.begin(), pwalletMain->mapWitness.end());
+                cachedMapWitness = std::set<std::pair<const CBigNum, PublicMintWitnessData>, Comparator>(pwalletMain->mapWitness.begin(), pwalletMain->mapWitness.end(), compare);
             }
 
-            for (std::pair<const CBigNum, PublicMintWitnessData> &it: cachedMapWitness)
+            for (const std::pair<const CBigNum, PublicMintWitnessData> &it: cachedMapWitness)
             {
+                LOCK(cs_main);
+
                 PublicMintWitnessData witnessData = it.second;
 
                 {
-                    LOCK2(cs_main, pwalletMain->cs_wallet);
+                    LOCK(pwalletMain->cs_wallet);
 
                     if (pwalletMain->IsSpent(witnessData.GetChainData().GetTxHash(), witnessData.GetChainData().GetOutput()))
                         continue;

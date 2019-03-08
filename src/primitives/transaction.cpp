@@ -70,11 +70,21 @@ std::string CTxOut::ToString() const
 CMutableTransaction::CMutableTransaction() : nVersion(CTransaction::CURRENT_VERSION), nTime(0), nLockTime(0) {
   // *const_cast<unsigned int*>(&nTime) = GetTime();
 }
-CMutableTransaction::CMutableTransaction(const CTransaction& tx) : nVersion(tx.nVersion), nTime(tx.nTime), vin(tx.vin), vout(tx.vout), wit(tx.wit), nLockTime(tx.nLockTime), strDZeel(tx.strDZeel) {}
+CMutableTransaction::CMutableTransaction(const CTransaction& tx) : nVersion(tx.nVersion), nTime(tx.nTime), vin(tx.vin), vout(tx.vout), wit(tx.wit), nLockTime(tx.nLockTime), strDZeel(tx.strDZeel), vchRangeProof(tx.vchRangeProof), vchTxSig(tx.vchTxSig) {}
 
 uint256 CMutableTransaction::GetHash() const
 {
     return SerializeHash(*this, SER_GETHASH, SERIALIZE_TRANSACTION_NO_WITNESS);
+}
+
+uint256 CMutableTransaction::GetHashAmountSig() const
+{
+    return SerializeHash(*this, SER_GETHASHNOTXSIG, SERIALIZE_TRANSACTION_NO_WITNESS);
+}
+
+uint256 CTransaction::GetHashAmountSig() const
+{
+    return SerializeHash(*this, SER_GETHASHNOTXSIG, SERIALIZE_TRANSACTION_NO_WITNESS);
 }
 
 void CTransaction::UpdateHash() const
@@ -91,7 +101,7 @@ CTransaction::CTransaction() : nVersion(CTransaction::CURRENT_VERSION), nTime(0)
     // *const_cast<unsigned int*>(&nTime) = GetTime();
 }
 
-CTransaction::CTransaction(const CMutableTransaction &tx) : nVersion(tx.nVersion), nTime(tx.nTime), vin(tx.vin), vout(tx.vout), wit(tx.wit), nLockTime(tx.nLockTime), strDZeel(tx.strDZeel) {
+CTransaction::CTransaction(const CMutableTransaction &tx) : nVersion(tx.nVersion), nTime(tx.nTime), vin(tx.vin), vout(tx.vout), wit(tx.wit), nLockTime(tx.nLockTime), strDZeel(tx.strDZeel), vchRangeProof(tx.vchRangeProof), vchTxSig(tx.vchTxSig) {
     UpdateHash();
 }
 
@@ -104,6 +114,8 @@ CTransaction& CTransaction::operator=(const CTransaction &tx) {
     *const_cast<uint256*>(&hash) = tx.hash;
     *const_cast<unsigned int*>(&nTime) = tx.nTime;
     *const_cast<std::string*>(&strDZeel) = tx.strDZeel;
+    *const_cast<std::vector<unsigned char>*>(&vchRangeProof) = tx.vchRangeProof;
+    *const_cast<std::vector<unsigned char>*>(&vchTxSig) = tx.vchTxSig;
     return *this;
 }
 
@@ -163,14 +175,16 @@ std::string CTransaction::ToString() const
 {
       std::string str;
       str += IsCoinBase()? "Coinbase" : (IsCoinStake()? "Coinstake" : "CTransaction");
-      str += strprintf("(hash=%s, nTime=%d, ver=%d, vin.size=%u, vout.size=%u, nLockTime=%d), strDZeel=%s)\n",
+      str += strprintf("(hash=%s, nTime=%d, ver=%d, vin.size=%u, vout.size=%u, nLockTime=%d), strDZeel=%s, vchTxSig=%s, vchRangeProof=%s)\n",
           GetHash().ToString(),
           nTime,
           nVersion,
           vin.size(),
           vout.size(),
           nLockTime,
-          strDZeel.substr(0,30).c_str()
+          strDZeel.substr(0,30).c_str(),
+          HexStr(vchTxSig).substr(0,16).c_str(),
+          HexStr(vchRangeProof).substr(0,16).c_str()
   	);
     for (unsigned int i = 0; i < vin.size(); i++)
         str += "    " + vin[i].ToString() + "\n";
@@ -184,14 +198,16 @@ std::string CMutableTransaction::ToString() const
       std::string str;
       str += "Mutable";
       str += IsCoinBase()? "Coinbase" : (IsCoinStake()? "Coinstake" : "CTransaction");
-      str += strprintf("(hash=%s, nTime=%d, ver=%d, vin.size=%u, vout.size=%u, nLockTime=%d), strDZeel=%s)\n",
+      str += strprintf("(hash=%s, nTime=%d, ver=%d, vin.size=%u, vout.size=%u, nLockTime=%d), strDZeel=%s, vchTxSig=%s, vchRangeProof=%s)\n",
           GetHash().ToString(),
           nTime,
           nVersion,
           vin.size(),
           vout.size(),
           nLockTime,
-          strDZeel.substr(0,30).c_str()
+          strDZeel.substr(0,30).c_str(),
+          HexStr(vchTxSig).substr(0,16).c_str(),
+          HexStr(vchRangeProof).substr(0,16).c_str()
   	);
     for (unsigned int i = 0; i < vin.size(); i++)
         str += "    " + vin[i].ToString() + "\n";

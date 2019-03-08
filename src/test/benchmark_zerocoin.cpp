@@ -309,6 +309,7 @@ Testb_MintCoin()
             ggCoins[i] = new PrivateCoin(gg_Params, privKey_,pubCoin.getPubKey(),blindingCommitment_,pubCoin.getValue(), pubCoin.getPaymentId(), pubCoin.getAmount());
 
             BulletproofsRangeproof bprp(&gg_Params->coinCommitmentGroup);
+            CBN_matrix mValueCommitments;
 
             std::vector<CBigNum> values;
             std::vector<CBigNum> gammas;
@@ -325,8 +326,11 @@ Testb_MintCoin()
             std::vector<BulletproofsRangeproof> proofs;
             proofs.push_back(bprp);
 
+            std::vector<CBigNum> valueCommitments = bprp.GetValueCommitments();
+            mValueCommitments.push_back(valueCommitments);
+
             timer.start();
-            VerifyBulletproof(&gg_Params->coinCommitmentGroup, proofs);
+            VerifyBulletproof(&gg_Params->coinCommitmentGroup, proofs, mValueCommitments);
             timer.stop();
 
             bpverifyTotal += timer.duration();
@@ -378,9 +382,11 @@ Testb_MintAndSpend()
 
         cout << "\tWITNESS ELAPSED TIME: \n\t\tTotal: " << timer.duration() << " ms\t" << timer.duration()*0.001 << " s\n\t\tPer Element: " << timer.duration()/TESTS_COINS_TO_ACCUMULATE << " ms\t" << (timer.duration()/TESTS_COINS_TO_ACCUMULATE)*0.001 << " s" << endl;
 
+        CBigNum r;
+
         // Now spend the coin
         timer.start();
-        CoinSpend spend(gg_Params, *(ggCoins[0]), acc, 0, wAcc, 0, SpendType::SPEND, obfuscation_jj, obfuscation_kk);
+        CoinSpend spend(gg_Params, *(ggCoins[0]), acc, 0, wAcc, 0, SpendType::SPEND, obfuscation_jj, obfuscation_kk, r);
         timer.stop();
 
         cout << "\tSPEND ELAPSED TIME: " << timer.duration() << " ms\t" << timer.duration()*0.001 << " s" << endl;

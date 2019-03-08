@@ -36,7 +36,7 @@ void BulletproofsRangeproof::Prove(CBN_vector v, CBN_vector gamma)
     const size_t logMN = logM + logN;
     const size_t MN = M * N;
 
-    // V is a vector with commitments in the form g^v h^gamma
+    // V is a vector with commitments in the form g2^v g^gamma
     this->V.resize(v.size());
 
     // This hash is updated for Fiat-Shamir throughout the proof
@@ -291,17 +291,48 @@ try_again:
     this->b = bprime[0];
 }
 
+void BulletproofsRangeproof::ToJson(UniValue& ret) const {
+    UniValue lArray(UniValue::VARR);
+    UniValue rArray(UniValue::VARR);
+
+    for (unsigned int i = 0; i < L.size(); i++)
+    {
+        lArray.push_back(L[i].ToString(16));
+    }
+
+    for (unsigned int i = 0; i < R.size(); i++)
+    {
+        rArray.push_back(R[i].ToString(16));
+    }
+
+    ret.push_back(Pair("L", lArray));
+    ret.push_back(Pair("R", rArray));
+    ret.push_back(Pair("A", A.ToString(16)));
+    ret.push_back(Pair("S", S.ToString(16)));
+    ret.push_back(Pair("T1", T1.ToString(16)));
+    ret.push_back(Pair("T2", T2.ToString(16)));
+    ret.push_back(Pair("taux", taux.ToString(16)));
+    ret.push_back(Pair("mu", mu.ToString(16)));
+    ret.push_back(Pair("a", a.ToString(16)));
+    ret.push_back(Pair("b", b.ToString(16)));
+    ret.push_back(Pair("t", t.ToString(16)));
+}
+
 struct proof_data_t
 {
     CBigNum x, y, z, x_ip;
     CBN_vector w;
+    CBN_vector V;
     size_t logM, inv_offset;
 };
 
-bool VerifyBulletproof(const libzerocoin::IntegerGroupParams* params, const std::vector<BulletproofsRangeproof>& proofs)
+bool VerifyBulletproof(const libzerocoin::IntegerGroupParams* params, const std::vector<BulletproofsRangeproof>& proofs, CBN_matrix v)
 {
     if (proofs.size() == 0)
         throw std::runtime_error("VerifyBulletproof(): Empty proofs vector");
+
+    if (proofs.size() != v.size())
+        throw std::runtime_error("VerifyBulletproof(): Proofs vector != value commitments vector");
 
     unsigned int logN = 6;
     unsigned int N = 1 << logN;
@@ -316,25 +347,27 @@ bool VerifyBulletproof(const libzerocoin::IntegerGroupParams* params, const std:
     proof_data.reserve(proofs.size());
 
     size_t inv_offset = 0;
+    size_t proof_count = -1;
     CBN_vector to_invert;
 
     for (const BulletproofsRangeproof proof: proofs)
     {
-        if (!(proof.V.size() >= 1 && proof.L.size() == proof.R.size() &&
+        if (!(v[++proof_count].size() >= 1 && proof.L.size() == proof.R.size() &&
               proof.L.size() > 0))
             return false;
 
         max_length = std::max(max_length, proof.L.size());
-        nV += proof.V.size();
+        nV += v[proof_count].size();
         proof_data.resize(proof_data.size() + 1);
         proof_data_t &pd = proof_data.back();
+        pd.V = v[proof_count];
 
-        CHashWriter hasher(0,0);
+        CHashWriter hasher(0,0);    
 
-        hasher << proof.V[0];
+        hasher << pd.V[0];
 
-        for (unsigned int j = 1; j < proof.V.size(); j++)
-            hasher << proof.V[j];
+        for (unsigned int j = 1; j < pd.V.size(); j++)
+            hasher << pd.V[j];
 
         hasher << proof.A;
         hasher << proof.S;
@@ -359,7 +392,7 @@ bool VerifyBulletproof(const libzerocoin::IntegerGroupParams* params, const std:
         pd.x_ip = CBigNum(hasher.GetHash());
 
         size_t M;
-        for (pd.logM = 0; (M = 1<<pd.logM) <= BulletproofsRangeproof::maxM && M < proof.V.size(); ++pd.logM);
+        for (pd.logM = 0; (M = 1<<pd.logM) <= BulletproofsRangeproof::maxM && M < pd.V.size(); ++pd.logM);
 
         const size_t rounds = pd.logM+logN;
 
@@ -435,10 +468,10 @@ bool VerifyBulletproof(const libzerocoin::IntegerGroupParams* params, const std:
 
         y1 = y1 + (tmp * weight_y);
 
-        for (size_t j = 0; j < proof.V.size(); j++)
+        for (size_t j = 0; j < pd.V.size(); j++)
         {
             tmp = zpow[j+2] * weight_y;
-            multiexpdata.push_back({proof.V[j], tmp});
+            multiexpdata.push_back({pd.V[j], tmp});
         }
 
         tmp = pd.x * weight_y;

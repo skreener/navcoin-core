@@ -409,6 +409,11 @@ public:
         *script << OP_ZEROCOINMINT << pc.getPubKey() << pc.getCoinValue().getvch()
                 << pc.getAmountCommitment().getvch() << pc.getPaymentId().getvch()
                 << pc.getAmount().getvch();
+
+        LogPrintf("GENERATED mint with amcom %s\n%s %s = %s\n", pc.getAmountCommitment().ToString(16).substr(0,8),dest.GetAmount(),tempdata.ToString(16).substr(0,8),
+                  dest.GetParams()->coinCommitmentGroup.g.pow_mod(tempdata, dest.GetParams()->coinCommitmentGroup.modulus).mul_mod(
+                      dest.GetParams()->coinCommitmentGroup.g2.pow_mod(dest.GetAmount(), dest.GetParams()->coinCommitmentGroup.modulus),
+                      dest.GetParams()->coinCommitmentGroup.modulus).ToString(16).substr(0,8));
         return true;
     }
 };

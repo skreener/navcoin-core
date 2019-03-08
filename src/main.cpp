@@ -1492,11 +1492,55 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
             }
         }
 
-        BOOST_FOREACH(const CTxOut &txout, tx.vout) {
-            if (!txout.IsZerocoinMint())
-                continue;
-            if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, txout, view, state))
-                return state.DoS(100, false, REJECT_INVALID, "bad-zerocoin-mint");
+        CBN_matrix mValueCommitments;
+        std::vector<CBigNum> valueCommitments;
+
+        if (tx.HasZerocoinMint())
+        {
+            if (tx.vchRangeProof.empty())
+                return state.DoS(100, false, REJECT_INVALID, "empty-bulletproof-rangeproof");
+
+            std::vector<std::pair<CBigNum, PublicMintChainData>> vSeen;
+
+            BOOST_FOREACH(const CTxOut &txout, tx.vout)
+            {
+                if (!txout.IsZerocoinMint())
+                    continue;
+
+                libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
+
+                if (!CheckZerocoinMint(&Params().GetConsensus().Zerocoin_Params, txout, view, state, vSeen, &pubCoin))
+                    return state.DoS(100, false, REJECT_INVALID, "bad-zerocoin-mint");
+
+                valueCommitments.push_back(pubCoin.getAmountCommitment());
+            }
+
+            std::vector<unsigned char> dataBpRp;
+
+            dataBpRp.clear();
+            dataBpRp.insert(dataBpRp.end(), tx.vchRangeProof.begin(), tx.vchRangeProof.end());
+
+            CDataStream serializedRangeProof(dataBpRp, SER_NETWORK, PROTOCOL_VERSION);
+
+            BulletproofsRangeproof bprp(&Params().GetConsensus().Zerocoin_Params.coinCommitmentGroup, serializedRangeProof);
+
+            mValueCommitments.push_back(valueCommitments);
+            std::vector<BulletproofsRangeproof> proofs;
+            proofs.push_back(bprp);
+
+            if (!VerifyBulletproof(&Params().GetConsensus().Zerocoin_Params.coinCommitmentGroup, proofs, mValueCommitments))
+            {
+                return state.DoS(100, false, REJECT_INVALID, "bad-bulletproof-rangeproof");
+            }
+        }
+
+        if (tx.IsZeroCT())
+        {
+            if (tx.vchTxSig.empty())
+                return state.DoS(100, false, REJECT_INVALID, "empty-tx-amount-signature");
+
+            if (!VerifyZeroCTBalance(&Params().GetConsensus().Zerocoin_Params, tx, view))
+                return state.DoS(100, false, REJECT_INVALID, "invalid-tx-amount-signature");
         }
 
         CTxMemPoolEntry entry(tx, nFees, GetTime(), dPriority, chainActive.Height(), pool.HasNoInputsOf(tx), inChainInputValue, fSpendsCoinbase, nSigOpsCost, lp);
@@ -2195,7 +2239,7 @@ bool CScriptCheck::operator()() {
 }
 
 bool CCoinSpendCheck::operator()() {
-    if (!VerifyCoinSpend(coinSpend, accumulator, false)) {
+    if (!VerifyCoinSpendNoCache(coinSpend, accumulator)) {
         return false;
     }
     return true;
@@ -2841,7 +2885,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 {
 
     AssertLockHeld(cs_main);
-    LOCK(cs_coinspend_cache);
 
     pindex->nCFSupply    = pindex->pprev != NULL ? pindex->pprev->nCFSupply : 0;
     pindex->nCFLocked    = pindex->pprev != NULL ? pindex->pprev->nCFLocked : 0;
@@ -3060,6 +3103,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int nMintCount = 0;
     int nSpendCount = 0;
 
+    std::vector<BulletproofsRangeproof> proofs;
+    CBN_matrix mValueCommitments;
+
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction &tx = block.vtx[i];
@@ -3107,11 +3153,25 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
         std::vector<CPublicCoinCheck> vPubCoinCheck;
 
+        if (tx.IsZeroCT())
+        {
+            if (tx.vchTxSig.empty())
+                return state.Invalid(error("%s: transaction's amount signature is empty", __func__));
+
+            if (!VerifyZeroCTBalance(&Params().GetConsensus().Zerocoin_Params, tx, view))
+                return state.Invalid(error("%s: transaction's amount signature is invalid", __func__));
+        }
+
         if (tx.HasZerocoinMint()) {
             if(!IsZerocoinEnabled(pindex->pprev, chainparams.GetConsensus()))
                 return state.Invalid(error("%s: too early zerocoin mint", __func__));
 
+            if (tx.vchRangeProof.empty())
+                return state.Invalid(error("%s: transaction's range proof is empty", __func__));
+
             int i = -1;
+            std::vector<CBigNum> valueCommitments;
+
             for (auto& out : tx.vout) {
                 i++;
 
@@ -3125,6 +3185,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
                 vPubCoinCheck.push_back(CPublicCoinCheck(pubCoin, IsInitialBlockDownload()));
 
+                valueCommitments.push_back(pubCoin.getAmountCommitment());
+
 //                pindex->mapZerocoinSupply[libzerocoin::AmountToZerocoinDenomination(out.nValue)]++;
 
                 nZeroCreated += out.nValue;
@@ -3133,6 +3195,18 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
                 nMintCount++;
             }
+
+            std::vector<unsigned char> dataBpRp;
+
+            dataBpRp.clear();
+            dataBpRp.insert(dataBpRp.end(), tx.vchRangeProof.begin(), tx.vchRangeProof.end());
+
+            CDataStream serializedRangeProof(dataBpRp, SER_NETWORK, PROTOCOL_VERSION);
+
+            BulletproofsRangeproof bprp(&Params().GetConsensus().Zerocoin_Params.coinCommitmentGroup, serializedRangeProof);
+
+            mValueCommitments.push_back(valueCommitments);
+            proofs.push_back(bprp);
         }
 
         controlPubCoin.Add(vPubCoinCheck);
@@ -3621,6 +3695,14 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     int64_t nTime5 = GetTimeMicros(); nTimeVerify += nTime5 - nTime2;
     LogPrint("bench", "    - Verify %u txins, %u coinspends and %u pubcoins: %.2fms [%.2fs]\n", nInputs - 1, nSpendCount, nMintCount, 0.001 * (nTime5 - nTime2), nTimeVerify * 0.000001);
+
+    if (proofs.size() > 0 && !VerifyBulletproof(&Params().GetConsensus().Zerocoin_Params.coinCommitmentGroup, proofs, mValueCommitments))
+    {
+        return state.DoS(100, error("%s : Error verifying Bulletproofs Rangeproofs", __func__));
+    }
+
+    int64_t nTime505 = GetTimeMicros(); nTimeVerify += nTime5 - nTime505;
+    LogPrint("bench", "    - Verify %u rangeproofs: %.2fms [%.2fs]\n", proofs.size(), 0.001 * (nTime5 - nTime505), nTimeVerify * 0.000001);
 
     if (fJustCheck)
         return true;
@@ -9260,7 +9342,7 @@ bool CheckProofOfStake(CBlockIndex* pindexPrev, const CTransaction& tx, const CC
         uint256 blockAccumulatorHash = coinSpend.getBlockAccumulatorHash();
 
         if (!mapBlockIndex.count(blockAccumulatorHash))
-            return error("%s : coinspend refers an invalid block hash", __func__);
+            return error("%s : coinspend refers an invalid block hash %s", __func__, blockAccumulatorHash.ToString());
 
         CBlockIndex* pindex = mapBlockIndex[blockAccumulatorHash];
 

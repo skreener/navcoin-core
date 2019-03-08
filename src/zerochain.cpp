@@ -80,7 +80,7 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const C
     uint256 blockAccumulatorHash = coinSpend.getBlockAccumulatorHash();
 
     if (!mapBlockIndex.count(blockAccumulatorHash))
-        return state.DoS(100, error("CheckZerocoinSpend() : coinspend refers an invalid block hash"));
+        return state.DoS(100, error("CheckZerocoinSpend() : coinspend refers an invalid block hash %s", blockAccumulatorHash.ToString()));
 
     CBlockIndex* pindex = mapBlockIndex[blockAccumulatorHash];
 
@@ -94,7 +94,7 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const C
         *pAccumulator = accumulator;
 
     if (fSpendCheck) {
-        if (!VerifyCoinSpend(coinSpend, accumulator, true))
+        if (!VerifyCoinSpendCache(coinSpend, accumulator))
             return state.DoS(100, error("CheckZerocoinSpend() : CoinSpend does not verify"));
     }
 
@@ -115,9 +115,20 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const C
 
 }
 
+bool VerifyCoinSpendCache(const CoinSpend& coinSpend, const Accumulator &accumulator)
+{
+    LOCK(cs_coinspend_cache);
+
+    return VerifyCoinSpend(coinSpend, accumulator, true);
+}
+
+bool VerifyCoinSpendNoCache(const CoinSpend& coinSpend, const Accumulator &accumulator)
+{
+    return VerifyCoinSpend(coinSpend, accumulator, false);
+}
+
 bool VerifyCoinSpend(const CoinSpend& coinSpend, const Accumulator &accumulator, bool fWriteToCache)
 {
-    LOCK(fWriteToCache ? cs_coinspend_cache : cs_dummy);
     uint256 csHash = coinSpend.GetHash();
     bool fCached = (mapCacheValidCoinSpends.count(csHash) != 0);
 
@@ -307,5 +318,5 @@ bool VerifyZeroCTBalance(const ZerocoinParams *params, const CTransaction& tx, c
 
     CBigNum bnPubKey = bnInputs.mul_mod(bnOutputs.inverse(params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
 
-    return snpok.Verify(bnPubKey, tx.GetHash(), params->coinCommitmentGroup.g);
+    return snpok.Verify(bnPubKey, tx.GetHashAmountSig());
 }

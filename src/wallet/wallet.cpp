@@ -792,7 +792,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         if (fZeroKernelFound)
         {
             signSuccess = ProduceCoinSpend(TransactionSignatureCreator(this, &txNewConst, nIn,
-                    coin.first->vout[coin.second].nValue, SIGHASH_ALL), scriptPubKey, sigdata,
+                    coin.first->vout[coin.second].nValue, SIGHASH_ALL), mapWitness, scriptPubKey, sigdata,
                     true, coin.first->vout[coin.second].nValue);
 
             libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
@@ -3688,6 +3688,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     {
                         values.push_back(CBigNum(recipient.nAmount));
                         gammas.push_back(CBigNum(recipient.gamma));
+                        LogPrintf("adding to vector %d %s\n", recipient.nAmount, recipient.gamma.ToString(16).substr(0,8));
                     }
 
                     txNew.vout.push_back(txout);
@@ -3738,12 +3739,18 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                         pa.SetPaymentId("Transaction Change");
                         pa.SetAmount(nChange);
 
+                        if (!DestinationToVecRecipients(nChange, pa, vecChange, false, false, true)) {
+                            return false;
+                        }
+
                         std::pair<CBigNum, CBigNum> rpval;
 
-                        CTxOut newTxOut(0, GetScriptForDestination(pa));
+                        CTxOut newTxOut(0, vecChange[0].scriptPubKey);
                         txNew.vout.push_back(newTxOut);
-                        values.push_back(nChange);
-                        gammas.push_back(pa.GetGamma());
+
+                        values.push_back(vecChange[0].nAmount);
+                        gammas.push_back(vecChange[0].gamma);
+                        LogPrintf("adding to vector from change %d %s\n", vecChange[0].nAmount, vecChange[0].gamma.ToString(16).substr(0,8));
                     }
                     else
                     {
@@ -3838,10 +3845,14 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                                               std::numeric_limits<unsigned int>::max()-1));
                 }
 
-                if (fZeroCT) {
+                if (fZeroCT)
+                {
                     uiInterface.ShowProgress(_("Constructing range proof..."), 0);
 
                     BulletproofsRangeproof bprp(&Params().GetConsensus().Zerocoin_Params.coinCommitmentGroup);
+                    CBN_matrix mValueCommitments;
+
+                    assert(values.size() == gammas.size());
 
                     bprp.Prove(values, gammas);
 
@@ -3849,7 +3860,12 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     proofs.push_back(bprp);
                     uiInterface.ShowProgress(_("Constructing range proof..."), 50);
 
-                    if (!VerifyBulletproof(&Params().GetConsensus().Zerocoin_Params.coinCommitmentGroup, proofs)) {
+                    std::vector<CBigNum> valueCommitments = bprp.GetValueCommitments();
+                    mValueCommitments.push_back(valueCommitments);
+
+                    if (!VerifyBulletproof(&Params().GetConsensus().Zerocoin_Params.coinCommitmentGroup, proofs, mValueCommitments))
+                    {
+                        uiInterface.ShowProgress(_("Constructing range proof..."), 100);
                         strFailReason = _("Range proof failed");
                         return false;
                     }
@@ -3869,6 +3885,10 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 if (fPrivate)
                     uiInterface.ShowProgress(_("Selecting coins..."), 0);
                 unsigned int i = 0;
+
+                CBigNum r_sum = 0;
+                CBigNum gamma_sum = 0;
+
                 BOOST_FOREACH(const PAIRTYPE(const CWalletTx*,unsigned int)& coin, setCoins)
                 {
                     bool signSuccess = false;
@@ -3889,7 +3909,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                                                            coin.first->vout[coin.second].nValue, SIGHASH_ALL), scriptPubKey, sigdata);
                         else
                             signSuccess = ProduceCoinSpend(TransactionSignatureCreator(this, &txNewConst, nIn,
-                                                                         coin.first->vout[coin.second].nValue, SIGHASH_ALL), scriptPubKey, sigdata,
+                                                                         coin.first->vout[coin.second].nValue, SIGHASH_ALL), mapWitness, scriptPubKey, sigdata,
                                                                          false, coin.first->vout[coin.second].nValue);
                     else
                         signSuccess = ProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata);
@@ -3902,6 +3922,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                         return false;
                     } else {
                         UpdateTransaction(txNew, nIn, sigdata);
+                        r_sum = (r_sum + sigdata.r) % Params().GetConsensus().Zerocoin_Params.coinCommitmentGroup.groupOrder;
                     }
 
                     nIn++;
@@ -3920,6 +3941,32 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
                 // Embed the constructed transaction data in wtxNew.
                 *static_cast<CTransaction*>(&wtxNew) = CTransaction(txNew);
+
+                for (unsigned int i = 0; i < gammas.size(); i++)
+                {
+                    gamma_sum = (gamma_sum + gammas[i]) % Params().GetConsensus().Zerocoin_Params.coinCommitmentGroup.groupOrder;
+                    gammas[i].Nullify();
+
+                }
+                for (unsigned int i = 0; i < values.size(); i++)
+                {
+                    values[i].Nullify();
+                }
+
+                CBigNum r_minus_gamma = r_sum - gamma_sum;
+
+                SerialNumberProofOfKnowledge txAmountSig = SerialNumberProofOfKnowledge(&Params().GetConsensus().Zerocoin_Params.coinCommitmentGroup,
+                                                               r_minus_gamma, wtxNew.GetHashAmountSig());
+
+                CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+                ss << txAmountSig;
+                wtxNew.vchTxSig = std::vector<unsigned char>(ss.begin(), ss.end());
+
+                wtxNew.UpdateHash();
+
+                r_minus_gamma.Nullify();
+                gamma_sum.Nullify();
+                r_sum.Nullify();
 
                 // Limit size
                 if (GetTransactionWeight(txNew) >= (fPrivate ? MAX_PRIVATE_TX_WEIGHT : MAX_STANDARD_TX_WEIGHT))

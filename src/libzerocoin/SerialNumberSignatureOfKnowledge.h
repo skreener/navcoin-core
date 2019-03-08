@@ -56,7 +56,9 @@ public:
   bool Verify(const CBigNum& valueOfCommitmentToCoin, const CBigNum& valueOfCommitmentToSerial,
               CBigNum amountCommitment, CBigNum valueCommitment, const uint256 msghash) const;
 	ADD_SERIALIZE_METHODS;
-  template <typename Stream, typename Operation>  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
+  template <typename Stream, typename Operation>
+  inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+  {
       READWRITE(xi);
       READWRITE(iota);
       READWRITE(delta);

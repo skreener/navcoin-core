@@ -17,10 +17,10 @@ BOOST_FIXTURE_TEST_SUITE(bulletproofsrangeproof, BasicTestingSetup)
 bool TestRange(std::vector<CBigNum> values, const libzerocoin::ZerocoinParams* params)
 {
     std::vector<CBigNum> gamma;
-
     for (unsigned int i = 0; i < values.size(); i++)
     {
-        gamma.push_back(CBigNum::randBignum(params->coinCommitmentGroup.groupOrder));
+        CBigNum bnRand = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
+        gamma.push_back(bnRand);
     }
 
     BulletproofsRangeproof bprp(&params->coinCommitmentGroup);
@@ -30,12 +30,17 @@ bool TestRange(std::vector<CBigNum> values, const libzerocoin::ZerocoinParams* p
     std::vector<BulletproofsRangeproof> proofs;
     proofs.push_back(bprp);
 
-    return VerifyBulletproof(&params->coinCommitmentGroup, proofs);
+    CBN_matrix mValueCommitments;
+    std::vector<CBigNum> valueCommitments = bprp.GetValueCommitments();
+    mValueCommitments.push_back(valueCommitments);
+
+    return VerifyBulletproof(&params->coinCommitmentGroup, proofs, mValueCommitments);
 }
 
 bool TestRangeBatch(std::vector<CBigNum> values, const libzerocoin::ZerocoinParams* params)
 {
     std::vector<BulletproofsRangeproof> proofs;
+    CBN_matrix mValueCommitments;
 
     for (unsigned int i = 0; i < values.size(); i++)
     {
@@ -43,15 +48,19 @@ bool TestRangeBatch(std::vector<CBigNum> values, const libzerocoin::ZerocoinPara
         v.push_back(values[i]);
 
         std::vector<CBigNum> gamma;
-        gamma.push_back(CBigNum::randBignum(params->coinCommitmentGroup.groupOrder));
+        CBigNum bnRand = CBigNum::randBignum(params->coinCommitmentGroup.groupOrder);
+        gamma.push_back(bnRand);
 
         BulletproofsRangeproof bprp(&params->coinCommitmentGroup);
         bprp.Prove(v, gamma);
 
         proofs.push_back(bprp);
+
+        std::vector<CBigNum> valueCommitments = bprp.GetValueCommitments();
+        mValueCommitments.push_back(valueCommitments);
     }
 
-    return VerifyBulletproof(&params->coinCommitmentGroup, proofs);
+    return VerifyBulletproof(&params->coinCommitmentGroup, proofs, mValueCommitments);
 }
 
 BOOST_AUTO_TEST_CASE(RangeProofTest)
@@ -65,7 +74,7 @@ BOOST_AUTO_TEST_CASE(RangeProofTest)
     std::vector<CBigNum> vInRange;
     std::vector<CBigNum> vOutOfRange;
 
-    // Admited range is (0, 2**64)
+    // Admited range is [0, 2**64)
     CBigNum bnLowerBound = CBigNum(0);
     CBigNum bnUpperBound = CBigNum(2).pow(64)-1;
 
@@ -75,6 +84,7 @@ BOOST_AUTO_TEST_CASE(RangeProofTest)
     vInRange.push_back(bnUpperBound);
     vOutOfRange.push_back(bnUpperBound+1);
     vOutOfRange.push_back(bnUpperBound*2);
+    vOutOfRange.push_back(bnUpperBound.pow_mod(-1, params->coinCommitmentGroup.groupOrder));
     vOutOfRange.push_back(bnLowerBound-1 % params->coinCommitmentGroup.groupOrder);
 
     for (CBigNum v: vInRange)
@@ -95,6 +105,11 @@ BOOST_AUTO_TEST_CASE(RangeProofTest)
     BOOST_CHECK(TestRange(vInRange, params));
     BOOST_CHECK(!TestRangeBatch(vOutOfRange, params));
     BOOST_CHECK(!TestRange(vOutOfRange, params));
+
+    vInRange.insert(vInRange.end(), vOutOfRange.begin(), vOutOfRange.end());
+
+    BOOST_CHECK(!TestRangeBatch(vInRange, params));
+    BOOST_CHECK(!TestRange(vInRange, params));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
