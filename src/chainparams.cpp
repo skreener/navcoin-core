@@ -137,7 +137,7 @@ public:
 
         CBigNum bnModulus;
         bnModulus.SetDec(consensus.zerocoinModulus);
-        consensus.Zerocoin_Params = libzerocoin::ZerocoinParams(bnModulus);
+        consensus.ZeroCT_Params = libzeroct::ZeroCTParams(bnModulus);
 
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 1199145601; // January 1, 2008
@@ -193,9 +193,9 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_COMMUNITYFUND_AMOUNT_V2].nTimeout = 1564617600; // Aug 1st, 2019
 
         // Deployment of Zerocoin
-        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].bit = 18;
-        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].nStartTime = 1538352000; // May 1st, 2018
-        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].nTimeout = 1601510400; // May 1st, 2019
+        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCT].bit = 18;
+        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCT].nStartTime = 1538352000; // May 1st, 2018
+        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCT].nTimeout = 1601510400; // May 1st, 2019
 
         // Deployment of Static Reward
         consensus.vDeployments[Consensus::DEPLOYMENT_STATIC_REWARD].bit = 15;
@@ -346,7 +346,7 @@ public:
 
         CBigNum bnModulus;
         bnModulus.SetDec(consensus.zerocoinModulus);
-        consensus.Zerocoin_Params = libzerocoin::ZerocoinParams(bnModulus);
+        consensus.ZeroCT_Params = libzeroct::ZeroCTParams(bnModulus);
 
         consensus.nStaticReward = 2 * COIN;
         consensus.nHeightv451Fork = 100000;
@@ -392,9 +392,9 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_COMMUNITYFUND_AMOUNT_V2].nTimeout = 1564617600; // Aug 1st, 2019
 
         // Deployment of Zerocoin
-        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].bit = 18;
-        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].nStartTime = 1538352000; // May 1st, 2018
-        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].nTimeout = 1601510400; // May 1st, 2019
+        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCT].bit = 18;
+        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCT].nStartTime = 1538352000; // May 1st, 2018
+        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCT].nTimeout = 1601510400; // May 1st, 2019
 
         // Deployment of Static Reward
         consensus.vDeployments[Consensus::DEPLOYMENT_STATIC_REWARD].bit = 15;
@@ -540,7 +540,7 @@ public:
 
         CBigNum bnModulus;
         bnModulus.SetDec(consensus.zerocoinModulus);
-        consensus.Zerocoin_Params = libzerocoin::ZerocoinParams(bnModulus);
+        consensus.ZeroCT_Params = libzeroct::ZeroCTParams(bnModulus);
 
         // Deployment of BIP68, BIP112, and BIP113.
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].bit = 0;
@@ -583,9 +583,9 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_COMMUNITYFUND_AMOUNT_V2].nTimeout = 1564617600; // Aug 1st, 2019
 
         // Deployment of Zerocoin
-        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].bit = 18;
-        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].nStartTime = 1538352000; // May 1st, 2018
-        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].nTimeout = 1601510400; // May 1st, 2019
+        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCT].bit = 18;
+        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCT].nStartTime = 1538352000; // May 1st, 2018
+        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCT].nTimeout = 1601510400; // May 1st, 2019
 
         // Deployment of Static Reward
         consensus.vDeployments[Consensus::DEPLOYMENT_STATIC_REWARD].bit = 15;
@@ -741,7 +741,7 @@ public:
 
         CBigNum bnModulus;
         bnModulus.SetDec(consensus.zerocoinModulus);
-        consensus.Zerocoin_Params = libzerocoin::ZerocoinParams(bnModulus);
+        consensus.ZeroCT_Params = libzeroct::ZeroCTParams(bnModulus);
 
         // Deployment of BIP68, BIP112, and BIP113.
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].bit = 0;
@@ -784,9 +784,9 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_COMMUNITYFUND_AMOUNT_V2].nTimeout = 1564617600; // Aug 1st, 2019
 
         // Deployment of Zerocoin
-        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].bit = 18;
-        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].nStartTime = 1538352000; // May 1st, 2018
-        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCOIN].nTimeout = 1601510400; // May 1st, 2019
+        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCT].bit = 18;
+        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCT].nStartTime = 1538352000; // May 1st, 2018
+        consensus.vDeployments[Consensus::DEPLOYMENT_ZEROCT].nTimeout = 1601510400; // May 1st, 2019
 
         // Deployment of Static Reward
         consensus.vDeployments[Consensus::DEPLOYMENT_STATIC_REWARD].bit = 15;

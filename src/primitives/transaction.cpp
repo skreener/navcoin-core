@@ -33,16 +33,17 @@ std::string CTxIn::ToString() const
 {
     std::string str;
     str += "CTxIn(";
-    if(!scriptSig.IsZerocoinSpend())
+    if(!scriptSig.IsZeroCTSpend())
         str += prevout.ToString();
-    if (prevout.IsNull())
+    if(scriptSig.IsZeroCTSpend()) {
+        str += strprintf("zeroct_spend");
+    } else if (prevout.IsNull())
         str += strprintf(", coinbase %s", HexStr(scriptSig));
-    else if(scriptSig.IsZerocoinSpend()) {
-        str += strprintf(", zerocoinspend");
-    } else
+    else  {
         str += strprintf(", scriptSig=%s", HexStr(scriptSig).substr(0, 24));
-    if (nSequence != SEQUENCE_FINAL)
-        str += strprintf(", nSequence=%u", nSequence);
+        if (nSequence != SEQUENCE_FINAL)
+            str += strprintf(", nSequence=%u", nSequence);
+    }
     str += ")";
     return str;
 }
@@ -60,6 +61,14 @@ uint256 CTxOut::GetHash() const
 
 std::string CTxOut::ToString() const
 {
+    if (IsZeroCTMint()) {
+        std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> i; std::vector<unsigned char> a;
+        std::vector<unsigned char> ac;
+        if(!scriptPubKey.ExtractZeroCTMintData(p, c, i, a, ac))
+            return "CTxOut(zeroct_mint)";
+        else
+            return strprintf("CTxOut(zeroct_mint, coinvalue=%s, amountvalue=%s)", HexStr(c).substr(0,16), HexStr(ac).substr(0,16));
+    }
     if (IsEmpty()) return "CTxOut(empty)";
     if (IsCommunityFundContribution())
       return strprintf("CTxOut(nValue=%d.%08d, CommunityFundContribution)", nValue / COIN, nValue % COIN);
@@ -70,7 +79,7 @@ std::string CTxOut::ToString() const
 CMutableTransaction::CMutableTransaction() : nVersion(CTransaction::CURRENT_VERSION), nTime(0), nLockTime(0) {
   // *const_cast<unsigned int*>(&nTime) = GetTime();
 }
-CMutableTransaction::CMutableTransaction(const CTransaction& tx) : nVersion(tx.nVersion), nTime(tx.nTime), vin(tx.vin), vout(tx.vout), wit(tx.wit), nLockTime(tx.nLockTime), strDZeel(tx.strDZeel), vchRangeProof(tx.vchRangeProof), vchTxSig(tx.vchTxSig) {}
+CMutableTransaction::CMutableTransaction(const CTransaction& tx) : nVersion(tx.nVersion), nTime(tx.nTime), vin(tx.vin), vout(tx.vout), wit(tx.wit), nLockTime(tx.nLockTime), strDZeel(tx.strDZeel), vchTxSig(tx.vchTxSig), vchRangeProof(tx.vchRangeProof), vchKernelHashProof(tx.vchKernelHashProof) {}
 
 uint256 CMutableTransaction::GetHash() const
 {
@@ -101,7 +110,7 @@ CTransaction::CTransaction() : nVersion(CTransaction::CURRENT_VERSION), nTime(0)
     // *const_cast<unsigned int*>(&nTime) = GetTime();
 }
 
-CTransaction::CTransaction(const CMutableTransaction &tx) : nVersion(tx.nVersion), nTime(tx.nTime), vin(tx.vin), vout(tx.vout), wit(tx.wit), nLockTime(tx.nLockTime), strDZeel(tx.strDZeel), vchRangeProof(tx.vchRangeProof), vchTxSig(tx.vchTxSig) {
+CTransaction::CTransaction(const CMutableTransaction &tx) : nVersion(tx.nVersion), nTime(tx.nTime), vin(tx.vin), vout(tx.vout), wit(tx.wit), nLockTime(tx.nLockTime), strDZeel(tx.strDZeel), vchTxSig(tx.vchTxSig), vchRangeProof(tx.vchRangeProof), vchKernelHashProof(tx.vchKernelHashProof) {
     UpdateHash();
 }
 
@@ -116,6 +125,7 @@ CTransaction& CTransaction::operator=(const CTransaction &tx) {
     *const_cast<std::string*>(&strDZeel) = tx.strDZeel;
     *const_cast<std::vector<unsigned char>*>(&vchRangeProof) = tx.vchRangeProof;
     *const_cast<std::vector<unsigned char>*>(&vchTxSig) = tx.vchTxSig;
+    *const_cast<std::vector<unsigned char>*>(&vchKernelHashProof) = tx.vchKernelHashProof;
     return *this;
 }
 

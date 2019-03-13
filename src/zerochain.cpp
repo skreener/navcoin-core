@@ -5,20 +5,20 @@
 #include "zerochain.h"
 #include "zerotx.h"
 
-using namespace libzerocoin;
+using namespace libzeroct;
 
 CCriticalSection cs_dummy;
 
-bool BlockToZerocoinMints(const ZerocoinParams *params, const CBlock* block, std::vector<PublicCoin> &vPubCoins)
+bool BlockToZeroCTMints(const ZeroCTParams *params, const CBlock* block, std::vector<PublicCoin> &vPubCoins)
 {
     for (auto& tx : block->vtx) {
         for (auto& out : tx.vout) {
-            if (!out.IsZerocoinMint())
+            if (!out.IsZeroCTMint())
                 continue;
 
             std::vector<unsigned char> c; CPubKey p; std::vector<unsigned char> i;  std::vector<unsigned char> a;  std::vector<unsigned char> aco;
-            if(!out.scriptPubKey.ExtractZerocoinMintData(p, c, i, a, aco))
-                return error("BlockToZerocoinMints(): Could not extract Zerocoin mint data");
+            if(!out.scriptPubKey.ExtractZeroCTMintData(p, c, i, a, aco))
+                return error("BlockToZeroCTMints(): Could not extract ZeroCT mint data");
 
             CBigNum pid;
             pid.setvch(i);
@@ -37,42 +37,35 @@ bool BlockToZerocoinMints(const ZerocoinParams *params, const CBlock* block, std
     return true;
 }
 
-bool CheckZerocoinMint(const ZerocoinParams *params, const CTxOut& txout, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, PublicMintChainData>> vSeen, PublicCoin* pPubCoin, bool fCheck, bool fFast)
+bool CheckZeroCTMint(const ZeroCTParams *params, const CTxOut& txout, const CCoinsViewCache& view, CValidationState& state, PublicCoin* pPubCoin, bool fCheck, bool fFast)
 {
     PublicCoin pubCoin(params);
     if(!TxOutToPublicCoin(params, txout, pubCoin, &state, false))
-        return state.DoS(100, error("CheckZerocoinMint(): TxOutToPublicCoin() failed"));
+        return state.DoS(100, error("CheckZeroCTMint(): TxOutToPublicCoin() failed"));
 
     if (pPubCoin)
         *pPubCoin = pubCoin;
 
     if (fCheck && !pubCoin.isValid(fFast))
-        return state.DoS(100, error("CheckZerocoinMint() : PubCoin does not validate"));
-
-    for(auto& it : vSeen)
-    {
-        if (it.first == pubCoin.getValue())
-            return error("%s: pubcoin %s was already seen in this block", __func__,
-                         pubCoin.getValue().GetHex().substr(0, 10));
-    }
+        return state.DoS(100, error("CheckZeroCTMint() : PubCoin does not validate"));
 
     PublicMintChainData zeroMint;
     int nHeight;
 
-    if (pblocktree->ReadCoinMint(pubCoin.getValue(), zeroMint) && zeroMint.GetTxHash() != 0 && IsTransactionInChain(zeroMint.GetTxHash(), view, nHeight))
+    if (view.HaveMint(pubCoin.getValue()))
         return error("%s: pubcoin %s was already accumulated in tx %s from block %d", __func__,
-                     pubCoin.getValue().GetHex().substr(0, 10),
+                     pubCoin.getValue().GetHex().substr(0, 8),
                      zeroMint.GetTxHash().GetHex(), nHeight);
 
     return true;
 }
 
-bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const CCoinsViewCache& view, CValidationState& state, std::vector<std::pair<CBigNum, uint256>> vSeen, CoinSpend* pCoinSpend, Accumulator* pAccumulator, bool fSpendCheck)
+bool CheckZeroCTSpend(const ZeroCTParams *params, const CTxIn& txin, const CCoinsViewCache& view, CValidationState& state, CoinSpend* pCoinSpend, Accumulator* pAccumulator, bool fSpendCheck)
 {
     CoinSpend coinSpend(params);
 
     if(!TxInToCoinSpend(params, txin, coinSpend))
-        return state.DoS(100, error("CheckZerocoinSpend() : TxInToCoinSpend() failed"));
+        return state.DoS(100, error("CheckZeroCTSpend() : TxInToCoinSpend() failed"));
 
     if (pCoinSpend)
         *pCoinSpend = coinSpend;
@@ -80,12 +73,12 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const C
     uint256 blockAccumulatorHash = coinSpend.getBlockAccumulatorHash();
 
     if (!mapBlockIndex.count(blockAccumulatorHash))
-        return state.DoS(100, error("CheckZerocoinSpend() : coinspend refers an invalid block hash %s", blockAccumulatorHash.ToString()));
+        return state.DoS(100, error("CheckZeroCTSpend() : coinspend refers an invalid block hash %s", blockAccumulatorHash.ToString()));
 
     CBlockIndex* pindex = mapBlockIndex[blockAccumulatorHash];
 
     if (!chainActive.Contains(pindex))
-        return state.DoS(20, error("CheckZerocoinSpend() : coinspend refers a block not contained in the main chain"));
+        return state.DoS(20, error("CheckZeroCTSpend() : coinspend refers a block not contained in the main chain"));
 
     Accumulator accumulator(params);
     accumulator.setValue(pindex->nAccumulatorValue);
@@ -95,21 +88,14 @@ bool CheckZerocoinSpend(const ZerocoinParams *params, const CTxIn& txin, const C
 
     if (fSpendCheck) {
         if (!VerifyCoinSpendCache(coinSpend, accumulator))
-            return state.DoS(100, error("CheckZerocoinSpend() : CoinSpend does not verify"));
+            return state.DoS(100, error("CheckZeroCTSpend() : CoinSpend does not verify"));
     }
 
     uint256 txHash;
     int nHeight;
 
-    if (pblocktree->ReadCoinSpend(coinSpend.getCoinSerialNumber(), txHash) && IsTransactionInChain(txHash, view, nHeight))
-        return state.DoS(100, error(strprintf("CheckZerocoinSpend() : Serial Number %s is already spent in tx %s in block %d", coinSpend.getCoinSerialNumber().ToString(16), txHash.ToString(), nHeight)));
-
-    for(auto& it : vSeen)
-    {
-        if (it.first == coinSpend.getCoinSerialNumber())
-            return error("%s: serial number %s was already seen in this block", __func__,
-                         coinSpend.getCoinSerialNumber().GetHex().substr(0, 10));
-    }
+    if (view.HaveSpendSerial(coinSpend.getCoinSerialNumber()))
+        return state.DoS(100, error(strprintf("CheckZeroCTSpend() : Serial Number %s is already spent in tx %s in block %d", coinSpend.getCoinSerialNumber().ToString(16), txHash.ToString(), nHeight)));
 
     return true;
 
@@ -160,7 +146,7 @@ bool CountMintsFromHeight(unsigned int nInitialHeight, unsigned int& nRet)
 
         for (auto& tx: block.vtx)
             for (CTxOut& out: tx.vout)
-                if(out.IsZerocoinMint())
+                if(out.IsZeroCTMint())
                     nRet++;
 
         pindex = chainActive.Next(pindex);
@@ -169,24 +155,24 @@ bool CountMintsFromHeight(unsigned int nInitialHeight, unsigned int& nRet)
     return true;
 }
 
-bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin& pubCoin, Accumulator& accumulator, AccumulatorWitness& accumulatorWitness, CBigNum& accumulatorValue, uint256& blockAccumulatorHash, std::string& strError, int nRequiredMints, int nMaxHeight)
+bool CalculateWitnessForMint(const CTxOut& txout, const CCoinsViewCache& view, const libzeroct::PublicCoin& pubCoin, Accumulator& accumulator, AccumulatorWitness& accumulatorWitness, CBigNum& accumulatorValue, uint256& blockAccumulatorHash, std::string& strError, int nRequiredMints, int nMaxHeight)
 {
-    if (!txout.IsZerocoinMint()) {
-        strError = "Transaction output script is not a zerocoin mint.";
+    if (!txout.IsZeroCTMint()) {
+        strError = "Transaction output script is not a ZeroCT mint.";
         return false;
     }
 
     PublicMintChainData zeroMint;
 
-    if (!pblocktree->ReadCoinMint(pubCoin.getValue(), zeroMint)) {
-        strError = strprintf("Could not read mint with value %s from the db", pubCoin.getValue().GetHex());
+    if (!view.GetMint(pubCoin.getValue(), zeroMint)) {
+        strError = strprintf("Could not read mint with value %s from the db", pubCoin.getValue().ToString(16).substr(0,8));
         return false;
     }
 
     uint256 blockHash = zeroMint.GetBlockHash();
 
     if (!mapBlockIndex.count(blockHash)) {
-        strError = strprintf("Could not find block hash %s", blockHash.ToString());
+        strError = strprintf("Could not find block hash %s of mint %s", blockHash.ToString(), pubCoin.getValue().ToString(16).substr(0,8));
         return false;
     }
 
@@ -221,20 +207,20 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
                 return false;
             }
 
-            if ((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) != VERSIONBITS_TOP_BITS_ZEROCOIN) {
-                strError = strprintf("Block %s is not a zerocoin block", pindex->GetBlockHash().ToString());
+            if ((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCT) != VERSIONBITS_TOP_BITS_ZEROCT) {
+                strError = strprintf("Block %s is not a ZeroCT block", pindex->GetBlockHash().ToString());
                 return false;
             }
 
             for (auto& tx : block.vtx) {
                 for (auto& out : tx.vout) {
-                    if (!out.IsZerocoinMint())
+                    if (!out.IsZeroCTMint())
                         continue;
 
-                    PublicCoin pubCoinOut(&Params().GetConsensus().Zerocoin_Params);
+                    PublicCoin pubCoinOut(&Params().GetConsensus().ZeroCT_Params);
 
-                    if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, out, pubCoinOut)) {
-                        strError = strprintf("Could not extract Zerocoin mint data");
+                    if (!TxOutToPublicCoin(&Params().GetConsensus().ZeroCT_Params, out, pubCoinOut)) {
+                        strError = strprintf("Could not extract ZeroCT mint data");
                         return false;
                     }
 
@@ -268,55 +254,71 @@ bool CalculateWitnessForMint(const CTxOut& txout, const libzerocoin::PublicCoin&
 }
 
 
-bool VerifyZeroCTBalance(const ZerocoinParams *params, const CTransaction& tx, const CCoinsViewCache& view)
+bool VerifyZeroCTBalance(const ZeroCTParams *params, const CTransaction& tx, const CCoinsViewCache& view, const CAmount nReward)
 {
     if (!tx.IsZeroCT())
         return false;
 
     CDataStream ss(tx.vchTxSig, SER_NETWORK, PROTOCOL_VERSION);
-    libzerocoin::SerialNumberProofOfKnowledge snpok(&params->coinCommitmentGroup);
+    libzeroct::SerialNumberProofOfKnowledge snpok(&params->coinCommitmentGroup);
 
     ss >> snpok;
 
     CBigNum bnInputs = 1;
     CBigNum bnOutputs = 1;
 
+    if (nReward > 0)
+        bnInputs = bnInputs.mul_mod(params->coinCommitmentGroup.g2.pow_mod(nReward, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
+
+    LogPrintf("reward is %d\n", nReward);
+
     for (auto &in: tx.vin)
     {
-        if (in.scriptSig.IsZerocoinSpend())
+        if (in.scriptSig.IsZeroCTSpend())
         {
-            libzerocoin::CoinSpend spend(params);
+            libzeroct::CoinSpend spend(params);
 
             if (!ScriptToCoinSpend(params, in.scriptSig, spend))
                 return false;
+
+            LogPrintf("Adding spend ac in %s\n", spend.getAmountCommitment().ToString(16).substr(0,8));
 
             bnInputs = bnInputs.mul_mod(spend.getAmountCommitment(), params->coinCommitmentGroup.modulus);
         }
         else
         {
             CAmount inputValue = view.GetOutputFor(in).nValue;
+            LogPrintf("Adding normal in %d\n", inputValue);
             bnInputs = bnInputs.mul_mod(params->coinCommitmentGroup.g2.pow_mod(inputValue, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
         }
     }
 
     for (auto &out: tx.vout)
     {
-        if (out.IsZerocoinMint())
+        if (out.IsZeroCTMint())
         {
-            libzerocoin::PublicCoin pc(params);
+            libzeroct::PublicCoin pc(params);
 
             if (!TxOutToPublicCoin(params, out, pc))
                 return false;
+            LogPrintf("Adding mint ac out %s\n", pc.getAmountCommitment().ToString(16).substr(0,8));
 
             bnOutputs = bnOutputs.mul_mod(pc.getAmountCommitment(), params->coinCommitmentGroup.modulus);
         }
         else
         {
+            LogPrintf("Adding normal out %d\n", out.nValue);
+
             bnOutputs = bnOutputs.mul_mod(params->coinCommitmentGroup.g2.pow_mod(out.nValue, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
         }
     }
 
     CBigNum bnPubKey = bnInputs.mul_mod(bnOutputs.inverse(params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
+
+    LogPrintf("Verifying %s with %s\n",
+              tx.GetHashAmountSig().ToString().substr(0, 8),
+              bnPubKey.ToString().substr(16, 8));
+
 
     return snpok.Verify(bnPubKey, tx.GetHashAmountSig());
 }

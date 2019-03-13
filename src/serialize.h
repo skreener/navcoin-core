@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 
-#include "libzerocoin/SpendType.h"
+#include "libzeroct/SpendType.h"
 #include "prevector.h"
 
 static const unsigned int MAX_SIZE = 0x02000000;
@@ -519,21 +519,21 @@ public:
 template<typename I>
 CVarInt<I> WrapVarInt(I& n) { return CVarInt<I>(n); }
 
-// Serialization for libzerocoin::SpendType
-inline unsigned int GetSerializedSize(libzerocoin::SpendType a, int, int = 0) { return sizeof(libzerocoin::SpendType); }
+// Serialization for libzeroct::SpendType
+inline unsigned int GetSerializedSize(libzeroct::SpendType a, int, int = 0) { return sizeof(libzeroct::SpendType); }
 template <typename Stream>
-inline void Serialize(Stream& s, libzerocoin::SpendType a, int nType, int nVersion = 0)
+inline void Serialize(Stream& s, libzeroct::SpendType a, int nType, int nVersion = 0)
 {
     uint8_t f = static_cast<uint8_t>(a);
     Serialize(s, f, nType, nVersion);
 }
 
 template <typename Stream>
-inline void Unserialize(Stream& s, libzerocoin::SpendType & a, int nType, int nVersion = 0)
+inline void Unserialize(Stream& s, libzeroct::SpendType & a, int nType, int nVersion = 0)
 {
     uint8_t f=0;
     Unserialize(s, f, nType, nVersion);
-    a = static_cast<libzerocoin::SpendType>(f);
+    a = static_cast<libzeroct::SpendType>(f);
 }
 
 /**

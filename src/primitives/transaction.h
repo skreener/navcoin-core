@@ -47,7 +47,7 @@ public:
 
     friend bool operator<(const COutPoint& a, const COutPoint& b)
     {
-        return a.hash < b.hash;
+        return a.hash < b.hash || (a.hash == b.hash && a.n < b.n);
     }
 
     friend bool operator==(const COutPoint& a, const COutPoint& b)
@@ -193,9 +193,9 @@ public:
         return scriptPubKey.IsPaymentRequestVote();
     }
 
-    bool IsZerocoinMint() const
+    bool IsZeroCTMint() const
     {
-        return scriptPubKey.IsZerocoinMint();
+        return scriptPubKey.IsZeroCTMint();
     }
 
     bool IsFee() const
@@ -239,7 +239,7 @@ public:
 
     bool IsDust(const CFeeRate &minRelayTxFee) const
     {
-        return (!IsZerocoinMint() && nValue < GetDustThreshold(minRelayTxFee));
+        return (!IsZeroCTMint() && nValue < GetDustThreshold(minRelayTxFee));
     }
 
     friend bool operator==(const CTxOut& a, const CTxOut& b)
@@ -394,6 +394,9 @@ inline void SerializeTransaction(TxType& tx, Stream& s, Operation ser_action, in
             READWRITE(*const_cast<std::vector<unsigned char>*>(&tx.vchTxSig));
         }
         READWRITE(*const_cast<std::vector<unsigned char>*>(&tx.vchRangeProof));
+        if (tx.IsCoinStake()) {
+            READWRITE(*const_cast<std::vector<unsigned char>*>(&tx.vchKernelHashProof));
+        }
     }
 }
 
@@ -435,6 +438,7 @@ public:
     const uint256 hash;
     std::vector<unsigned char> vchTxSig;
     std::vector<unsigned char> vchRangeProof;
+    std::vector<unsigned char> vchKernelHashProof;
 
     /** Construct a CTransaction that qualifies as IsNull() */
     CTransaction();
@@ -482,24 +486,24 @@ public:
 
     bool IsCoinBase() const
     {
-        return (vin.size() == 1 && vin[0].prevout.IsNull() && !vin[0].scriptSig.IsZerocoinSpend());
+        return (vin.size() == 1 && vin[0].prevout.IsNull() && !vin[0].scriptSig.IsZeroCTSpend());
     }
 
     bool IsCoinStake() const
     {
         // ppcoin: the coin stake transaction is marked with the first output empty
-        return (vin.size() > 0 && (!vin[0].prevout.IsNull() || vin[0].scriptSig.IsZerocoinSpend()) && vout.size() >= 2 && vout[0].IsEmpty());
+        return (vin.size() > 0 && (!vin[0].prevout.IsNull() || vin[0].scriptSig.IsZeroCTSpend()) && vout.size() >= 2 && vout[0].IsEmpty());
     }
 
-    bool IsZerocoinSpend() const
+    bool IsZeroCTSpend() const
     {
-        return (vin.size() > 0 && vin[0].prevout.hash == 0 && vin[0].scriptSig[0] == OP_ZEROCOINSPEND);
+        return (vin.size() > 0 && vin[0].prevout.hash == 0 && vin[0].scriptSig[0] == OP_ZEROCTSPEND);
     }
 
-    bool HasZerocoinMint() const
+    bool HasZeroCTMint() const
     {
         for(const CTxOut& txout : vout) {
-            if (txout.scriptPubKey.IsZerocoinMint())
+            if (txout.scriptPubKey.IsZeroCTMint())
                 return true;
         }
         return false;
@@ -507,7 +511,7 @@ public:
 
     CAmount GetFee() const
     {
-        if (!HasZerocoinMint())
+        if (!HasZeroCTMint())
             return 0;
         for(const CTxOut& txout : vout) {
             if (txout.scriptPubKey.IsFee())
@@ -516,9 +520,9 @@ public:
         return 0;
     }
 
-    bool ContainsZerocoins() const
+    bool ContainsZeroCT() const
     {
-        return IsZerocoinSpend() || HasZerocoinMint();
+        return IsZeroCTSpend() || HasZeroCTMint();
     }
 
     bool IsZeroCT() const
@@ -556,6 +560,7 @@ struct CMutableTransaction
     std::string strDZeel;
     std::vector<unsigned char> vchTxSig;
     std::vector<unsigned char> vchRangeProof;
+    std::vector<unsigned char> vchKernelHashProof;
 
     CMutableTransaction();
     CMutableTransaction(const CTransaction& tx);

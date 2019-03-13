@@ -41,6 +41,8 @@ void NavCoinWitnesser(const CChainParams& chainparams)
                 cachedMapWitness = std::set<std::pair<const CBigNum, PublicMintWitnessData>, Comparator>(pwalletMain->mapWitness.begin(), pwalletMain->mapWitness.end(), compare);
             }
 
+            CacheWitnessToWrite toWrite;
+
             for (const std::pair<const CBigNum, PublicMintWitnessData> &it: cachedMapWitness)
             {
                 LOCK(cs_main);
@@ -68,10 +70,7 @@ void NavCoinWitnesser(const CChainParams& chainparams)
                     if (!mapBlockIndex.count(witnessData.GetBlockAccumulatorHash()))
                     {
                         witnessData.Reset();
-                        {
-                            LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
-                            pwalletMain->WriteWitness(it.first, witnessData);
-                        }
+                        toWrite.Add(it.first, witnessData);
                         continue;
                     }
                 }
@@ -102,16 +101,13 @@ void NavCoinWitnesser(const CChainParams& chainparams)
                     if (!ReadBlockFromDisk(block, pindex, Params().GetConsensus()))
                         fRecover = true;
 
-                    if ((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) != VERSIONBITS_TOP_BITS_ZEROCOIN)
+                    if ((block.nVersion & VERSIONBITS_TOP_BITS_ZEROCT) != VERSIONBITS_TOP_BITS_ZEROCT)
                         fRecover = true;
 
                     if (fRecover)
                     {
                         witnessData.Recover();
-                        {
-                            LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
-                            pwalletMain->WriteWitness(it.first, witnessData);
-                        }
+                        toWrite.Add(it.first, witnessData);
                         break;
                     }
 
@@ -119,12 +115,12 @@ void NavCoinWitnesser(const CChainParams& chainparams)
                     {
                         for (auto& out : tx.vout)
                         {
-                            if (!out.IsZerocoinMint())
+                            if (!out.IsZeroCTMint())
                                 continue;
 
-                            PublicCoin pubCoinOut(&Params().GetConsensus().Zerocoin_Params);
+                            PublicCoin pubCoinOut(&Params().GetConsensus().ZeroCT_Params);
 
-                            if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, out, pubCoinOut))
+                            if (!TxOutToPublicCoin(&Params().GetConsensus().ZeroCT_Params, out, pubCoinOut))
                                 continue;
 
                             witnessData.Accumulate(pubCoinOut.getValue());
@@ -143,10 +139,7 @@ void NavCoinWitnesser(const CChainParams& chainparams)
                     if (fRecover)
                     {
                         witnessData.Recover();
-                        {
-                            LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
-                            pwalletMain->WriteWitness(it.first, witnessData);
-                        }
+                        toWrite.Add(it.first, witnessData);
                         break;
                     }
 
@@ -173,10 +166,7 @@ void NavCoinWitnesser(const CChainParams& chainparams)
 
                 if (fReset) {
                     witnessData.Reset();
-                    {
-                        LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
-                        pwalletMain->WriteWitness(it.first, witnessData);
-                    }
+                    toWrite.Add(it.first, witnessData);
                     continue;
                 }
 
@@ -190,10 +180,19 @@ void NavCoinWitnesser(const CChainParams& chainparams)
 
                 if (fShouldWrite)
                 {
-                    LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
-                    pwalletMain->WriteWitness(it.first, witnessData);
+                    toWrite.Add(it.first, witnessData);
                 }
             }
+
+            {
+                LOCK2(pwalletMain->cs_wallet, pwalletMain->cs_witnesser);
+
+                for (std::pair<const CBigNum, PublicMintWitnessData> it: toWrite.GetMap())
+                {
+                    pwalletMain->WriteWitness(it.first, it.second);
+                }
+            }
+
             MilliSleep(250);
         }
     }

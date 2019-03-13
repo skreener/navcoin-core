@@ -9,19 +9,19 @@
 #include "zerochain.h"
 #include "zerotx.h"
 
-using namespace libzerocoin;
+using namespace libzeroct;
 using namespace std;
 
 bool CalculateAccumulatorChecksum(const CBlock* block, Accumulator& accumulator, std::vector<std::pair<CBigNum, uint256>>& vPubCoins)
 {
     for (auto& tx : block->vtx) {
         for (auto& out : tx.vout) {
-            if (!out.IsZerocoinMint())
+            if (!out.IsZeroCTMint())
                 continue;
 
-            libzerocoin::PublicCoin pubCoin(&Params().GetConsensus().Zerocoin_Params);
+            libzeroct::PublicCoin pubCoin(&Params().GetConsensus().ZeroCT_Params);
 
-            if (!TxOutToPublicCoin(&Params().GetConsensus().Zerocoin_Params, out, pubCoin))
+            if (!TxOutToPublicCoin(&Params().GetConsensus().ZeroCT_Params, out, pubCoin))
                 return false;
 
             CBigNum bnValue = pubCoin.getValue();

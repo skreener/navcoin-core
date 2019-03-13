@@ -161,11 +161,11 @@ UniValue getprivateaddress(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    CKey zk; libzerocoin::BlindingCommitment bc;
+    CKey zk; libzeroct::BlindingCommitment bc;
     pwalletMain->GetBlindingCommitment(bc);
     pwalletMain->GetZeroKey(zk);
 
-    libzerocoin::CPrivateAddress pa(&Params().GetConsensus().Zerocoin_Params,bc,zk);
+    libzeroct::CPrivateAddress pa(&Params().GetConsensus().ZeroCT_Params,bc,zk);
 
     return CNavCoinAddress(pa).ToString();
 }
@@ -441,11 +441,6 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
 
-    if (address.type() == typeid(libzerocoin::CPrivateAddress)) {
-        wtxNew.vOrderForm.push_back(make_pair("Message", boost::get<libzerocoin::CPrivateAddress>(address).GetPaymentId()));
-        wtxNew.vOrderForm.push_back(make_pair("Amount", to_string(boost::get<libzerocoin::CPrivateAddress>(address).GetAmount())));
-    }
-
     if (!pwalletMain->CommitTransaction(wtxNew, reservekey))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of the wallet and coins were spent in the copy but not marked as spent here.");
 }
@@ -533,9 +528,9 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
 
     wtx.strDZeel = strDZeel;
 
-    if (dest.type() == typeid(libzerocoin::CPrivateAddress)) {
-        boost::get<libzerocoin::CPrivateAddress>(dest).SetPaymentId(wtx.mapValue["comment"]);
-        boost::get<libzerocoin::CPrivateAddress>(dest).SetAmount(nAmount);
+    if (dest.type() == typeid(libzeroct::CPrivateAddress)) {
+        boost::get<libzeroct::CPrivateAddress>(dest).SetPaymentId(wtx.mapValue["comment"]);
+        boost::get<libzeroct::CPrivateAddress>(dest).SetAmount(nAmount);
     }
 
     SendMoney(dest, nAmount, fSubtractFeeFromAmount, wtx, strDZeel, false);
@@ -627,9 +622,9 @@ UniValue privatesendtoaddress(const UniValue& params, bool fHelp)
 
     CTxDestination dest = address.Get();
 
-    if (dest.type() == typeid(libzerocoin::CPrivateAddress)) {
-        boost::get<libzerocoin::CPrivateAddress>(dest).SetPaymentId(wtx.mapValue["comment"]);
-        boost::get<libzerocoin::CPrivateAddress>(dest).SetAmount(nAmount);
+    if (dest.type() == typeid(libzeroct::CPrivateAddress)) {
+        boost::get<libzeroct::CPrivateAddress>(dest).SetPaymentId(wtx.mapValue["comment"]);
+        boost::get<libzeroct::CPrivateAddress>(dest).SetAmount(nAmount);
     }
 
     SendMoney(dest, nAmount, fSubtractFeeFromAmount, wtx, strDZeel, true);
@@ -1482,7 +1477,7 @@ public:
 
     bool operator()(const CNoDestination &dest) const { return false; }
 
-    bool operator()(const libzerocoin::CPrivateAddress &dest) const { return false; }
+    bool operator()(const libzeroct::CPrivateAddress &dest) const { return false; }
 
     bool operator()(const pair<CKeyID, CKeyID> &dest) const { return false; }
 

@@ -12,6 +12,7 @@
 #include "memusage.h"
 #include "serialize.h"
 #include "uint256.h"
+#include "zeromint.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -89,7 +90,7 @@ public:
     int nVersion;
 
     void FromTx(const CTransaction &tx, int nHeightIn) {
-        fCoinBase = tx.IsCoinBase() && !tx.IsZerocoinSpend();
+        fCoinBase = tx.IsCoinBase();
         fCoinStake = tx.IsCoinStake();
         vout = tx.vout;
         nHeight = nHeightIn;
@@ -334,12 +335,13 @@ class CCoinsView
 public:
     //! Retrieve the CCoins (unspent transaction outputs) for a given txid
     virtual bool GetCoins(const uint256 &txid, CCoins &coins) const;
+    virtual bool GetMint(const CBigNum &mintValue, PublicMintChainData &mintData) const;
 
     //! Just check whether we have data for a given txid.
     //! This may (but cannot always) return true for fully spent transactions
     virtual bool HaveCoins(const uint256 &txid) const;
 
-    //! Zerocoin
+    //! ZeroCT
     virtual bool HaveMint(const CBigNum &mintValue) const;
     virtual bool HaveSpendSerial(const CBigNum &spendSerial) const;
 
@@ -348,7 +350,7 @@ public:
 
     //! Do a bulk modification (multiple CCoins changes + BestBlock change).
     //! The passed mapCoins can be modified.
-    virtual bool BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock);
+    virtual bool BatchWrite(CCoinsMap &mapCoins, std::map<CBigNum, PublicMintChainData>& mapMintValue, std::map<CBigNum, bool>& mapSpendSerial, const uint256 &hashBlock);
 
     //! Get a cursor to iterate over the whole state
     virtual CCoinsViewCursor *Cursor() const;
@@ -367,10 +369,13 @@ protected:
 public:
     CCoinsViewBacked(CCoinsView *viewIn);
     bool GetCoins(const uint256 &txid, CCoins &coins) const;
+    bool GetMint(const CBigNum &mintValue, PublicMintChainData &mintData) const;
     bool HaveCoins(const uint256 &txid) const;
+    bool HaveMint(const CBigNum &mintValue) const;
+    bool HaveSpendSerial(const CBigNum &spendSerial) const;
     uint256 GetBestBlock() const;
     void SetBackend(CCoinsView &viewIn);
-    bool BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock);
+    bool BatchWrite(CCoinsMap &mapCoins, std::map<CBigNum, PublicMintChainData>& mapMintValue, std::map<CBigNum, bool>& mapSpendSerial, const uint256 &hashBlock);
     CCoinsViewCursor *Cursor() const;
 };
 
@@ -411,6 +416,8 @@ protected:
      */
     mutable uint256 hashBlock;
     mutable CCoinsMap cacheCoins;
+    mutable std::map<CBigNum, PublicMintChainData> cacheMints;
+    mutable std::map<CBigNum, bool> cacheSpendSerial;
 
     /* Cached dynamic memory usage for the inner CCoins objects. */
     mutable size_t cachedCoinsUsage;
@@ -421,10 +428,18 @@ public:
 
     // Standard CCoinsView methods
     bool GetCoins(const uint256 &txid, CCoins &coins) const;
+    bool GetMint(const CBigNum &mintValue, PublicMintChainData &mintData) const;
     bool HaveCoins(const uint256 &txid) const;
+    bool HaveMint(const CBigNum &mintValue) const;
+    bool HaveSpendSerial(const CBigNum &spendSerial) const;
     uint256 GetBestBlock() const;
     void SetBestBlock(const uint256 &hashBlock);
-    bool BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock);
+    bool BatchWrite(CCoinsMap &mapCoins, std::map<CBigNum, PublicMintChainData>& mapMintValue, std::map<CBigNum, bool>& mapSpendSerial, const uint256 &hashBlock);
+
+    bool AddMint(const CBigNum &mintValue, const PublicMintChainData& mintData) const;
+    bool AddSpendSerial(const CBigNum &spendSerial) const;
+    bool RemoveMint(const CBigNum &mintValue) const;
+    bool RemoveSpendSerial(const CBigNum &spendSerial) const;
 
     /**
      * Check if we have the given tx already loaded in this cache.
@@ -439,6 +454,7 @@ public:
      * allowed while accessing the returned pointer.
      */
     const CCoins* AccessCoins(const uint256 &txid) const;
+    const PublicMintChainData* AccessMint(const CBigNum &mintValue) const;
 
     /**
      * Return a modifiable reference to a CCoins. If no entry with the given
@@ -504,6 +520,7 @@ public:
 private:
     CCoinsMap::iterator FetchCoins(const uint256 &txid);
     CCoinsMap::const_iterator FetchCoins(const uint256 &txid) const;
+    std::map<CBigNum, PublicMintChainData>::const_iterator FetchMint(const CBigNum &mintValue) const;
 
     /**
      * By making the copy constructor private, we prevent accidentally using it when one intends to create a cache on top of a base cache.

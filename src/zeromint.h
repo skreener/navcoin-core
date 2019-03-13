@@ -2,8 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "libzerocoin/Accumulator.h"
-#include "libzerocoin/Coin.h"
+#include "libzeroct/Accumulator.h"
+#include "libzeroct/Coin.h"
 #include "primitives/transaction.h"
 #include "serialize.h"
 #include "uint256.h"
@@ -37,6 +37,16 @@ public:
         return outPoint.IsNull() && blockHash == 0;
     }
 
+    void SetNull() const {
+        outPoint.SetNull();
+        blockHash = 0;
+    }
+
+    void swap(PublicMintChainData &to) {
+        std::swap(to.outPoint, outPoint);
+        std::swap(to.blockHash, blockHash);
+    }
+
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
@@ -45,29 +55,29 @@ public:
     }
 
 private:
-    COutPoint outPoint;
-    uint256 blockHash;
+    mutable COutPoint outPoint;
+    mutable uint256 blockHash;
 };
 
 class WitnessData
 {
 public:
-    WitnessData(const libzerocoin::ZerocoinParams* paramsIn) :
+    WitnessData(const libzeroct::ZeroCTParams* paramsIn) :
                 accumulator(&paramsIn->accumulatorParams), accumulatorWitness(paramsIn) {}
 
-    WitnessData(const libzerocoin::ZerocoinParams* paramsIn, libzerocoin::PublicCoin pubCoinIn,
-                libzerocoin::Accumulator accumulatorIn, uint256 blockAccumulatorHashIn) :
+    WitnessData(const libzeroct::ZeroCTParams* paramsIn, libzeroct::PublicCoin pubCoinIn,
+                libzeroct::Accumulator accumulatorIn, uint256 blockAccumulatorHashIn) :
                 accumulator(paramsIn, accumulatorIn.getValue()),
                 accumulatorWitness(paramsIn, accumulatorIn, pubCoinIn),
                 blockAccumulatorHash(blockAccumulatorHashIn), nCount(0) {}
 
-    WitnessData(libzerocoin::Accumulator accumulatorIn,
-                libzerocoin::AccumulatorWitness accumulatorWitnessIn, uint256 blockAccumulatorHashIn) :
+    WitnessData(libzeroct::Accumulator accumulatorIn,
+                libzeroct::AccumulatorWitness accumulatorWitnessIn, uint256 blockAccumulatorHashIn) :
                 accumulator(accumulatorIn), accumulatorWitness(accumulatorWitnessIn),
                 blockAccumulatorHash(blockAccumulatorHashIn), nCount(0) {}
 
-    WitnessData(const libzerocoin::ZerocoinParams* paramsIn, libzerocoin::Accumulator accumulatorIn,
-                libzerocoin::AccumulatorWitness accumulatorWitnessIn, uint256 blockAccumulatorHashIn,
+    WitnessData(const libzeroct::ZeroCTParams* paramsIn, libzeroct::Accumulator accumulatorIn,
+                libzeroct::AccumulatorWitness accumulatorWitnessIn, uint256 blockAccumulatorHashIn,
                 int nCountIn) : accumulator(accumulatorIn), accumulatorWitness(accumulatorWitnessIn),
                 blockAccumulatorHash(blockAccumulatorHashIn), nCount(nCountIn) {}
 
@@ -79,11 +89,11 @@ public:
         return blockAccumulatorHash;
     }
 
-    libzerocoin::Accumulator GetAccumulator() const {
+    libzeroct::Accumulator GetAccumulator() const {
         return accumulator;
     }
 
-    libzerocoin::AccumulatorWitness GetAccumulatorWitness() const {
+    libzeroct::AccumulatorWitness GetAccumulatorWitness() const {
         return accumulatorWitness;
     }
 
@@ -107,8 +117,8 @@ public:
     }
 
 private:
-    libzerocoin::Accumulator accumulator;
-    libzerocoin::AccumulatorWitness accumulatorWitness;
+    libzeroct::Accumulator accumulator;
+    libzeroct::AccumulatorWitness accumulatorWitness;
     uint256 blockAccumulatorHash;
     int nCount;
 
@@ -119,14 +129,14 @@ class PublicMintWitnessData
 {
 public:
     template <typename Stream>
-    PublicMintWitnessData(const libzerocoin::ZerocoinParams* p, Stream& strm) :
+    PublicMintWitnessData(const libzeroct::ZeroCTParams* p, Stream& strm) :
                           params(p), pubCoin(p), currentData(p), prevData(p), initialData(p)
     {
         strm >> *this;
     }
 
-    PublicMintWitnessData(const libzerocoin::ZerocoinParams* paramsIn, const libzerocoin::PublicCoin pubCoinIn,
-                          const PublicMintChainData chainDataIn, libzerocoin::Accumulator accumulatorIn,
+    PublicMintWitnessData(const libzeroct::ZeroCTParams* paramsIn, const libzeroct::PublicCoin pubCoinIn,
+                          const PublicMintChainData chainDataIn, libzeroct::Accumulator accumulatorIn,
                           uint256 blockAccumulatorHashIn) :
                           params(paramsIn), pubCoin(pubCoinIn), chainData(chainDataIn),
                           currentData(paramsIn, pubCoinIn, accumulatorIn, blockAccumulatorHashIn),
@@ -176,15 +186,15 @@ public:
         return prevData.GetBlockAccumulatorHash();
     }
 
-    libzerocoin::Accumulator GetAccumulator() const {
+    libzeroct::Accumulator GetAccumulator() const {
         return currentData.GetAccumulator();
     }
 
-    libzerocoin::AccumulatorWitness GetAccumulatorWitness() const {
+    libzeroct::AccumulatorWitness GetAccumulatorWitness() const {
         return currentData.GetAccumulatorWitness();
     }
 
-    libzerocoin::PublicCoin GetPublicCoin() const {
+    libzeroct::PublicCoin GetPublicCoin() const {
         return pubCoin;
     }
 
@@ -207,8 +217,8 @@ public:
     }
 
 private:
-    const libzerocoin::ZerocoinParams* params;
-    libzerocoin::PublicCoin pubCoin;
+    const libzeroct::ZeroCTParams* params;
+    libzeroct::PublicCoin pubCoin;
     PublicMintChainData chainData;
     mutable WitnessData currentData;
     mutable WitnessData prevData;

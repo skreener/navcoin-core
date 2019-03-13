@@ -54,7 +54,6 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
         // Credit
         //
         unsigned int i = 0;
-        unsigned int j = -1;
         bool fZero = false;
         BOOST_FOREACH(const CTxOut& txout, wtx.vout)
         {
@@ -88,32 +87,25 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 if (wtx.IsCoinStake())
                 {
                     // Generated (proof-of-stake)
-
                     if (hashPrev == hash)
                         continue; // last coinstake output
 
                     sub.type = TransactionRecord::Staked;
+
+                    if(txout.scriptPubKey.IsZeroCTMint())
+                    {
+                        sub.type = TransactionRecord::AnonTxRecv;
+                        sub.paymentId = wtx.vPaymentIds[i];
+                    }
+
                     sub.credit = nNet > 0 ? nNet : wtx.GetValueOut() - nDebit - wtx.GetValueOutCFund();
                     hashPrev = hash;
                 }
-                if(txout.scriptPubKey.IsZerocoinMint())
+                else if(txout.scriptPubKey.IsZeroCTMint())
                 {
-                    j++;
                     sub.type = TransactionRecord::AnonTxRecv;
-                    unsigned int k = -1;
-                    unsigned int h = -1;
-                    for (auto &it: wtx.vOrderForm)
-                        if (it.first == "Message") {
-                            k++;
-                            if (k == j)
-                                sub.paymentId = it.second;
-                        }
-                    for (auto &it: wtx.vOrderForm)
-                        if (it.first == "Amount") {
-                            h++;
-                            if (h == j)
-                                sub.credit = stoll(it.second);
-                        }
+                    sub.paymentId = wtx.vPaymentIds[i];
+                    sub.credit = wtx.vAmounts[i];
                     fZero = true;
                 }
                 if(txout.scriptPubKey.IsCommunityFundContribution())
@@ -163,14 +155,12 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             CAmount nTxFee = nDebit - wtx.GetValueOut();
 
             bool fZero = false;
-            unsigned int j = -1;
 
             for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
             {
                 const CTxOut& txout = wtx.vout[nOut];
 
-                if(txout.scriptPubKey.IsZerocoinMint()) {
-                    j++;
+                if(txout.scriptPubKey.IsZeroCTMint()) {
                     fZero = true;
                 }
 
@@ -208,29 +198,15 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 }
                 sub.debit = -nValue;
 
-                if(txout.scriptPubKey.IsZerocoinMint())
+                if(txout.scriptPubKey.IsZeroCTMint())
                 {
                     sub.type = TransactionRecord::AnonTxSend;
-                    unsigned int k = -1;
-                    unsigned int h = -1;
-                    for (auto &it: wtx.vOrderForm)
-                        if (it.first == "Message") {
-                            k++;
-                            if (k == j)
-                                sub.paymentId = it.second;
-                        }
-                    for (auto &it: wtx.vOrderForm)
-                        if (it.first == "Amount") {
-                            h++;
-                            if (h == j)
-                                sub.debit = stoll(it.second);
-                        }
+                    sub.paymentId = wtx.vPaymentIds[nOut];
+                    sub.debit = wtx.vAmounts[nOut];
                 }
 
-                if(txout.scriptPubKey.IsCommunityFundContribution())
-                {
+                if (txout.scriptPubKey.IsCommunityFundContribution())
                     sub.type = TransactionRecord::CFund;
-                }
 
                 if (txout.IsFee())
                     sub.type = TransactionRecord::Fee;

@@ -18,12 +18,12 @@
 #include <fstream>
 #include <exception>
 #include "streams.h"
-#include "libzerocoin/bignum.h"
-#include "libzerocoin/BulletproofsRangeproof.h"
-#include "libzerocoin/ParamGeneration.h"
-#include "libzerocoin/Coin.h"
-#include "libzerocoin/CoinSpend.h"
-#include "libzerocoin/Accumulator.h"
+#include "libzeroct/bignum.h"
+#include "libzeroct/BulletproofsRangeproof.h"
+#include "libzeroct/ParamGeneration.h"
+#include "libzeroct/Coin.h"
+#include "libzeroct/CoinSpend.h"
+#include "libzeroct/Accumulator.h"
 #include "test/test_navcoin.h"
 
 using namespace std;
@@ -40,10 +40,10 @@ using namespace std;
 //
 // The following routine exercises most of the core functions of
 // the library. We've commented it as well as possible to give
-// you the flavor of how libzerocoin works.
+// you the flavor of how libzeroct works.
 //
-// For details on Zerocoin integration, see the libzerocoin wiki
-// at: https://github.com/Zerocoin/libzerocoin/wiki
+// For details on Zerocoin integration, see the libzeroct wiki
+// at: https://github.com/Zerocoin/libzeroct/wiki
 //
 
 bool
@@ -75,7 +75,7 @@ ZerocoinTutorial()
         testModulus.SetHex(std::string(TUTORIAL_TEST_MODULUS));
 
         // Set up the Zerocoin Params object
-        libzerocoin::ZerocoinParams* params = new libzerocoin::ZerocoinParams(testModulus);
+        libzeroct::ZeroCTParams* params = new libzeroct::ZeroCTParams(testModulus);
 
         CKey privKey;
         CPubKey pubKey;
@@ -92,9 +92,9 @@ ZerocoinTutorial()
         CBigNum blindingCommitment1 = params->coinCommitmentGroup.g.pow_mod(obfuscation_j1, params->coinCommitmentGroup.modulus).mul_mod(params->coinCommitmentGroup.h.pow_mod(obfuscation_k1, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
         CBigNum blindingCommitment2 = params->coinCommitmentGroup.g.pow_mod(obfuscation_j2, params->coinCommitmentGroup.modulus).mul_mod(params->coinCommitmentGroup.h.pow_mod(obfuscation_k2, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
 
-        libzerocoin::ObfuscationValue obfuscation_j = make_pair(obfuscation_j1, obfuscation_j2);
-        libzerocoin::ObfuscationValue obfuscation_k = make_pair(obfuscation_k1, obfuscation_k2);
-        libzerocoin::BlindingCommitment blindingCommitment = make_pair(blindingCommitment1, blindingCommitment2);
+        libzeroct::ObfuscationValue obfuscation_j = make_pair(obfuscation_j1, obfuscation_j2);
+        libzeroct::ObfuscationValue obfuscation_k = make_pair(obfuscation_k1, obfuscation_k2);
+        libzeroct::BlindingCommitment blindingCommitment = make_pair(blindingCommitment1, blindingCommitment2);
 
         /********************************************************************/
         // What is it:      Coin generation
@@ -112,9 +112,9 @@ ZerocoinTutorial()
         // along with a series of currency inputs totaling the assigned value of one zerocoin.
         CBigNum rpdata;
 
-        libzerocoin::PublicCoin pubCoin(params, pubKey, blindingCommitment, "test_payment_id", COIN, &rpdata);
+        libzeroct::PublicCoin pubCoin(params, pubKey, blindingCommitment, "test_payment_id", COIN, &rpdata);
 
-        libzerocoin::PrivateCoin newCoin(params, privKey, pubCoin.getPubKey(), blindingCommitment, pubCoin.getValue(), pubCoin.getPaymentId(), pubCoin.getAmount());
+        libzeroct::PrivateCoin newCoin(params, privKey, pubCoin.getPubKey(), blindingCommitment, pubCoin.getValue(), pubCoin.getPaymentId(), pubCoin.getAmount());
 
         if (!newCoin.isValid()) {
             cout << "Error calculating private parameters of new zerocoin." << endl;
@@ -138,8 +138,8 @@ ZerocoinTutorial()
 
         BulletproofsRangeproof bprp(&params->coinCommitmentGroup);
 
-        std::vector<CBigNum> values;
-        std::vector<CBigNum> gammas;
+        CBN_vector values;
+        CBN_vector gammas;
 
         values.push_back(newCoin.getAmount());
         gammas.push_back(rpdata);
@@ -148,7 +148,7 @@ ZerocoinTutorial()
 
         CBN_matrix mValueCommitments;
         std::vector<BulletproofsRangeproof> proofs;
-        std::vector<CBigNum> valueCommitments = bprp.GetValueCommitments();
+        CBN_vector valueCommitments = bprp.GetValueCommitments();
 
         proofs.push_back(bprp);
         mValueCommitments.push_back(valueCommitments);
@@ -189,7 +189,7 @@ ZerocoinTutorial()
         /********************************************************************/
 
         // Deserialize the public coin into a fresh object.
-        libzerocoin::PublicCoin pubCoinNew(params, serializedCoin);
+        libzeroct::PublicCoin pubCoinNew(params, serializedCoin);
 
         // Now make sure the coin is valid.
         if (!pubCoinNew.isValid()) {
@@ -217,11 +217,11 @@ ZerocoinTutorial()
         /********************************************************************/
 
         // Create an empty accumulator object
-        libzerocoin::Accumulator accumulator(params);
+        libzeroct::Accumulator accumulator(params);
 
         // Add several coins to it (we'll generate them here on the fly).
         for (uint32_t i = 0; i < COINS_TO_ACCUMULATE; i++) {
-            libzerocoin::PublicCoin testCoin(params, pubKey, blindingCommitment, "", COIN, &rpdata);
+            libzeroct::PublicCoin testCoin(params, pubKey, blindingCommitment, "", COIN, &rpdata);
             accumulator += testCoin;
         }
 
@@ -238,7 +238,7 @@ ZerocoinTutorial()
         serializedAccumulator << accumulator;
 
         // Deserialize the accumulator object
-        libzerocoin::Accumulator newAccumulator(params, serializedAccumulator);
+        libzeroct::Accumulator newAccumulator(params, serializedAccumulator);
 
         // We can now continue accumulating things into the accumulator
         // we just deserialized. For example, let's put in the coin
@@ -269,7 +269,7 @@ ZerocoinTutorial()
         //
         // To generate the witness, we start with this accumulator and
         // add the public half of the coin we want to spend.
-        libzerocoin::AccumulatorWitness witness(params, accumulator, newCoin.getPublicCoin());
+        libzeroct::AccumulatorWitness witness(params, accumulator, newCoin.getPublicCoin());
 
         // Add the public half of "newCoin" to the Accumulator itself.
         accumulator += newCoin.getPublicCoin();
@@ -279,10 +279,11 @@ ZerocoinTutorial()
         // totalling to the value of one zerocoin (minus transaction fees).
 
         CBigNum r;
+        CBigNum r2;
 
         // Construct the CoinSpend object. This acts like a signature on the
         // transaction.
-        libzerocoin::CoinSpend spend(params, newCoin, accumulator, 0, witness, 0, libzerocoin::SpendType::SPEND, obfuscation_j, obfuscation_k, r);
+        libzeroct::CoinSpend spend(params, newCoin, accumulator, 0, witness, 0, libzeroct::SpendType::SPEND, obfuscation_j, obfuscation_k, r, r2);
 
         // This is a sanity check. The CoinSpend object should always verify,
         // but why not check before we put it onto the wire?
@@ -291,11 +292,20 @@ ZerocoinTutorial()
             return false;
         }
 
+        libzeroct::CoinSpend stake(params, newCoin, accumulator, 0, witness, 0, libzeroct::SpendType::STAKE, obfuscation_j, obfuscation_k, r, r2);
+        if (!stake.Verify(accumulator)) {
+            cout << "ERROR: Our new CoinStake transaction did not verify!" << endl;
+            return false;
+        }
+
         // Serialize the CoinSpend object into a buffer.
         CDataStream serializedCoinSpend(SER_NETWORK, PROTOCOL_VERSION);
         serializedCoinSpend << spend;
 
-        cout << "Successfully generated a coin spend transaction." << endl;
+        CDataStream serializedCoinStake(SER_NETWORK, PROTOCOL_VERSION);
+        serializedCoinStake << stake;
+
+        cout << "Successfully generated a CoinSpend and a CoinStake transaction." << endl;
 
         /********************************************************************/
         // What is it:      Coin spend verification
@@ -309,7 +319,8 @@ ZerocoinTutorial()
         /********************************************************************/
 
         // Deserialize the CoinSpend intro a fresh object
-        libzerocoin::CoinSpend newSpend(params, serializedCoinSpend);
+        libzeroct::CoinSpend newSpend(params, serializedCoinSpend);
+        libzeroct::CoinSpend newStake(params, serializedCoinStake);
 
         // Create a new metadata object to contain the hash of the received
         // ZEROCOIN_SPEND transaction. If we were a real client we'd actually
@@ -322,7 +333,12 @@ ZerocoinTutorial()
         // Verify that the spend is valid with respect to the Accumulator
         // and the Metadata
         if (!newSpend.Verify(accumulator)) {
-            cout << "ERROR: The CoinSpend transaction did not verify!" << endl;
+            cout << "ERROR: The serialized CoinSpend transaction did not verify!" << endl;
+            return false;
+        }
+
+        if (!newStake.Verify(accumulator)) {
+            cout << "ERROR: The serialized CoinStake transaction did not verify!" << endl;
             return false;
         }
 
@@ -332,7 +348,7 @@ ZerocoinTutorial()
         // The serial number is stored as a CBigNum.
         CBigNum serialNumber = newSpend.getCoinSerialNumber();
 
-        cout << "Successfully verified a coin spend transaction." << endl;
+        cout << "Successfully verified the CoinSpend and CoinStake proofs." << endl;
         cout << endl << "Coin serial number is:" << endl << serialNumber << endl;
 
         // We're done
@@ -346,10 +362,10 @@ ZerocoinTutorial()
     return false;
 }
 
-BOOST_FIXTURE_TEST_SUITE(tutorial_libzerocoin_tests, BasicTestingSetup)
-BOOST_AUTO_TEST_CASE(tutorial_libzerocoin_tests)
+BOOST_FIXTURE_TEST_SUITE(tutorial_libzeroct_tests, BasicTestingSetup)
+BOOST_AUTO_TEST_CASE(tutorial_libzeroct_tests)
 {
-    cout << "libzerocoin v" << ZEROCOIN_VERSION_STRING << " tutorial." << endl << endl;
+    cout << "libzeroct v" << ZEROCOIN_VERSION_STRING << " tutorial." << endl << endl;
 
     ZerocoinTutorial();
 }

@@ -21,14 +21,14 @@
 #include <cstdlib>
 #include <sys/time.h>
 #include "streams.h"
-#include "libzerocoin/ParamGeneration.h"
-#include "libzerocoin/Coin.h"
-#include "libzerocoin/CoinSpend.h"
-#include "libzerocoin/Accumulator.h"
+#include "libzeroct/ParamGeneration.h"
+#include "libzeroct/Coin.h"
+#include "libzeroct/CoinSpend.h"
+#include "libzeroct/Accumulator.h"
 #include "test/test_navcoin.h"
 
 using namespace std;
-using namespace libzerocoin;
+using namespace libzeroct;
 
 #define COLOR_STR_GREEN   "\033[32m"
 #define COLOR_STR_NORMAL  "\033[0m"
@@ -44,7 +44,7 @@ uint32_t    ggSuccessfulTests = 0;
 PrivateCoin    *ggCoins[TESTS_COINS_TO_ACCUMULATE];
 
 // Global params
-ZerocoinParams *gg_Params;
+ZeroCTParams *gg_Params;
 CKey privKey_;
 CPubKey pubKey_;
 CBigNum obfuscation_jj1;
@@ -53,9 +53,9 @@ CBigNum obfuscation_kk1;
 CBigNum obfuscation_kk2;
 CBigNum blindingCommitment1_;
 CBigNum blindingCommitment2_;
-libzerocoin::ObfuscationValue obfuscation_jj;
-libzerocoin::ObfuscationValue obfuscation_kk;
-libzerocoin::BlindingCommitment blindingCommitment_;
+libzeroct::ObfuscationValue obfuscation_jj;
+libzeroct::ObfuscationValue obfuscation_kk;
+libzeroct::BlindingCommitment blindingCommitment_;
 
 //////////
 // Utility routines
@@ -229,7 +229,7 @@ Testb_ParamGen()
     try {
         timer.start();
         // Instantiating testParams runs the parameter generation code
-        ZerocoinParams testParams(gGetTestModulus(),ZEROCOIN_DEFAULT_SECURITYLEVEL);
+        ZeroCTParams testParams(gGetTestModulus(),ZEROCOIN_DEFAULT_SECURITYLEVEL);
         timer.stop();
 
         cout << "\tPARAMGEN ELAPSED TIME: " << timer.duration() << " ms\t" << timer.duration()*0.001 << " s" << endl;
@@ -311,8 +311,8 @@ Testb_MintCoin()
             BulletproofsRangeproof bprp(&gg_Params->coinCommitmentGroup);
             CBN_matrix mValueCommitments;
 
-            std::vector<CBigNum> values;
-            std::vector<CBigNum> gammas;
+            CBN_vector values;
+            CBN_vector gammas;
 
             values.push_back(CBigNum(ggCoins[i]->getAmount()));
             gammas.push_back(rpdata);
@@ -326,7 +326,7 @@ Testb_MintCoin()
             std::vector<BulletproofsRangeproof> proofs;
             proofs.push_back(bprp);
 
-            std::vector<CBigNum> valueCommitments = bprp.GetValueCommitments();
+            CBN_vector valueCommitments = bprp.GetValueCommitments();
             mValueCommitments.push_back(valueCommitments);
 
             timer.start();
@@ -383,10 +383,11 @@ Testb_MintAndSpend()
         cout << "\tWITNESS ELAPSED TIME: \n\t\tTotal: " << timer.duration() << " ms\t" << timer.duration()*0.001 << " s\n\t\tPer Element: " << timer.duration()/TESTS_COINS_TO_ACCUMULATE << " ms\t" << (timer.duration()/TESTS_COINS_TO_ACCUMULATE)*0.001 << " s" << endl;
 
         CBigNum r;
+        CBigNum r2;
 
         // Now spend the coin
         timer.start();
-        CoinSpend spend(gg_Params, *(ggCoins[0]), acc, 0, wAcc, 0, SpendType::SPEND, obfuscation_jj, obfuscation_kk, r);
+        CoinSpend spend(gg_Params, *(ggCoins[0]), acc, 0, wAcc, 0, SpendType::SPEND, obfuscation_jj, obfuscation_kk, r, r2);
         timer.stop();
 
         cout << "\tSPEND ELAPSED TIME: " << timer.duration() << " ms\t" << timer.duration()*0.001 << " s" << endl;
@@ -421,7 +422,7 @@ void
 Testb_RunAllTests()
 {
     // Make a new set of parameters from a random RSA modulus
-    gg_Params = new ZerocoinParams(gGetTestModulus());
+    gg_Params = new ZeroCTParams(gGetTestModulus());
 
     // Generate a new Key Pair
     privKey_.MakeNewKey(false);
@@ -466,11 +467,11 @@ Testb_RunAllTests()
     cout << ggSuccessfulTests << " out of " << ggNumTests << " tests passed." << endl << endl;
     delete gg_Params;
 }
-BOOST_FIXTURE_TEST_SUITE(libzerocoin_tests, BasicTestingSetup)
+BOOST_FIXTURE_TEST_SUITE(libzeroct_tests, BasicTestingSetup)
 
 BOOST_AUTO_TEST_CASE(benchmark_test)
 {
-    cout << "libzerocoin v" << ZEROCOIN_VERSION_STRING << " benchmark utility." << endl << endl;
+    cout << "libzeroct v" << ZEROCOIN_VERSION_STRING << " benchmark utility." << endl << endl;
 
     Testb_RunAllTests();
 }

@@ -299,9 +299,9 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
 
             CTxDestination address = a.Get();
 
-            if (address.type() == typeid(libzerocoin::CPrivateAddress)) {
-                boost::get<libzerocoin::CPrivateAddress>(address).SetPaymentId(rcp.message.toStdString());
-                boost::get<libzerocoin::CPrivateAddress>(address).SetAmount(rcp.amount);
+            if (address.type() == typeid(libzeroct::CPrivateAddress)) {
+                boost::get<libzeroct::CPrivateAddress>(address).SetPaymentId(rcp.message.toStdString());
+                boost::get<libzeroct::CPrivateAddress>(address).SetAmount(rcp.amount);
             }
 
             // Parse NavCoin address

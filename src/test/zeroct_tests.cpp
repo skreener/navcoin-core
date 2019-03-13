@@ -20,14 +20,14 @@
 // #include <curses.h>
 #include <exception>
 #include "streams.h"
-#include "libzerocoin/ParamGeneration.h"
-#include "libzerocoin/Coin.h"
-#include "libzerocoin/CoinSpend.h"
-#include "libzerocoin/Accumulator.h"
+#include "libzeroct/ParamGeneration.h"
+#include "libzeroct/Coin.h"
+#include "libzeroct/CoinSpend.h"
+#include "libzeroct/Accumulator.h"
 #include "test/test_navcoin.h"
 
 using namespace std;
-using namespace libzerocoin;
+using namespace libzeroct;
 
 #define COLOR_STR_GREEN   "\033[32m"
 #define COLOR_STR_NORMAL  "\033[0m"
@@ -48,7 +48,7 @@ uint32_t	gSerialNumberSize	= 0;
 PrivateCoin    *gCoins[TESTS_COINS_TO_ACCUMULATE];
 
 // Global params
-ZerocoinParams *g_Params;
+ZeroCTParams *g_Params;
 CKey privKey;
 CPubKey pubKey;
 CBigNum obfuscation_j1;
@@ -57,9 +57,9 @@ CBigNum obfuscation_k1;
 CBigNum obfuscation_k2;
 CBigNum blindingCommitment1;
 CBigNum blindingCommitment2;
-libzerocoin::ObfuscationValue obfuscation_j;
-libzerocoin::ObfuscationValue obfuscation_k;
-libzerocoin::BlindingCommitment blindingCommitment;
+libzeroct::ObfuscationValue obfuscation_j;
+libzeroct::ObfuscationValue obfuscation_k;
+libzeroct::BlindingCommitment blindingCommitment;
 
 //////////
 // Utility routines
@@ -199,7 +199,7 @@ Test_ParamGen()
 
     try {
         // Instantiating testParams runs the parameter generation code
-        ZerocoinParams testParams(GetTestModulus(),ZEROCOIN_DEFAULT_SECURITYLEVEL);
+        ZeroCTParams testParams(GetTestModulus(),ZEROCOIN_DEFAULT_SECURITYLEVEL);
     } catch (runtime_error e) {
         cout << e.what() << endl;
         result = false;
@@ -289,7 +289,11 @@ Test_EqualityPoK()
             // both commitments to the same value
             CommitmentProofOfKnowledge pok(&g_Params->accumulatorParams.accumulatorPoKCommitmentGroup,
                                            &g_Params->serialNumberSoKCommitmentGroup,
-                                           one, two);
+                                           one, two,
+                                           g_Params->accumulatorParams.accumulatorPoKCommitmentGroup.g,
+                                           g_Params->accumulatorParams.accumulatorPoKCommitmentGroup.h,
+                                           g_Params->serialNumberSoKCommitmentGroup.g,
+                                           g_Params->serialNumberSoKCommitmentGroup.h);
 
             // Serialize the proof into a stream
             CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
@@ -298,7 +302,11 @@ Test_EqualityPoK()
             // Deserialize back into a PoK object
             CommitmentProofOfKnowledge newPok(&g_Params->accumulatorParams.accumulatorPoKCommitmentGroup,
                                               &g_Params->serialNumberSoKCommitmentGroup,
-                                              ss);
+                                              ss,
+                                              g_Params->accumulatorParams.accumulatorPoKCommitmentGroup.g,
+                                              g_Params->accumulatorParams.accumulatorPoKCommitmentGroup.h,
+                                              g_Params->serialNumberSoKCommitmentGroup.g,
+                                              g_Params->serialNumberSoKCommitmentGroup.h);
 
             if (newPok.Verify(one.getCommitmentValue(), two.getCommitmentValue()) != true) {
                 return false;
@@ -312,7 +320,11 @@ Test_EqualityPoK()
             ss2[15] = 0;
             CommitmentProofOfKnowledge newPok2(&g_Params->accumulatorParams.accumulatorPoKCommitmentGroup,
                                                &g_Params->serialNumberSoKCommitmentGroup,
-                                               ss2);
+                                               ss2,
+                                               g_Params->accumulatorParams.accumulatorPoKCommitmentGroup.g,
+                                               g_Params->accumulatorParams.accumulatorPoKCommitmentGroup.h,
+                                               g_Params->serialNumberSoKCommitmentGroup.g,
+                                               g_Params->serialNumberSoKCommitmentGroup.h);
 
             // If the tampered proof verifies, that's a failure!
             if (newPok2.Verify(one.getCommitmentValue(), two.getCommitmentValue()) == true) {
@@ -427,8 +439,9 @@ Test_MintAndSpend()
         PrivateCoin myCoin(g_Params,cc);
 
         CBigNum r;
+        CBigNum r2;
 
-        CoinSpend spend(g_Params, myCoin, acc, 0, wAcc, 0, SpendType::SPEND, obfuscation_j, obfuscation_k, r);
+        CoinSpend spend(g_Params, myCoin, acc, 0, wAcc, 0, SpendType::SPEND, obfuscation_j, obfuscation_k, r, r2);
         spend.Verify(acc);
 
         // Serialize the proof and deserialize into newSpend
@@ -457,7 +470,7 @@ void
 Test_RunAllTests()
 {
     // Make a new set of parameters from a random RSA modulus
-    g_Params = new ZerocoinParams(GetTestModulus());
+    g_Params = new ZeroCTParams(GetTestModulus());
 
     // Generate a new Key Pair
     privKey.MakeNewKey(false);
@@ -508,10 +521,10 @@ Test_RunAllTests()
     delete g_Params;
 }
 
-BOOST_FIXTURE_TEST_SUITE(libzerocoin_tests, BasicTestingSetup)
-BOOST_AUTO_TEST_CASE(libzerocoin_tests)
+BOOST_FIXTURE_TEST_SUITE(libzeroct_tests, BasicTestingSetup)
+BOOST_AUTO_TEST_CASE(libzeroct_tests)
 {
-    cout << "libzerocoin v" << ZEROCOIN_VERSION_STRING << " test utility." << endl << endl;
+    cout << "libzeroct v" << ZEROCOIN_VERSION_STRING << " test utility." << endl << endl;
 
     Test_RunAllTests();
 }

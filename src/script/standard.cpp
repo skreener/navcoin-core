@@ -6,7 +6,7 @@
 
 #include "chainparams.h"
 #include "script/standard.h"
-#include "libzerocoin/Keys.h"
+#include "libzeroct/Keys.h"
 #include "pubkey.h"
 #include "script/script.h"
 #include "script/sign.h"
@@ -68,7 +68,7 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
 
     vSolutionsRet.clear();
 
-    if (scriptPubKey.IsZerocoinMint())
+    if (scriptPubKey.IsZeroCTMint())
     {
         typeRet = TX_ZEROCOIN;
         CPubKey p;
@@ -76,7 +76,7 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
         vector<unsigned char> i;
         vector<unsigned char> a;
         vector<unsigned char> ac;
-        if(!scriptPubKey.ExtractZerocoinMintData(p, c, i, a, ac))
+        if(!scriptPubKey.ExtractZeroCTMintData(p, c, i, a, ac))
             return false;
         vector<unsigned char> vp(p.begin(), p.end());
         vSolutionsRet.push_back(vp);
@@ -393,27 +393,23 @@ public:
         return true;
     }
 
-    bool operator()(const libzerocoin::CPrivateAddress &dest) const {
-        CPubKey zpk; libzerocoin::BlindingCommitment bc;
+    bool operator()(const libzeroct::CPrivateAddress &dest) const {
+        CPubKey zpk; libzeroct::BlindingCommitment bc;
         if(!dest.GetPubKey(zpk))
             return false;
         if(!dest.GetBlindingCommitment(bc))
             return false;
 
         CBigNum tempdata;
-        libzerocoin::PublicCoin pc(dest.GetParams(), zpk, bc, dest.GetPaymentId(), dest.GetAmount(), &tempdata);
+        libzeroct::PublicCoin pc(dest.GetParams(), zpk, bc, dest.GetPaymentId(), dest.GetAmount(), &tempdata);
 
         dest.SetGamma(tempdata);
         script->clear();
 
-        *script << OP_ZEROCOINMINT << pc.getPubKey() << pc.getCoinValue().getvch()
+        *script << OP_ZEROCTMINT << pc.getPubKey() << pc.getCoinValue().getvch()
                 << pc.getAmountCommitment().getvch() << pc.getPaymentId().getvch()
                 << pc.getAmount().getvch();
 
-        LogPrintf("GENERATED mint with amcom %s\n%s %s = %s\n", pc.getAmountCommitment().ToString(16).substr(0,8),dest.GetAmount(),tempdata.ToString(16).substr(0,8),
-                  dest.GetParams()->coinCommitmentGroup.g.pow_mod(tempdata, dest.GetParams()->coinCommitmentGroup.modulus).mul_mod(
-                      dest.GetParams()->coinCommitmentGroup.g2.pow_mod(dest.GetAmount(), dest.GetParams()->coinCommitmentGroup.modulus),
-                      dest.GetParams()->coinCommitmentGroup.modulus).ToString(16).substr(0,8));
         return true;
     }
 };

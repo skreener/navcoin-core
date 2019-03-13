@@ -536,7 +536,7 @@ public:
         READWRITE(vPaymentRequestVotes);
         READWRITE(vProposalVotes);
         READWRITE(nMoneySupply);
-        if((this->nVersion & VERSIONBITS_TOP_BITS_ZEROCOIN) == VERSIONBITS_TOP_BITS_ZEROCOIN) {
+        if((this->nVersion & VERSIONBITS_TOP_BITS_ZEROCT) == VERSIONBITS_TOP_BITS_ZEROCT) {
             READWRITE(nAccumulatorValue);
             READWRITE(nAccumulatedPrivateFee);
             READWRITE(nAccumulatedPublicFee);

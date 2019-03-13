@@ -150,8 +150,8 @@ const char* GetOpName(opcodetype opcode)
     case OP_COINSTAKE              : return "OP_COINSTAKE";
 
     // zerocoin
-    case OP_ZEROCOINMINT           : return "OP_ZEROCOINMINT";
-    case OP_ZEROCOINSPEND          : return "OP_ZEROCOINSPEND";
+    case OP_ZEROCTMINT           : return "OP_ZEROCTMINT";
+    case OP_ZEROCTSPEND          : return "OP_ZEROCTSPEND";
     case OP_FEE                    : return "OP_FEE";
 
     case OP_INVALIDOPCODE          : return "OP_INVALIDOPCODE";
@@ -253,11 +253,11 @@ bool CScript::IsPayToPublicKey() const
       (*this)[34] == OP_CHECKSIG);
 }
 
-bool CScript::IsZerocoinMint() const
+bool CScript::IsZeroCTMint() const
 {
     //fast test for Zerocoin Mint CScripts
     return (this->size() > 0 &&
-        (*this)[0] == OP_ZEROCOINMINT);
+        (*this)[0] == OP_ZEROCTMINT);
 }
 
 bool CScript::IsFee() const
@@ -266,12 +266,12 @@ bool CScript::IsFee() const
         (*this)[0] == OP_FEE);
 }
 
-bool CScript::IsZerocoinSpend() const
+bool CScript::IsZeroCTSpend() const
 {
     if (this->empty())
         return false;
 
-    return ((*this)[0] == OP_ZEROCOINSPEND);
+    return ((*this)[0] == OP_ZEROCTSPEND);
 }
 
 bool CScript::IsCommunityFundContribution() const
@@ -344,9 +344,9 @@ bool CScript::ExtractVote(uint256 &hash, bool &vote) const
     return true;
 }
 
-bool CScript::ExtractZerocoinMintData(CPubKey &zkey, std::vector<unsigned char> &commitment, std::vector<unsigned char> &paymentid, std::vector<unsigned char> &obfamount, std::vector<unsigned char> &amcommitment) const
+bool CScript::ExtractZeroCTMintData(CPubKey &zkey, std::vector<unsigned char> &commitment, std::vector<unsigned char> &paymentid, std::vector<unsigned char> &obfamount, std::vector<unsigned char> &amcommitment) const
 {
-    if(!IsZerocoinMint())
+    if(!IsZeroCTMint())
         return false;
 
     CPubKey key;

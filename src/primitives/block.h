@@ -12,8 +12,8 @@
 #include "hash.h"
 #include "zeroaccumulators.h"
 
-/** Zerocoin blocks version bits need to signal this */
-static const int32_t VERSIONBITS_TOP_BITS_ZEROCOIN = 0x80000000UL;
+/** ZeroCT blocks version bits need to signal this */
+static const int32_t VERSIONBITS_TOP_BITS_ZEROCT = 0x80000000UL;
 
 /** Nodes collect new transactions into a block, hash them into a hash tree,
  * and scan through nonce values to make the block's hash satisfy proof-of-work

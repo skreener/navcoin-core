@@ -2,8 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "libzerocoin/Keys.h"
-#include "libzerocoin/Coin.h"
+#include "libzeroct/Keys.h"
+#include "libzeroct/Coin.h"
 #include "script/script.h"
 #include "script/standard.h"
 #include "key.h"
@@ -17,7 +17,7 @@
 #include <boost/test/unit_test.hpp>
 
 using namespace std;
-using namespace libzerocoin;
+using namespace libzeroct;
 
 BOOST_FIXTURE_TEST_SUITE(zeroct_mint_script, BasicTestingSetup)
 
@@ -29,7 +29,7 @@ BOOST_AUTO_TEST_CASE(zeroct_mint_script)
     CBigNum testModulus;
     testModulus.SetHex(std::string(TUTORIAL_TEST_MODULUS));
 
-    ZerocoinParams* params = new ZerocoinParams(testModulus);
+    ZeroCTParams* params = new ZeroCTParams(testModulus);
 
     CKey zk;
     ObfuscationValue oj;
@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_CASE(zeroct_mint_script)
     vector<unsigned char> a;
     vector<unsigned char> ac;
 
-    BOOST_CHECK(mintScript.ExtractZerocoinMintData(p, c, i, a, ac));
+    BOOST_CHECK(mintScript.ExtractZeroCTMintData(p, c, i, a, ac));
 
     CBigNum cv;
     cv.setvch(c);

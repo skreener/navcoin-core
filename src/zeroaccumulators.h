@@ -6,9 +6,9 @@
 #define NAV_ACCUMULATORMAP_H
 
 #include "primitives/block.h"
-#include "libzerocoin/Accumulator.h"
+#include "libzeroct/Accumulator.h"
 
 class CBlock;
 
-bool CalculateAccumulatorChecksum(const CBlock* block, libzerocoin::Accumulator& ac, std::vector<std::pair<CBigNum, uint256>>& vPubCoins);
+bool CalculateAccumulatorChecksum(const CBlock* block, libzeroct::Accumulator& ac, std::vector<std::pair<CBigNum, uint256>>& vPubCoins);
 #endif //NAV_ACCUMULATORMAP_H
