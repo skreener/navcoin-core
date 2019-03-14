@@ -3695,14 +3695,13 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     return state.DoS(100, error("CheckBlock() : payment request not mature enough."));
                 if(block.vtx[0].vout[i].nValue != prequest.nAmount || prequest.fState != CFund::ACCEPTED || proposal.Address != CNavCoinAddress(address).ToString())
                     return state.DoS(100, error("CheckBlock() : coinbase output does not match an accepted payment request"));
-                else {
-                    std::vector<std::pair<uint256, CFund::CPaymentRequest> > paymentRequestIndex;
-                    prequest.paymenthash = block.GetHash();
-                    paymentRequestIndex.push_back(make_pair(prequest.hash, prequest));
-                    nCreated -= block.vtx[0].vout[i].nValue;
-                    if (paymentRequestIndex.size() > 0 && !pblocktree->UpdatePaymentRequestIndex(paymentRequestIndex))
-                        return AbortNode(state, "Failed to write payment request index");
-                }
+                if(prequest.paymenthash != uint256() && pindex->pprev->nHeight >= Params().GetConsensus().nHeightv452Fork)
+                    return state.DoS(100, error("CheckBlock() : coinbase output tries to pay an already paid payment request"));
+                std::vector<std::pair<uint256, CFund::CPaymentRequest> > paymentRequestIndex;
+                prequest.paymenthash = block.GetHash();
+                paymentRequestIndex.push_back(make_pair(prequest.hash, prequest));
+                if (!pblocktree->UpdatePaymentRequestIndex(paymentRequestIndex))
+                    return AbortNode(state, "Failed to write payment request index");
             } else {
                 return state.DoS(100, error("CheckBlock() : coinbase strdzeel %s array does not include a string (%d) at position %d",
                                             block.vtx[0].strDZeel, metadata[nPaymentRequestsCount].type(), nPaymentRequestsCount));

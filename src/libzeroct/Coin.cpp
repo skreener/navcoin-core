@@ -107,10 +107,6 @@ PublicCoin::PublicCoin(const ZeroCTParams* p, const CPubKey destPubKey, const Bl
             this->pubKey = key.GetPubKey();
             this->value = c;
             this->amountcommitment = ac;
-            LogPrintf("Generated mint script with ac %s (am %s sigma %s)\n",
-                      ac.ToString(16).substr(0,8),
-                      amount,
-                      sigma.ToString(16).substr(0,8));
 
             this->coincommitment = epsilon;
             this->version = CURRENT_VERSION;

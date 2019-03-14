@@ -24,7 +24,7 @@ bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, v
 bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const std::map<CBigNum,
                              PublicMintWitnessData>& mapWitness, const CCoinsViewCache& view,
                              const CScript& scriptPubKey, const CAmount& amount, CScript& ret, CBigNum& r,
-                             CBigNum& r2, bool fStake);
+                             bool fStake);
 bool ProduceCoinSpend(const BaseSignatureCreator& creator, const std::map<CBigNum, PublicMintWitnessData>& mapWitness,
                       const CCoinsViewCache& view, const CScript& fromPubKey, SignatureData& sigdata,
                       bool fCoinStake, CAmount amount);

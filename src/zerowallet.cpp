@@ -51,7 +51,7 @@ bool DestinationToVecRecipients(CAmount nValue, const CTxDestination &address, v
 }
 
 bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const std::map<CBigNum, PublicMintWitnessData>& mapWitness, const CCoinsViewCache& view, const CScript& scriptPubKey, const CAmount& amount,
-                             CScript& sigdata, CBigNum& r, CBigNum& r2, bool fStake)
+                             CScript& sigdata, CBigNum& r, bool fStake)
 {
     if (!scriptPubKey.IsZeroCTMint())
         return error(strprintf("Transaction output script is not a ZeroCT mint."));
@@ -103,7 +103,7 @@ bool PrepareAndSignCoinSpend(const BaseSignatureCreator& creator, const std::map
                                                    chainActive.Tip()->nHeight - (fStake ? COINBASE_MATURITY : 0)))
         return error(strprintf("Error calculating witness for mint: %s", strError));
 
-    if (!creator.CreateCoinSpendScript(&Params().GetConsensus().ZeroCT_Params, pubCoin, a, bah, aw, scriptPubKey, sigdata, r, r2, fStake, strError))
+    if (!creator.CreateCoinSpendScript(&Params().GetConsensus().ZeroCT_Params, pubCoin, a, bah, aw, scriptPubKey, sigdata, r, fStake, strError))
         return error(strprintf("Error creating coin spend: %s", strError));
 
     return true;
@@ -115,12 +115,10 @@ bool ProduceCoinSpend(const BaseSignatureCreator& creator, const std::map<CBigNu
     bool solved = true;
     CScript result;
     CBigNum r;
-    CBigNum r2;
-    solved = PrepareAndSignCoinSpend(creator, mapWitness, view, script, amount, result, r, r2, fCoinStake);
+    solved = PrepareAndSignCoinSpend(creator, mapWitness, view, script, amount, result, r, fCoinStake);
     sigdata.scriptWitness.stack.clear();
     sigdata.scriptSig = result;
     sigdata.r = r;
-    sigdata.r2 = r2;
 
     // Test solution
     return solved;

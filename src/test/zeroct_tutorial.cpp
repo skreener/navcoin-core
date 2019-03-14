@@ -279,11 +279,10 @@ ZerocoinTutorial()
         // totalling to the value of one zerocoin (minus transaction fees).
 
         CBigNum r;
-        CBigNum r2;
 
         // Construct the CoinSpend object. This acts like a signature on the
         // transaction.
-        libzeroct::CoinSpend spend(params, newCoin, accumulator, 0, witness, 0, libzeroct::SpendType::SPEND, obfuscation_j, obfuscation_k, r, r2);
+        libzeroct::CoinSpend spend(params, newCoin, accumulator, 0, witness, 0, libzeroct::SpendType::SPEND, obfuscation_j, obfuscation_k, r);
 
         // This is a sanity check. The CoinSpend object should always verify,
         // but why not check before we put it onto the wire?
@@ -292,7 +291,7 @@ ZerocoinTutorial()
             return false;
         }
 
-        libzeroct::CoinSpend stake(params, newCoin, accumulator, 0, witness, 0, libzeroct::SpendType::STAKE, obfuscation_j, obfuscation_k, r, r2);
+        libzeroct::CoinSpend stake(params, newCoin, accumulator, 0, witness, 0, libzeroct::SpendType::STAKE, obfuscation_j, obfuscation_k, r);
         if (!stake.Verify(accumulator)) {
             cout << "ERROR: Our new CoinStake transaction did not verify!" << endl;
             return false;

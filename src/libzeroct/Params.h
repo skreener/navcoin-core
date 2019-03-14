@@ -214,11 +214,6 @@ public:
 	 */
 	IntegerGroupParams serialNumberSoKCommitmentGroup;
 
-  /**
-   * Group for constructing the Kernel Hash Proof
-   */
-  IntegerGroupParams kernelHashProofCommitmentGroup;
-
 	/**
 	 * The number of iterations to use in the serial
 	 * number proof.
@@ -237,7 +232,6 @@ public:
       READWRITE(accumulatorParams);
       READWRITE(coinCommitmentGroup);
       READWRITE(serialNumberSoKCommitmentGroup);
-      READWRITE(kernelHashProofCommitmentGroup);
 	    READWRITE(zkp_iterations);
 	    READWRITE(zkp_hash_len);
 	}

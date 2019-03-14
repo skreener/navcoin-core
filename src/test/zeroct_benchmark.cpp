@@ -383,11 +383,10 @@ Testb_MintAndSpend()
         cout << "\tWITNESS ELAPSED TIME: \n\t\tTotal: " << timer.duration() << " ms\t" << timer.duration()*0.001 << " s\n\t\tPer Element: " << timer.duration()/TESTS_COINS_TO_ACCUMULATE << " ms\t" << (timer.duration()/TESTS_COINS_TO_ACCUMULATE)*0.001 << " s" << endl;
 
         CBigNum r;
-        CBigNum r2;
 
         // Now spend the coin
         timer.start();
-        CoinSpend spend(gg_Params, *(ggCoins[0]), acc, 0, wAcc, 0, SpendType::SPEND, obfuscation_jj, obfuscation_kk, r, r2);
+        CoinSpend spend(gg_Params, *(ggCoins[0]), acc, 0, wAcc, 0, SpendType::SPEND, obfuscation_jj, obfuscation_kk, r);
         timer.stop();
 
         cout << "\tSPEND ELAPSED TIME: " << timer.duration() << " ms\t" << timer.duration()*0.001 << " s" << endl;

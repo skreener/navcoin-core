@@ -132,14 +132,11 @@ void BlockAssembler::resetBlock()
     fIncludeWitness = false;
 
     // These counters do not include coinbase tx
-    nBlockTx = 0;
-    nFees = 0;
-
     lastFewTxs = 0;
     blockFinished = false;
 }
 
-CBlockTemplate* BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bool fProofOfStake, uint64_t* pFees, uint64_t* pPrivateFees)
+CBlockTemplate* BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bool fProofOfStake)
 {
     resetBlock();
 
@@ -300,7 +297,7 @@ CBlockTemplate* BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bo
     pblock->vtx[0] = coinbaseTx;
 
     pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
-    pblocktemplate->vTxFees[0] = -nFees;
+    pblocktemplate->vTxFees[0] = -pblocktemplate->nFees;
 
     // Fill in header
     pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
@@ -310,12 +307,6 @@ CBlockTemplate* BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bo
     pblock->nBits          = GetNextTargetRequired(pindexPrev, fProofOfStake);
     pblock->nNonce         = 0;
     pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(pblock->vtx[0]);
-
-    if (pFees)
-        *pFees = nFees;
-
-    if (pPrivateFees)
-        *pPrivateFees = nPrivateFees;
 
     return pblocktemplate.release();
 }
@@ -441,10 +432,12 @@ void BlockAssembler::AddToBlock(CTxMemPool::txiter iter)
     nBlockWeight += iter->GetTxWeight();
     ++nBlockTx;
     nBlockSigOpsCost += iter->GetSigOpCost();
-    if (iter->GetTx().IsZeroCTSpend() || iter->GetTx().HasZeroCTMint())
-        nPrivateFees += iter->GetFee();
-    else
-        nFees += iter->GetFee();
+    if (iter->GetTx().IsZeroCTSpend() || iter->GetTx().HasZeroCTMint()) {
+        LogPrintf("Adding private fee %d from %s\n", iter->GetFee(), iter->GetTx().ToString());
+        pblocktemplate->nPrivateFees += iter->GetFee();
+    } else
+        pblocktemplate->nFees += iter->GetFee();
+
     inBlock.insert(iter);
 
     bool fPrintPriority = GetBoolArg("-printpriority", DEFAULT_PRINTPRIORITY);
@@ -812,10 +805,7 @@ void NavCoinStaker(const CChainParams& chainparams)
             //
             // Create new block
             //
-            uint64_t nFees = 0;
-            uint64_t nPrivateFees = 0;
-
-            std::unique_ptr<CBlockTemplate> pblocktemplate(BlockAssembler(Params()).CreateNewBlock(coinbaseScript->reserveScript, true, &nFees, &nPrivateFees));
+            std::unique_ptr<CBlockTemplate> pblocktemplate(BlockAssembler(Params()).CreateNewBlock(coinbaseScript->reserveScript, true));
             if (!pblocktemplate.get())
             {
                 LogPrintf("Error in NavCoinStaker: Keypool ran out, please call keypoolrefill before restarting the staking thread\n");
@@ -827,7 +817,7 @@ void NavCoinStaker(const CChainParams& chainparams)
             //     ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
 
             //Trying to sign a block
-            if (SignBlock(pblock, *pwalletMain, nFees, nPrivateFees))
+            if (SignBlock(pblock, *pwalletMain, pblocktemplate->nFees, pblocktemplate->nPrivateFees))
             {
                 LogPrint("coinstake", "PoS Block signed\n");
                 SetThreadPriority(THREAD_PRIORITY_NORMAL);
@@ -964,12 +954,6 @@ bool SignBlock(CBlock *pblock, CWallet& wallet, int64_t nFees, int64_t nPrivateF
                   SerialNumberProofOfKnowledge txAmountSig = SerialNumberProofOfKnowledge(group,
                                                                                           r_minus_gamma,
                                                                                           txNew.GetHashAmountSig());
-
-                  LogPrintf("Signing %s with %s\n%s\n",
-                            txNew.GetHashAmountSig().ToString().substr(0, 8),
-                            group->g.pow_mod(r_minus_gamma, group->modulus).ToString().substr(16, 8),
-                            txNew.ToString());
-
 
                   CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                   ss << txAmountSig;

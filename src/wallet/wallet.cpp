@@ -832,11 +832,13 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
         if (fZeroKernelFound)
         {
-            CCoinsViewCache view(pcoinsTip);
+            {
+                CCoinsViewCache view(pcoinsTip);
 
-            signSuccess = ProduceCoinSpend(TransactionSignatureCreator(this, &txNewConst, nIn,
-                    nCredit, SIGHASH_ALL), mapWitness, view, scriptPubKey, sigdata,
-                    true, nCredit);
+                signSuccess = ProduceCoinSpend(TransactionSignatureCreator(this, &txNewConst, nIn,
+                                                                           nCredit, SIGHASH_ALL), mapWitness, view, scriptPubKey, sigdata,
+                                               true, nCredit);
+            }
 
             libzeroct::PublicCoin pubCoin(&Params().GetConsensus().ZeroCT_Params);
 
@@ -862,25 +864,27 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
             serialNumberPrivKey = privateCoin.getPrivateSerialNumber(oj);
 
-            const libzeroct::IntegerGroupParams* paramsHk = &Params().GetConsensus().ZeroCT_Params.kernelHashProofCommitmentGroup;
+            const libzeroct::IntegerGroupParams* paramsHk = &Params().GetConsensus().ZeroCT_Params.coinCommitmentGroup;
             const libzeroct::IntegerGroupParams* paramsCg = &Params().GetConsensus().ZeroCT_Params.coinCommitmentGroup;
             CBigNum q = paramsHk->groupOrder;
 
             values.push_back((CBigNum(nCredit).mul_mod(CBigNum(targetProofOfStake), q) - CBigNum(hashProofOfStake)) % q);
-            gammas.push_back(sigdata.r2.mul_mod(CBigNum(targetProofOfStake),q));
+            gammas.push_back(sigdata.r.mul_mod(CBigNum(targetProofOfStake),q));
 
             BulletproofsRangeproof bphk(paramsHk);
             bphk.Prove(values, gammas, KERNEL_PROOF_BITS);
 
 //            CBN_matrix mValueCommitments;
 //            CBN_vector valueCommitments = bphk.GetValueCommitments();
+
+//            LogPrintf("proved %s\n", toStringVector(valueCommitments));
 //            mValueCommitments.push_back(valueCommitments);
 
 //            std::vector<BulletproofsRangeproof> proofs;
 
 //            proofs.push_back(bphk);
 
-//            if (!VerifyBulletproof(paramsHk, proofs, mValueCommitments, 8))
+//            if (!VerifyBulletproof(paramsHk, proofs, mValueCommitments, KERNEL_PROOF_BITS))
 //                return error("%s : Could not verify the CoinStake kernel hash range proof", __func__);
 
             CDataStream serializedRangeProofKernelHash(SER_NETWORK, PROTOCOL_VERSION);
@@ -932,19 +936,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
             {
                 values[i].Nullify();
             }
-            CBigNum outputs = 1;
-            CBigNum outval = 0;
             for (unsigned int i = 0; i < txValues.size(); i++)
             {
-                CBigNum ac = group->g2.pow_mod(txValues[i], group->modulus)
-                        .mul_mod(group->g.pow_mod(txGammas[i], group->modulus), group->modulus);
-                outputs.mul_mod(ac, group->modulus);
-                LogPrintf("Wallet mint script %s (am %s r %s)\n",
-                          ac
-                          .ToString(16).substr(0,8),
-                          txValues[i],
-                          txGammas[i].ToString(16).substr(0,8));
-                outval = outval + txValues[i];
                 txValues[i].Nullify();
             }
             for (unsigned int i = 0; i < txGammas.size(); i++)
@@ -953,22 +946,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
                 txGammas[i].Nullify();
             }
 
-            CBigNum ic = group->g2.pow_mod(nCredit+nReward, group->modulus)
-                    .mul_mod(group->g.pow_mod(sigdata.r, group->modulus), group->modulus);
-
-            LogPrintf("Wallet cs script with ac %s (am %s r %s)\n",
-                      ic
-                      .ToString(16).substr(0,8),
-                      nCredit,
-                      sigdata.r.ToString(16).substr(0,8));
-
             r_minus_gamma = sigdata.r - gamma_sum;
-
-            assert(nCredit + nReward == outval);
-
-         /*   assert(group->g.pow_mod(r_minus_gamma,group->modulus)
-                   ==
-                   ic.mul_mod(outputs.inverse(group->modulus), group->modulus));*/
 
             gamma_sum.Nullify();
             sigdata.r.Nullify();

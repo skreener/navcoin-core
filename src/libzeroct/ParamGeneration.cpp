@@ -81,9 +81,6 @@ CalculateParams(ZeroCTParams &params, CBigNum N, string aux, uint32_t securityLe
 	// the modulus of the new group equal to "2q+1" and test to see if this is prime.
 	params.serialNumberSoKCommitmentGroup = deriveIntegerGroupFromOrder(params.coinCommitmentGroup.modulus);
 
-  CBigNum kHPorder = CBigNum(2).pow(CBigNum(2).pow(9));
-  params.kernelHashProofCommitmentGroup = deriveIntegerGroupFromOrder(kHPorder);
-
 	// Calculate the parameters for the internal commitment
 	// using the same process.
 	params.accumulatorParams.accumulatorPoKCommitmentGroup = deriveIntegerGroupParams(calculateSeed(N, aux, securityLevel, STRING_AIC_GROUP),

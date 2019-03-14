@@ -107,7 +107,6 @@ CMutableTransaction ConstructTransaction(CBasicKeyStore& keystoreRet, CCoinsView
             CScript scriptOut;
             CTransaction tx(t);
             CBigNum r;
-            CBigNum r2;
             std::string strError = "";
 
             libzeroct::PublicCoin pubCoin(params);
@@ -122,7 +121,7 @@ CMutableTransaction ConstructTransaction(CBasicKeyStore& keystoreRet, CCoinsView
 
             a.accumulate(pubCoin);
 
-            assert(creator.CreateCoinSpendScript(params, pubCoin, a, uint256(1), aw, scriptPubKey, scriptOut, r, r2, false, strError));
+            assert(creator.CreateCoinSpendScript(params, pubCoin, a, uint256(1), aw, scriptPubKey, scriptOut, r, false, strError));
 
             sigdata.r = r;
             sigdata.scriptSig = scriptOut;

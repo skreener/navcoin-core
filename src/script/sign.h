@@ -33,7 +33,7 @@ public:
     virtual bool CreateSig(std::vector<unsigned char>& vchSig, const CKeyID& keyid, const CScript& scriptCode, SigVersion sigversion) const =0;
     virtual bool CreateCoinSpendScript(const libzeroct::ZeroCTParams* params, const libzeroct::PublicCoin& pubCoin,
                                  const libzeroct::Accumulator a, const uint256 blockAccumulatorHash, const libzeroct::AccumulatorWitness aw,
-                                 const CScript& scriptPubKey, CScript& scriptSig, CBigNum& r, CBigNum& r2, bool fStake, std::string& strError) const=0;
+                                 const CScript& scriptPubKey, CScript& scriptSig, CBigNum& r, bool fStake, std::string& strError) const=0;
 };
 
 /** A signature creator for transactions. */
@@ -49,7 +49,7 @@ public:
     bool CreateSig(std::vector<unsigned char>& vchSig, const CKeyID& keyid, const CScript& scriptCode, SigVersion sigversion) const;
     bool CreateCoinSpendScript(const libzeroct::ZeroCTParams* params, const libzeroct::PublicCoin& pubCoin,
                          const libzeroct::Accumulator a, const uint256 blockAccumulatorHash, const libzeroct::AccumulatorWitness aw,
-                         const CScript& scriptPubKey, CScript& scriptSig, CBigNum& r, CBigNum& r2, bool fStake, std::string& strError) const;
+                         const CScript& scriptPubKey, CScript& scriptSig, CBigNum& r, bool fStake, std::string& strError) const;
     CAmount amount;
 };
 
@@ -68,14 +68,13 @@ public:
     bool CreateSig(std::vector<unsigned char>& vchSig, const CKeyID& keyid, const CScript& scriptCode, SigVersion sigversion) const;
     bool CreateCoinSpendScript(const libzeroct::ZeroCTParams* params, const libzeroct::PublicCoin& pubCoin,
                          const libzeroct::Accumulator a, const uint256 blockAccumulatorHash, const libzeroct::AccumulatorWitness aw,
-                         const CScript& scriptPubKey, CScript& scriptSig, CBigNum& r, CBigNum& r2, bool fStake, std::string& strError) const;
+                         const CScript& scriptPubKey, CScript& scriptSig, CBigNum& r, bool fStake, std::string& strError) const;
 };
 
 struct SignatureData {
     CScript scriptSig;
     CScriptWitness scriptWitness;
     CBigNum r;
-    CBigNum r2;
 
     SignatureData() {}
     explicit SignatureData(const CScript& script) : scriptSig(script) {}

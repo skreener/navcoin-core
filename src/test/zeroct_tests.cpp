@@ -439,9 +439,8 @@ Test_MintAndSpend()
         PrivateCoin myCoin(g_Params,cc);
 
         CBigNum r;
-        CBigNum r2;
 
-        CoinSpend spend(g_Params, myCoin, acc, 0, wAcc, 0, SpendType::SPEND, obfuscation_j, obfuscation_k, r, r2);
+        CoinSpend spend(g_Params, myCoin, acc, 0, wAcc, 0, SpendType::SPEND, obfuscation_j, obfuscation_k, r);
         spend.Verify(acc);
 
         // Serialize the proof and deserialize into newSpend

@@ -450,7 +450,7 @@ bool DummySignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const 
 
 bool DummySignatureCreator::CreateCoinSpendScript(const libzeroct::ZeroCTParams* params, const libzeroct::PublicCoin& pubCoin,
                                             const libzeroct::Accumulator a, const uint256 blockAccumulatorHash, const libzeroct::AccumulatorWitness aw,
-                                            const CScript& scriptPubKey, CScript& scriptSig, CBigNum& r, CBigNum& r2, bool fStake, std::string& strError) const
+                                            const CScript& scriptPubKey, CScript& scriptSig, CBigNum& r, bool fStake, std::string& strError) const
 {
     scriptSig = CScript() << OP_ZEROCTSPEND;
     return true;
@@ -458,7 +458,7 @@ bool DummySignatureCreator::CreateCoinSpendScript(const libzeroct::ZeroCTParams*
 
 bool TransactionSignatureCreator::CreateCoinSpendScript(const libzeroct::ZeroCTParams* params, const libzeroct::PublicCoin& pubCoin,
                                                   const libzeroct::Accumulator a, const uint256 blockAccumulatorHash, const libzeroct::AccumulatorWitness aw,
-                                                  const CScript& scriptPubKey, CScript& scriptSig, CBigNum& r, CBigNum& r2, bool fStake, std::string& strError) const
+                                                  const CScript& scriptPubKey, CScript& scriptSig, CBigNum& r, bool fStake, std::string& strError) const
 {
     try {
         CKey zk; libzeroct::BlindingCommitment bc; libzeroct::ObfuscationValue oj; libzeroct::ObfuscationValue ok;
@@ -492,12 +492,7 @@ bool TransactionSignatureCreator::CreateCoinSpendScript(const libzeroct::ZeroCTP
 
         uint256 txhash = SignatureHash(scriptPubKey, *txTo, nIn, nHashType, amount, SIGVERSION_BASE);
 
-        libzeroct::CoinSpend cs(params, privateCoin, a, blockAccumulatorHash, aw, txhash, fStake ? libzeroct::SpendType::STAKE : libzeroct::SpendType::SPEND, oj, ok, r, r2);
-
-        LogPrintf("Generated cs script with ac %s (am %s r %s)\n",
-                  cs.getAmountCommitment().ToString(16).substr(0,8),
-                  privateCoin.getAmount(),
-                  r.ToString(16).substr(0,8));
+        libzeroct::CoinSpend cs(params, privateCoin, a, blockAccumulatorHash, aw, txhash, fStake ? libzeroct::SpendType::STAKE : libzeroct::SpendType::SPEND, oj, ok, r);
 
         CDataStream serializedCoinSpend(SER_NETWORK, PROTOCOL_VERSION);
         serializedCoinSpend << cs;

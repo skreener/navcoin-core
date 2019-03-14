@@ -270,8 +270,6 @@ bool VerifyZeroCTBalance(const ZeroCTParams *params, const CTransaction& tx, con
     if (nReward > 0)
         bnInputs = bnInputs.mul_mod(params->coinCommitmentGroup.g2.pow_mod(nReward, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
 
-    LogPrintf("reward is %d\n", nReward);
-
     for (auto &in: tx.vin)
     {
         if (in.scriptSig.IsZeroCTSpend())
@@ -281,14 +279,11 @@ bool VerifyZeroCTBalance(const ZeroCTParams *params, const CTransaction& tx, con
             if (!ScriptToCoinSpend(params, in.scriptSig, spend))
                 return false;
 
-            LogPrintf("Adding spend ac in %s\n", spend.getAmountCommitment().ToString(16).substr(0,8));
-
             bnInputs = bnInputs.mul_mod(spend.getAmountCommitment(), params->coinCommitmentGroup.modulus);
         }
         else
         {
             CAmount inputValue = view.GetOutputFor(in).nValue;
-            LogPrintf("Adding normal in %d\n", inputValue);
             bnInputs = bnInputs.mul_mod(params->coinCommitmentGroup.g2.pow_mod(inputValue, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
         }
     }
@@ -301,24 +296,16 @@ bool VerifyZeroCTBalance(const ZeroCTParams *params, const CTransaction& tx, con
 
             if (!TxOutToPublicCoin(params, out, pc))
                 return false;
-            LogPrintf("Adding mint ac out %s\n", pc.getAmountCommitment().ToString(16).substr(0,8));
 
             bnOutputs = bnOutputs.mul_mod(pc.getAmountCommitment(), params->coinCommitmentGroup.modulus);
         }
         else
         {
-            LogPrintf("Adding normal out %d\n", out.nValue);
-
             bnOutputs = bnOutputs.mul_mod(params->coinCommitmentGroup.g2.pow_mod(out.nValue, params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
         }
     }
 
     CBigNum bnPubKey = bnInputs.mul_mod(bnOutputs.inverse(params->coinCommitmentGroup.modulus), params->coinCommitmentGroup.modulus);
-
-    LogPrintf("Verifying %s with %s\n",
-              tx.GetHashAmountSig().ToString().substr(0, 8),
-              bnPubKey.ToString().substr(16, 8));
-
 
     return snpok.Verify(bnPubKey, tx.GetHashAmountSig());
 }

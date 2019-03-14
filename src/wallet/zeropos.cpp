@@ -65,9 +65,9 @@ bool CheckZeroCTKernelHash(CBlockIndex* pindexPrev, unsigned int nBits, const CT
     hashProofOfStake = GetZeroCTKernelHash(pindexPrev->nStakeModifier, pindexPrev->nHeight, pindexPrev->nTime, cs.getCoinSerialNumber(), tx.nTime, nShift);
 
     const CBigNum kernel(hashProofOfStake);
-    const CBigNum amountCommitment = cs.getKernelHashAmountCommitment();
+    const CBigNum amountCommitment = cs.getAmountCommitment();
 
-    const libzeroct::IntegerGroupParams* group = &Params().GetConsensus().ZeroCT_Params.kernelHashProofCommitmentGroup;
+    const libzeroct::IntegerGroupParams* group = &Params().GetConsensus().ZeroCT_Params.coinCommitmentGroup;
     const CBigNum p = group->modulus;
     const CBigNum q = group->groupOrder;
     const CBigNum g2 = group->g2;

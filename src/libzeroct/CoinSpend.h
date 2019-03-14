@@ -48,13 +48,7 @@ public:
                       params->serialNumberSoKCommitmentGroup.g,
                       params->serialNumberSoKCommitmentGroup.h,
                       params->accumulatorParams.accumulatorPoKCommitmentGroup.g,
-                      params->accumulatorParams.accumulatorPoKCommitmentGroup.h),
-        kernelHashPoK(&params->kernelHashProofCommitmentGroup,
-                      &params->coinCommitmentGroup,
-                      params->kernelHashProofCommitmentGroup.g2,
-                      params->kernelHashProofCommitmentGroup.g,
-                      params->coinCommitmentGroup.g2,
-                      params->coinCommitmentGroup.g) {}
+                      params->accumulatorParams.accumulatorPoKCommitmentGroup.h) {}
 
     //! \param param - params
     //! \param strm - a serialized CoinSpend
@@ -69,13 +63,7 @@ public:
                       params->serialNumberSoKCommitmentGroup.g,
                       params->serialNumberSoKCommitmentGroup.h,
                       params->accumulatorParams.accumulatorPoKCommitmentGroup.g,
-                      params->accumulatorParams.accumulatorPoKCommitmentGroup.h),
-        kernelHashPoK(&params->kernelHashProofCommitmentGroup,
-                      &params->coinCommitmentGroup,
-                      params->kernelHashProofCommitmentGroup.g2,
-                      params->kernelHashProofCommitmentGroup.g,
-                      params->coinCommitmentGroup.g2,
-                      params->coinCommitmentGroup.g)
+                      params->accumulatorParams.accumulatorPoKCommitmentGroup.h)
     {
         Stream strmCopy = strm;
         strm >> *this;
@@ -106,7 +94,7 @@ public:
     CoinSpend(const ZeroCTParams* params, const PrivateCoin& coin, const Accumulator& a, const uint256& checksum,
               const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType,
               const libzeroct::ObfuscationValue obfuscationJ, const libzeroct::ObfuscationValue obfuscationK,
-              CBigNum& r, CBigNum& r2);
+              CBigNum& r);
 
     /** Returns the serial number of the coin spend by this proof.
    *
@@ -127,7 +115,6 @@ public:
     uint256 getTxOutHash() const { return ptxHash; }
     CBigNum getAccCommitment() const { return accCommitmentToCoinValue; }
     CBigNum getAmountCommitment() const { return amountCommitment; }
-    CBigNum getKernelHashAmountCommitment() const { return kernelHashAmountCommitment; }
     CBigNum getSerialComm() const { return serialCommitmentToCoinValue; }
     uint8_t getVersion() const { return version; }
     SpendType getSpendType() const { return spendType; }
@@ -157,10 +144,6 @@ public:
         READWRITE(serialNumberPoK);
         READWRITE(commitmentPoK);
         READWRITE(spendType);
-        if (spendType == libzeroct::STAKE) {
-            READWRITE(kernelHashAmountCommitment);
-            READWRITE(kernelHashPoK);
-        }
     }
 
 private:
@@ -173,12 +156,10 @@ private:
     CBigNum commitmentToCoinValue;
     CBigNum coinValuePublic;
     CBigNum amountCommitment;
-    CBigNum kernelHashAmountCommitment;
     AccumulatorProofOfKnowledge accumulatorPoK;
     SerialNumberSignatureOfKnowledge serialNumberSoK;
     SerialNumberProofOfKnowledge serialNumberPoK;
     CommitmentProofOfKnowledge commitmentPoK;
-    CommitmentProofOfKnowledge kernelHashPoK;
     uint8_t version;
     SpendType spendType;
 };

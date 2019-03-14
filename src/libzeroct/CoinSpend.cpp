@@ -22,7 +22,7 @@ namespace libzeroct
 CoinSpend::CoinSpend(const ZeroCTParams* params, const PrivateCoin& coin, const Accumulator& a, const uint256& blockHash,
                      const AccumulatorWitness& witness, const uint256& ptxHash, const SpendType& spendType,
                      const libzeroct::ObfuscationValue obfuscationJ, const libzeroct::ObfuscationValue obfuscationK,
-                     CBigNum& r, CBigNum& r2) :
+                     CBigNum& r) :
     p(params),
     blockAccumulatorHash(blockHash),
     ptxHash(ptxHash),
@@ -35,12 +35,6 @@ CoinSpend::CoinSpend(const ZeroCTParams* params, const PrivateCoin& coin, const 
                   params->serialNumberSoKCommitmentGroup.h,
                   params->accumulatorParams.accumulatorPoKCommitmentGroup.g,
                   params->accumulatorParams.accumulatorPoKCommitmentGroup.h),
-    kernelHashPoK(&params->kernelHashProofCommitmentGroup,
-                  &params->coinCommitmentGroup,
-                  params->kernelHashProofCommitmentGroup.g2,
-                  params->kernelHashProofCommitmentGroup.g,
-                  params->coinCommitmentGroup.g2,
-                  params->coinCommitmentGroup.g),
     spendType(spendType)
 {
     version = coin.getVersion();
@@ -57,7 +51,6 @@ CoinSpend::CoinSpend(const ZeroCTParams* params, const PrivateCoin& coin, const 
     const libzeroct::IntegerGroupParams* group1 = &params->serialNumberSoKCommitmentGroup;
     const libzeroct::IntegerGroupParams* group2 = &params->accumulatorParams.accumulatorPoKCommitmentGroup;
     const libzeroct::IntegerGroupParams* group3 = &params->coinCommitmentGroup;
-    const libzeroct::IntegerGroupParams* group4 = &params->kernelHashProofCommitmentGroup;
 
     CBigNum obfuscatedSerial = ((obfuscationJ.first*coin.getObfuscationValue())+obfuscationJ.second)%group3->groupOrder;
     CBigNum obfuscatedRandomness = ((obfuscationK.first*coin.getObfuscationValue())+obfuscationK.second)%group3->groupOrder;
@@ -85,14 +78,6 @@ CoinSpend::CoinSpend(const ZeroCTParams* params, const PrivateCoin& coin, const 
     // 2. Generate a ZK proof that the two commitments contain the same public coin.
     this->commitmentPoK = CommitmentProofOfKnowledge(group1, group2, fullCommitmentToCoinUnderSerialParams, fullCommitmentToCoinUnderAccParams, group1->g, group1->h, group2->g, group2->h);
 
-    if (spendType == libzeroct::STAKE) {
-        r2 = CBigNum::randBignum(group4->groupOrder);
-        const Commitment kernelHashCommitment(group4, r2, 0, coin.getAmount());
-
-        this->kernelHashAmountCommitment = kernelHashCommitment.getCommitmentValue();
-        this->kernelHashPoK = CommitmentProofOfKnowledge(group4, group3, kernelHashCommitment, amountCommitment, group4->g2, group4->g, group3->g2, group3->g);
-    }
-
     // Now generate the two core ZK proofs:
     // 3. Proves that the committed public coin is in the Accumulator (PoK of "witness")
     this->accumulatorPoK = AccumulatorProofOfKnowledge(&params->accumulatorParams, fullCommitmentToCoinUnderAccParams, witness, a);
@@ -113,55 +98,27 @@ CoinSpend::CoinSpend(const ZeroCTParams* params, const PrivateCoin& coin, const 
 
 bool CoinSpend::Verify(const Accumulator& a) const
 {
-    int64_t nStart = GetTimeMicros();
 
     if (!HasValidPublicSerial(p)) {
         return error("CoinsSpend::Verify: invalid Public Serial");
     }
-
-    int64_t nStart1 = GetTimeMicros();
 
     // Verify both of the sub-proofs using the given meta-data
     if (!commitmentPoK.Verify(serialCommitmentToCoinValue, accCommitmentToCoinValue)) {
         return error("CoinsSpend::Verify: commitmentPoK failed");
     }
 
-    int64_t nStart2 = GetTimeMicros();
-
-    if (spendType == libzeroct::STAKE) {
-        if (!kernelHashPoK.Verify(kernelHashAmountCommitment, amountCommitment)) {
-            return error("CoinsSpend::Verify: kernelHashPoK failed");
-        }
-    }
-
-    int64_t nStart3 = GetTimeMicros();
-
     if (!accumulatorPoK.Verify(a, accCommitmentToCoinValue)) {
         return error("CoinsSpend::Verify: accumulatorPoK failed");
     }
-
-    int64_t nStart4 = GetTimeMicros();
 
     if (!serialNumberSoK.Verify(serialCommitmentToCoinValue, coinValuePublic, amountCommitment, commitmentToCoinValue, signatureHash())) {
         return error("CoinsSpend::Verify: serialNumberSoK failed.");
     }
 
-    int64_t nStart5 = GetTimeMicros();
-
     if (!serialNumberPoK.Verify(coinValuePublic, signatureHash())) {
         return error("CoinsSpend::Verify: serialNumberPoK failed.");
     }
-    int64_t nEnd = GetTimeMicros();
-
-    LogPrintf("Took tot %.3fms snpok %.3fms/snsok %.3fms/acpok %.3fms/khpok %.3fms/cver %.3fms/- %.3fms\n",
-              (nEnd-nStart)*0.001,
-              (nEnd-nStart5)*0.001,
-              (nStart5-nStart4)*0.001,
-              (nStart4-nStart3)*0.001,
-              (nStart3-nStart2)*0.001,
-              (nStart2-nStart1)*0.001,
-              (nStart1-nStart)*0.001);
-
 
     return true;
 }
